@@ -227,6 +227,12 @@ config ARCH_THUNDER2
 	  This enables support for Cavium's ThunderX2 CN99XX family of
 	  server processors.
 
+config ARCH_K3
+	bool "Texas Instruments Inc. K3 generation SoC Family"
+	help
+	  This enables support for Texas Instruments' K3 family
+	  of SoCs.
+
 config ARCH_UNIPHIER
 	bool "Socionext UniPhier SoC Family"
 	select ARCH_HAS_RESET_CONTROLLER
