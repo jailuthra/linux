@@ -6,6 +6,7 @@
 #
 dtb-$(CONFIG_ARCH_K3_AM6) += k3-am654-vlab.dtb
 dtb-$(CONFIG_ARCH_K3_AM6) += k3-am654-qt.dtb
+dtb-$(CONFIG_ARCH_K3_AM6) += k3-am654-zebu.dtb
 
 always		:= $(dtb-y)
 clean-files	:= *.dtb
