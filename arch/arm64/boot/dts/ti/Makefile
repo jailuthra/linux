@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0
 #
 dtb-$(CONFIG_ARCH_K3_AM6) += k3-am654-vlab.dtb
+dtb-$(CONFIG_ARCH_K3_AM6) += k3-am654-qt.dtb
 
 always		:= $(dtb-y)
 clean-files	:= *.dtb
