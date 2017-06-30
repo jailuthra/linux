@@ -22,6 +22,10 @@
 		ranges = <0x0 0x00 0x41c00000 0x80000>;
 		#address-cells = <1>;
 		#size-cells = <1>;
+
+		r5f0_sram: r5f0-sram@0 {
+			reg = <0x0 0x40000>;
+		};
 	};
 
 	mcu_r5f_cluster: mcu_r5f_cluster@41000000 {
@@ -46,6 +50,7 @@
 			btcm-enable = <1>;
 			loczrama = <1>;
 			mboxes = <&mailbox0_cluster0 &mbox_mcu_r5f0_ipc3x>;
+			sram = <&r5f0_sram>;
 		};
 
 		mcu_r5f1: r5f@41400000 {
