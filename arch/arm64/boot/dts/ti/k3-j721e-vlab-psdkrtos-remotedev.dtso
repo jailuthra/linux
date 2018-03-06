@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source for J721E ASTC VLAB Model with DSS partitioning support
+ *
+ * Copyright (C) 2016-2018 Texas Instruments Incorporated - http://www.ti.com/
+ */
+
+/dts-v1/;
+/plugin/;
+
+&dss {
+	status = "ok";
+
+	dss_planes: dss_planes {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/*vid1*/
+		plane@0 {
+			reg = <0>;
+			managed = <1>;
+		};
+
+		/*vidl1*/
+		plane@1 {
+			reg = <1>;
+			managed = <1>;
+		};
+
+		/*vid2*/
+		plane@2 {
+			reg = <2>;
+			managed = <1>;
+		};
+
+		/*vidl2*/
+		plane@3 {
+			reg = <3>;
+			managed = <1>;
+		};
+	};
+
+	dss_vps: dss_vps {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vp@0 {
+			reg = <0>;
+			managed = <1>;
+		};
+
+		vp@1 {
+			reg = <1>;
+			managed = <1>;
+		};
+
+		vp@2 {
+			reg = <2>;
+			managed = <1>;
+		};
+
+		vp@3 {
+			reg = <3>;
+			managed = <1>;
+		};
+	};
+
+	dss_commons: dss_commons {
+		#address-cells = <0>;
+		#size-cells = <0>;
+
+		interrupt-handling-common = <0>;
+		configuration-common = <0>;
+	};
+};

@@ -13,7 +13,8 @@ dtb-$(CONFIG_ARCH_K3_AM6_SOC) += k3-am654-base-board.dtb \
 	k3-am654-evm-oldi-lcd1evm.dtbo
 
 dtb-$(CONFIG_ARCH_K3_J721E_SOC) += k3-j721e-vlab.dtb \
-	k3-j721e-jailhouse.dtbo
+	k3-j721e-jailhouse.dtbo \
+	k3-j721e-vlab-psdkrtos-remotedev.dtbo
 
 $(obj)/%.dtbo: $(src)/%.dtso FORCE
 	$(call if_changed_dep,dtc)
