@@ -494,7 +494,7 @@ nfs4_alloc_state_owner(struct nfs_server *server,
 	nfs4_init_seqid_counter(&sp->so_seqid);
 	atomic_set(&sp->so_count, 1);
 	INIT_LIST_HEAD(&sp->so_lru);
-	seqcount_init(&sp->so_reclaim_seqcount);
+	seqlock_init(&sp->so_reclaim_seqlock);
 	mutex_init(&sp->so_delegreturn_mutex);
 	return sp;
 }
@@ -1447,6 +1447,7 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
 	struct inode *inode = state->inode;
 	struct nfs_inode *nfsi = NFS_I(inode);
 	struct file_lock *fl;
+	struct nfs4_lock_state *lsp;
 	int status = 0;
 	struct file_lock_context *flctx = inode->i_flctx;
 	struct list_head *list;
@@ -1487,7 +1488,9 @@ restart:
 		case -NFS4ERR_DENIED:
 		case -NFS4ERR_RECLAIM_BAD:
 		case -NFS4ERR_RECLAIM_CONFLICT:
-			/* kill_proc(fl->fl_pid, SIGLOST, 1); */
+			lsp = fl->fl_u.nfs4_fl.owner;
+			if (lsp)
+				set_bit(NFS_LOCK_LOST, &lsp->ls_flags);
 			status = 0;
 		}
 		spin_lock(&flctx->flc_lock);
@@ -1516,8 +1519,12 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
 	 * recovering after a network partition or a reboot from a
 	 * server that doesn't support a grace period.
 	 */
+#ifdef CONFIG_PREEMPT_RT_FULL
+	write_seqlock(&sp->so_reclaim_seqlock);
+#else
+	write_seqcount_begin(&sp->so_reclaim_seqlock.seqcount);
+#endif
 	spin_lock(&sp->so_lock);
-	raw_write_seqcount_begin(&sp->so_reclaim_seqcount);
 restart:
 	list_for_each_entry(state, &sp->so_states, open_states) {
 		if (!test_and_clear_bit(ops->state_flag_bit, &state->flags))
@@ -1586,14 +1593,20 @@ restart:
 		spin_lock(&sp->so_lock);
 		goto restart;
 	}
-	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
 	spin_unlock(&sp->so_lock);
+#ifdef CONFIG_PREEMPT_RT_FULL
+	write_sequnlock(&sp->so_reclaim_seqlock);
+#else
+	write_seqcount_end(&sp->so_reclaim_seqlock.seqcount);
+#endif
 	return 0;
 out_err:
 	nfs4_put_open_state(state);
-	spin_lock(&sp->so_lock);
-	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
-	spin_unlock(&sp->so_lock);
+#ifdef CONFIG_PREEMPT_RT_FULL
+	write_sequnlock(&sp->so_reclaim_seqlock);
+#else
+	write_seqcount_end(&sp->so_reclaim_seqlock.seqcount);
+#endif
 	return status;
 }
 

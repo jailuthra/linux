@@ -14,6 +14,7 @@
 #include <linux/mnt_namespace.h>
 #include <linux/user_namespace.h>
 #include <linux/namei.h>
+#include <linux/delay.h>
 #include <linux/security.h>
 #include <linux/cred.h>
 #include <linux/idr.h>
@@ -353,8 +354,11 @@ int __mnt_want_write(struct vfsmount *m)
 	 * incremented count after it has set MNT_WRITE_HOLD.
 	 */
 	smp_mb();
-	while (ACCESS_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD)
-		cpu_relax();
+	while (ACCESS_ONCE(mnt->mnt.mnt_flags) & MNT_WRITE_HOLD) {
+		preempt_enable();
+		cpu_chill();
+		preempt_disable();
+	}
 	/*
 	 * After the slowpath clears MNT_WRITE_HOLD, mnt_is_readonly will
 	 * be set to match its requirements. So we must not load that until
@@ -1089,7 +1093,8 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 			goto out_free;
 	}
 
-	mnt->mnt.mnt_flags = old->mnt.mnt_flags & ~(MNT_WRITE_HOLD|MNT_MARKED);
+	mnt->mnt.mnt_flags = old->mnt.mnt_flags;
+	mnt->mnt.mnt_flags &= ~(MNT_WRITE_HOLD|MNT_MARKED|MNT_INTERNAL);
 	/* Don't allow unprivileged users to change mount flags */
 	if (flag & CL_UNPRIVILEGED) {
 		mnt->mnt.mnt_flags |= MNT_LOCK_ATIME;
@@ -2826,6 +2831,7 @@ long do_mount(const char *dev_name, const char __user *dir_name,
 			    SB_DIRSYNC |
 			    SB_SILENT |
 			    SB_POSIXACL |
+			    SB_LAZYTIME |
 			    SB_I_VERSION);
 
 	if (flags & MS_REMOUNT)

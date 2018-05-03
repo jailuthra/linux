@@ -1775,9 +1775,9 @@ static void __usb_hcd_giveback_urb(struct urb *urb)
 	 * and no one may trigger the above deadlock situation when
 	 * running complete() in tasklet.
 	 */
-	local_irq_save(flags);
+	local_irq_save_nort(flags);
 	urb->complete(urb);
-	local_irq_restore(flags);
+	local_irq_restore_nort(flags);
 
 	usb_anchor_resume_wakeups(anchor);
 	atomic_dec(&urb->use_count);
@@ -2376,6 +2376,7 @@ void usb_hcd_resume_root_hub (struct usb_hcd *hcd)
 
 	spin_lock_irqsave (&hcd_root_hub_lock, flags);
 	if (hcd->rh_registered) {
+		pm_wakeup_event(&hcd->self.root_hub->dev, 0);
 		set_bit(HCD_FLAG_WAKEUP_PENDING, &hcd->flags);
 		queue_work(pm_wq, &hcd->wakeup_work);
 	}

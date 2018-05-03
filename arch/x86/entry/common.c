@@ -21,6 +21,7 @@
 #include <linux/export.h>
 #include <linux/context_tracking.h>
 #include <linux/user-return-notifier.h>
+#include <linux/nospec.h>
 #include <linux/uprobes.h>
 #include <linux/livepatch.h>
 #include <linux/syscalls.h>
@@ -132,7 +133,7 @@ static long syscall_trace_enter(struct pt_regs *regs)
 
 #define EXIT_TO_USERMODE_LOOP_FLAGS				\
 	(_TIF_SIGPENDING | _TIF_NOTIFY_RESUME | _TIF_UPROBE |	\
-	 _TIF_NEED_RESCHED | _TIF_USER_RETURN_NOTIFY | _TIF_PATCH_PENDING)
+	 _TIF_NEED_RESCHED_MASK | _TIF_USER_RETURN_NOTIFY | _TIF_PATCH_PENDING)
 
 static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
 {
@@ -147,9 +148,16 @@ static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
 		/* We have work to do. */
 		local_irq_enable();
 
-		if (cached_flags & _TIF_NEED_RESCHED)
+		if (cached_flags & _TIF_NEED_RESCHED_MASK)
 			schedule();
 
+#ifdef ARCH_RT_DELAYS_SIGNAL_SEND
+		if (unlikely(current->forced_info.si_signo)) {
+			struct task_struct *t = current;
+			force_sig_info(t->forced_info.si_signo, &t->forced_info, t);
+			t->forced_info.si_signo = 0;
+		}
+#endif
 		if (cached_flags & _TIF_UPROBE)
 			uprobe_notify_resume(regs);
 
@@ -208,7 +216,7 @@ __visible inline void prepare_exit_to_usermode(struct pt_regs *regs)
 	 * special case only applies after poking regs and before the
 	 * very next return to user mode.
 	 */
-	current->thread.status &= ~(TS_COMPAT|TS_I386_REGS_POKED);
+	ti->status &= ~(TS_COMPAT|TS_I386_REGS_POKED);
 #endif
 
 	user_enter_irqoff();
@@ -284,7 +292,8 @@ __visible void do_syscall_64(struct pt_regs *regs)
 	 * regs->orig_ax, which changes the behavior of some syscalls.
 	 */
 	if (likely((nr & __SYSCALL_MASK) < NR_syscalls)) {
-		regs->ax = sys_call_table[nr & __SYSCALL_MASK](
+		nr = array_index_nospec(nr & __SYSCALL_MASK, NR_syscalls);
+		regs->ax = sys_call_table[nr](
 			regs->di, regs->si, regs->dx,
 			regs->r10, regs->r8, regs->r9);
 	}
@@ -306,7 +315,7 @@ static __always_inline void do_syscall_32_irqs_on(struct pt_regs *regs)
 	unsigned int nr = (unsigned int)regs->orig_ax;
 
 #ifdef CONFIG_IA32_EMULATION
-	current->thread.status |= TS_COMPAT;
+	ti->status |= TS_COMPAT;
 #endif
 
 	if (READ_ONCE(ti->flags) & _TIF_WORK_SYSCALL_ENTRY) {
@@ -320,6 +329,7 @@ static __always_inline void do_syscall_32_irqs_on(struct pt_regs *regs)
 	}
 
 	if (likely(nr < IA32_NR_syscalls)) {
+		nr = array_index_nospec(nr, IA32_NR_syscalls);
 		/*
 		 * It's possible that a 32-bit syscall implementation
 		 * takes a 64-bit parameter but nonetheless assumes that

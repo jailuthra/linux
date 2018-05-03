@@ -457,6 +457,10 @@ do_pass:
 			    convert_bpf_extensions(fp, &insn))
 				break;
 
+			if (fp->code == (BPF_ALU | BPF_DIV | BPF_X) ||
+			    fp->code == (BPF_ALU | BPF_MOD | BPF_X))
+				*insn++ = BPF_MOV32_REG(BPF_REG_X, BPF_REG_X);
+
 			*insn = BPF_RAW_INSN(fp->code, BPF_REG_A, BPF_REG_X, 0, fp->k);
 			break;
 
@@ -1053,11 +1057,9 @@ static struct bpf_prog *bpf_migrate_filter(struct bpf_prog *fp)
 		 */
 		goto out_err_free;
 
-	/* We are guaranteed to never error here with cBPF to eBPF
-	 * transitions, since there's no issue with type compatibility
-	 * checks on program arrays.
-	 */
 	fp = bpf_prog_select_runtime(fp, &err);
+	if (err)
+		goto out_err_free;
 
 	kfree(old_prog);
 	return fp;
@@ -1694,7 +1696,7 @@ static inline int __bpf_tx_skb(struct net_device *dev, struct sk_buff *skb)
 {
 	int ret;
 
-	if (unlikely(__this_cpu_read(xmit_recursion) > XMIT_RECURSION_LIMIT)) {
+	if (unlikely(xmit_rec_read() > XMIT_RECURSION_LIMIT)) {
 		net_crit_ratelimited("bpf: recursion limit reached on datapath, buggy bpf program?\n");
 		kfree_skb(skb);
 		return -ENETDOWN;
@@ -1702,9 +1704,9 @@ static inline int __bpf_tx_skb(struct net_device *dev, struct sk_buff *skb)
 
 	skb->dev = dev;
 
-	__this_cpu_inc(xmit_recursion);
+	xmit_rec_inc();
 	ret = dev_queue_xmit(skb);
-	__this_cpu_dec(xmit_recursion);
+	xmit_rec_dec();
 
 	return ret;
 }
