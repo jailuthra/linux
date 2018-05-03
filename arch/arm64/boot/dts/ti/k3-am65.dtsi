@@ -22,6 +22,8 @@
 		serial2 = &main_uart0;
 		serial3 = &main_uart1;
 		serial4 = &main_uart2;
+		rproc0 = &mcu_r5f0;
+		rproc1 = &mcu_r5f1;
 	};
 
 	chosen { };
