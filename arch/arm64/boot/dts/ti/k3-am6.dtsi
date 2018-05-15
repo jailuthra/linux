@@ -48,13 +48,6 @@
 		};
 	};
 
-	firmware {
-		optee {
-			compatible = "linaro,optee-tz";
-			method = "smc";
-		};
-	};
-
 	soc0: soc0 {
 		compatible = "simple-bus";
 		#address-cells = <2>;
