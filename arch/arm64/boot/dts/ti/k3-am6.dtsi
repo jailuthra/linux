@@ -118,7 +118,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			interrupts = <GIC_SPI 697 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000000>;
+			clock-frequency = <48000000>;
 			current-speed = <115200>;
 			status = "disabled";
 		};
@@ -130,7 +130,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			interrupts = <GIC_SPI 565 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000000>;
+			clock-frequency = <48000000>;
 			current-speed = <115200>;
 			status = "disabled";
 		};
@@ -142,7 +142,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			interrupts = <GIC_SPI 192 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000000>;
+			clock-frequency = <48000000>;
 			current-speed = <115200>;
 			status = "disabled";
 		};
@@ -154,7 +154,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			interrupts = <GIC_SPI 193 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000000>;
+			clock-frequency = <48000000>;
 			current-speed = <115200>;
 			status = "disabled";
 		};
@@ -166,7 +166,7 @@
 			reg-shift = <2>;
 			reg-io-width = <4>;
 			interrupts = <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000000>;
+			clock-frequency = <48000000>;
 			current-speed = <115200>;
 			status = "disabled";
 		};
