@@ -54,6 +54,13 @@
 			gpios = <&wkup_gpio0 27 GPIO_ACTIVE_LOW>;
 		};
 	};
+
+	mbox_test {
+		compatible = "ti,omap-mbox-test";
+		mboxes = <&mailbox0_cluster0 &mbox_loop0>,
+			 <&mailbox0_cluster1 &mbox_loop1>;
+		mbox-names = "mbox-loop0", "mbox-loop1";
+	};
 };
 
 &wkup_pmx0 {
