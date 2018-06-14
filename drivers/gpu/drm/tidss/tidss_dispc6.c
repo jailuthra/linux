@@ -1128,8 +1128,9 @@ static const struct tidss_vp_feat *dispc6_vp_feat(struct dispc_device *dispc,
 {
 	static const struct tidss_vp_feat vp_feat = {
 		.color = {
-			.gamma_size = DISPC6_GAMMA_TABLE_SIZE,
 			.has_ctm = false, /* Driver implementation missing */
+			.gamma_size = DISPC6_GAMMA_TABLE_SIZE,
+			.gamma_type = TIDSS_GAMMA_8BIT,
 		},
 	};
 
