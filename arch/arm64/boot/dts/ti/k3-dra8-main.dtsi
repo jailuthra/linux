@@ -5,6 +5,20 @@
  * Copyright (C) 2016-2018 Texas Instruments Incorporated - http://www.ti.com/
  */
 
+/ {
+	clk1: dummy1 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <25000000>;
+	};
+
+	clk2: dummy2 {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <25000000>;
+	};
+};
+
 &cbass_main {
 	gic500: interrupt-controller@1800000 {
 		compatible = "arm,gic-v3";
@@ -127,5 +141,15 @@
 		interrupts = <GIC_SPI 249 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
 		current-speed = <115200>;
+	};
+
+	main_sdhci0: sdhci@4f80000 {
+		compatible = "arasan,sdhci-8.9a";
+		reg = <0x0 0x4f80000 0x0 0x1000>;
+		interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
+		clock-names = "clk_xin", "clk_ahb";
+		clocks = <&clk1>, <&clk2>;
+		voltage-ranges = <3300 3300>;
+		non-removable;
 	};
 };

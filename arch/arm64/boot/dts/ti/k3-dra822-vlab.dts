@@ -39,3 +39,7 @@
 	/* Wakeup UART is used by System firmware */
 	status = "disabled";
 };
+
+&main_sdhci0 {
+	status = "okay";
+};
