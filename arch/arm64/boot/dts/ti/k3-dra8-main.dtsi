@@ -432,6 +432,11 @@
 			ti,mbox-rx = <2 0 0>;
 			ti,mbox-tx = <3 0 0>;
 		};
+
+		mbox_loop0: mbox-loop0 {
+			ti,mbox-rx = <15 0 0>;
+			ti,mbox-tx = <15 0 0>;
+		};
 	};
 
 	mailbox0_cluster1: mailbox@31f81000 {
@@ -451,6 +456,11 @@
 		mbox_mcu1_r5f1: mbox-mcu1-r5f1 {
 			ti,mbox-rx = <2 0 0>;
 			ti,mbox-tx = <3 0 0>;
+		};
+
+		mbox_loop1: mbox-loop1 {
+			ti,mbox-rx = <15 0 0>;
+			ti,mbox-tx = <15 0 0>;
 		};
 	};
 
@@ -472,6 +482,11 @@
 			ti,mbox-rx = <2 0 0>;
 			ti,mbox-tx = <3 0 0>;
 		};
+
+		mbox_loop2: mbox-loop2 {
+			ti,mbox-rx = <15 0 0>;
+			ti,mbox-tx = <15 0 0>;
+		};
 	};
 
 	mailbox0_cluster3: mailbox@31f83000 {
@@ -492,6 +507,11 @@
 			ti,mbox-rx = <2 0 0>;
 			ti,mbox-tx = <3 0 0>;
 		};
+
+		mbox_loop3: mbox-loop3 {
+			ti,mbox-rx = <15 0 0>;
+			ti,mbox-tx = <15 0 0>;
+		};
 	};
 
 	mailbox0_cluster4: mailbox@31f84000 {
@@ -506,6 +526,11 @@
 		mbox_c71: mbox-c71 {
 			ti,mbox-rx = <0 0 0>;
 			ti,mbox-tx = <1 0 0>;
+		};
+
+		mbox_loop4: mbox-loop4 {
+			ti,mbox-rx = <15 0 0>;
+			ti,mbox-tx = <15 0 0>;
 		};
 	};
 
