@@ -66,4 +66,11 @@
 		compatible = "cache";
 		cache-level = <3>;
 	};
+
+	d5520: video-decoder@4300000 {
+		/* IMG D5520 driver configuration */
+		compatible = "img,d5500-vxd";
+		reg = <0x00 0x04300000 0x00 0x100000>;
+		interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH>;
+	};
 };
