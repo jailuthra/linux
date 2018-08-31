@@ -26,6 +26,7 @@ struct ti_sci_proc {
 	u8 host_id;
 };
 
+#ifdef USE_TI_SCI
 static inline int ti_sci_proc_request(struct ti_sci_proc *tsp)
 {
 	int ret;
@@ -98,5 +99,41 @@ static inline int ti_sci_proc_get_status(struct ti_sci_proc *tsp,
 			ret);
 	return ret;
 }
+#else
+static inline int ti_sci_proc_request(struct ti_sci_proc *tsp)
+{
+	return 0;
+}
+
+static inline int ti_sci_proc_release(struct ti_sci_proc *tsp)
+{
+	return 0;
+}
+
+static inline int ti_sci_proc_handover(struct ti_sci_proc *tsp)
+{
+	return 0;
+}
+
+static inline int ti_sci_proc_set_config(struct ti_sci_proc *tsp,
+					 u64 boot_vector,
+					 u32 cfg_set, u32 cfg_clr)
+{
+	return 0;
+}
+
+static inline int ti_sci_proc_set_control(struct ti_sci_proc *tsp,
+					  u32 ctrl_set, u32 ctrl_clr)
+{
+	return 0;
+}
+
+static inline int ti_sci_proc_get_status(struct ti_sci_proc *tsp,
+					 u64 *boot_vector, u32 *cfg_flags,
+					 u32 *ctrl_flags, u32 *status_flags)
+{
+	return 0;
+}
+#endif
 
 #endif /* REMOTEPROC_TI_SCI_PROC_H */

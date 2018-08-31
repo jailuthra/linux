@@ -1116,6 +1116,7 @@ static int k3_r5_core_of_init(struct platform_device *pdev)
 		goto err_of;
 	}
 
+#ifdef USE_TI_SCI
 	core->ti_sci = ti_sci_get_by_phandle(np, "ti,sci");
 	if (IS_ERR(core->ti_sci)) {
 		ret = PTR_ERR(core->ti_sci);
@@ -1142,6 +1143,7 @@ static int k3_r5_core_of_init(struct platform_device *pdev)
 		}
 		goto err_sci_id;
 	}
+#endif
 
 	core->tsp = k3_r5_core_of_get_tsp(dev, core->ti_sci);
 	if (IS_ERR(core->tsp)) {
@@ -1183,11 +1185,13 @@ err_intmem:
 err_proc:
 	kfree(core->tsp);
 err_sci_proc:
+#ifdef USE_TI_SCI
 	reset_control_put(core->reset);
 err_sci_id:
 	ret1 = ti_sci_put_handle(core->ti_sci);
 	if (ret1)
 		dev_err(dev, "failed to put ti_sci handle, ret = %d\n", ret1);
+#endif
 err_of:
 	devm_kfree(dev, core);
 	return ret;
@@ -1220,11 +1224,13 @@ static int k3_r5_core_of_exit(struct platform_device *pdev)
 		dev_err(dev, "failed to release proc, ret = %d\n", ret);
 
 	kfree(core->tsp);
+#ifdef USE_TI_SCI
 	reset_control_put(core->reset);
 
 	ret = ti_sci_put_handle(core->ti_sci);
 	if (ret)
 		dev_err(dev, "failed to put ti_sci handle, ret = %d\n", ret);
+#endif
 
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(dev, core);
