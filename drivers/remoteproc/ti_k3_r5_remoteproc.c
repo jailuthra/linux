@@ -1422,10 +1422,44 @@ static const struct k3_r5_rproc_dev_data k3_mcu_r5f_dev_data[] = {
 	},
 };
 
+static const struct k3_r5_rproc_dev_data dra822_dev_data[] = {
+	{
+		.device_name	= "41000000.r5f",
+		.fw_name	= "dra82x-mcu0-r5f0-fw",
+	},
+	{
+		.device_name	= "41400000.r5f",
+		.fw_name	= "dra82x-mcu0-r5f1-fw",
+	},
+	{
+		.device_name	= "5c00000.r5f",
+		.fw_name	= "dra82x-mcu1-r5f0-fw",
+	},
+	{
+		.device_name	= "5d00000.r5f",
+		.fw_name	= "dra82x-mcu1-r5f1-fw",
+	},
+	{
+		.device_name	= "5e00000.r5f",
+		.fw_name	= "dra82x-mcu2-r5f0-fw",
+	},
+	{
+		.device_name	= "5f00000.r5f",
+		.fw_name	= "dra82x-mcu2-r5f1-fw",
+	},
+	{
+		/* sentinel */
+	},
+};
+
 static const struct of_device_id k3_r5_of_match[] = {
 	{
 		.compatible     = "ti,am654-mcu-r5f",
 		.data           = k3_mcu_r5f_dev_data,
+	},
+	{
+		.compatible     = "ti,dra822-mcu-r5f",
+		.data           = dra822_dev_data,
 	},
 	{ /* sentinel */ },
 };
