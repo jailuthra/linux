@@ -5,11 +5,11 @@
 
 /dts-v1/;
 
-#include "k3-am654.dtsi"
+#include "k3-dra82.dtsi"
 
 / {
-	compatible =  "ti,am654-evm", "ti,am654";
-	model = "Texas Instruments AM654 Base Board";
+	compatible =  "ti,dra82-vlab", "ti,dra822";
+	model = "Texas Instruments DRA822 VLAB";
 
 	chosen {
 		stdout-path = "serial2:115200n8";
@@ -18,9 +18,9 @@
 
 	memory@80000000 {
 		device_type = "memory";
-		/* 4G RAM */
-		reg = <0x00000000 0x80000000 0x00000000 0x80000000>,
-		      <0x00000008 0x80000000 0x00000000 0x80000000>;
+		/* 2G RAM */
+		reg = <0x00000000 0x80000000 0x00000000 0x80000000>;
+
 	};
 
 	reserved-memory {
@@ -28,14 +28,14 @@
 		#size-cells = <2>;
 		ranges;
 		secure_ddr: secure_ddr@9e800000 {
-			reg = <0 0x9e800000 0 0x01800000>; /* for OP-TEE */
+			reg = <0x00 0x9e800000 0x00 0x01800000>; /* for OP-TEE */
 			alignment = <0x1000>;
 			no-map;
 		};
 	};
 };
 
-&wkup_uart0 {
+&mcu_uart0 {
 	/* Wakeup UART is used by System firmware */
 	status = "disabled";
 };
