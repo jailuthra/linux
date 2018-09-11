@@ -252,7 +252,7 @@
 
 	main_sdhci0: sdhci@04f80000 {
 		compatible = "arasan,sdhci-8.9a";
-		reg = <0x4f80000 0x1000>;
+		reg = <0x0 0x4f80000 0x0 0x1000>;
 		interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
 		clock-names = "clk_xin", "clk_ahb";
 		clocks = <&clk1>, <&clk2>;
