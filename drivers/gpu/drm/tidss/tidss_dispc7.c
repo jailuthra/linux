@@ -274,6 +274,20 @@ static u32 dispc7_get_next_managed_plane(struct dispc_device *dispc, u32 plane_i
 	return dispc->feat->num_planes;
 }
 
+static inline void check_plane_access(struct dispc_device *dispc, u32 hw_plane)
+{
+#if defined(CONFIG_DRM_TIDSS_DSS7_DEBUG_PARTITION)
+	WARN_ON(!dispc->plane_managed[hw_plane]);
+#endif
+}
+
+static inline void check_vp_access(struct dispc_device *dispc, u32 hw_videoport)
+{
+#if defined(CONFIG_DRM_TIDSS_DSS7_DEBUG_PARTITION)
+	WARN_ON(!dispc->vp_managed[hw_videoport]);
+#endif
+}
+
 static void dispc7_intr_write(struct dispc_device *dispc, u16 reg, u32 val)
 {
 	iowrite32(val, dispc->base_common_intr + reg);
@@ -415,6 +429,8 @@ static u64 dispc7_vp_read_irqstatus(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_intr_read(dispc, DISPC_VP_IRQSTATUS(hw_videoport));
 
+	check_vp_access(dispc, hw_videoport);
+
 	return dispc7_vp_irq_from_raw(stat, hw_videoport);
 }
 
@@ -422,6 +438,8 @@ static void dispc7_vp_write_irqstatus(struct dispc_device *dispc,
 				      u32 hw_videoport, u64 vpstat)
 {
 	u32 stat = dispc7_vp_irq_to_raw(vpstat, hw_videoport);
+
+	check_vp_access(dispc, hw_videoport);
 
 	dispc7_intr_write(dispc, DISPC_VP_IRQSTATUS(hw_videoport), stat);
 }
@@ -431,6 +449,8 @@ static u64 dispc7_vid_read_irqstatus(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_intr_read(dispc, DISPC_VID_IRQSTATUS(hw_plane));
 
+	check_plane_access(dispc, hw_plane);
+
 	return dispc7_vid_irq_from_raw(stat, hw_plane);
 }
 
@@ -438,6 +458,8 @@ static void dispc7_vid_write_irqstatus(struct dispc_device *dispc,
 				       u32 hw_plane, u64 vidstat)
 {
 	u32 stat = dispc7_vid_irq_to_raw(vidstat, hw_plane);
+
+	check_plane_access(dispc, hw_plane);
 
 	dispc7_intr_write(dispc, DISPC_VID_IRQSTATUS(hw_plane), stat);
 }
@@ -447,6 +469,8 @@ static u64 dispc7_vp_read_irqenable(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_intr_read(dispc, DISPC_VP_IRQENABLE(hw_videoport));
 
+	check_vp_access(dispc, hw_videoport);
+
 	return dispc7_vp_irq_from_raw(stat, hw_videoport);
 }
 
@@ -454,6 +478,8 @@ static void dispc7_vp_write_irqenable(struct dispc_device *dispc,
 				      u32 hw_videoport, u64 vpstat)
 {
 	u32 stat = dispc7_vp_irq_to_raw(vpstat, hw_videoport);
+
+	check_vp_access(dispc, hw_videoport);
 
 	dispc7_intr_write(dispc, DISPC_VP_IRQENABLE(hw_videoport), stat);
 }
@@ -464,6 +490,8 @@ static u64 dispc7_vid_read_irqenable(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_intr_read(dispc, DISPC_VID_IRQENABLE(hw_plane));
 
+	check_plane_access(dispc, hw_plane);
+
 	return dispc7_vid_irq_from_raw(stat, hw_plane);
 }
 
@@ -471,6 +499,8 @@ static void dispc7_vid_write_irqenable(struct dispc_device *dispc,
 				       u32 hw_plane, u64 vidstat)
 {
 	u32 stat = dispc7_vid_irq_to_raw(vidstat, hw_plane);
+
+	check_plane_access(dispc, hw_plane);
 
 	dispc7_intr_write(dispc, DISPC_VID_IRQENABLE(hw_plane), stat);
 }
@@ -592,6 +622,8 @@ struct dispc7_bus_format *dispc7_vp_check_bus_fmt(struct dispc_device *dispc,
 	const struct dispc7_bus_format *fmt = NULL;
 	int i;
 
+	check_vp_access(dispc, hw_videoport);
+
 	for (i = 0; i < ARRAY_SIZE(dispc7_bus_formats); ++i) {
 		if (dispc7_bus_formats[i].bus_fmt != bus_fmt)
 			continue;
@@ -636,6 +668,8 @@ static void dispc7_set_num_datalines(struct dispc_device *dispc,
 {
 	int v;
 
+	check_vp_access(dispc, hw_videoport);
+
 	switch (num_lines) {
 	case 12:
 		v = 0; break;
@@ -663,6 +697,8 @@ static void dispc7_enable_oldi(struct dispc_device *dispc, u32 hw_videoport,
 	u32 oldi_cfg = 0;
 	u32 oldi_reset_bit = BIT(5 + hw_videoport);
 	int count = 0;
+
+	check_vp_access(dispc, hw_videoport);
 
 	/*
 	 * On am6 DUALMODESYNC, MASTERSLAVE, MODE, and SRC are set
@@ -700,6 +736,8 @@ static void dispc7_vp_prepare(struct dispc_device *dispc, u32 hw_videoport,
 {
 	const struct dispc7_bus_format *fmt;
 
+	check_vp_access(dispc, hw_videoport);
+
 	fmt = dispc7_vp_check_bus_fmt(dispc, hw_videoport, bus_fmt, bus_flags);
 
 	if (WARN_ON(!fmt))
@@ -722,6 +760,8 @@ static void dispc7_vp_enable(struct dispc_device *dispc, u32 hw_videoport,
 	bool align, onoff, rf, ieo, ipc, ihs, ivs;
 	const struct dispc7_bus_format *fmt;
 	u32 hsw, hfp, hbp, vsw, vfp, vbp;
+
+	check_vp_access(dispc, hw_videoport);
 
 	fmt = dispc7_vp_check_bus_fmt(dispc, hw_videoport, bus_fmt, bus_flags);
 
@@ -801,11 +841,15 @@ static void dispc7_vp_enable(struct dispc_device *dispc, u32 hw_videoport,
 
 static void dispc7_vp_disable(struct dispc_device *dispc, u32 hw_videoport)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	VP_REG_FLD_MOD(dispc, hw_videoport, DISPC_VP_CONTROL, 0, 0, 0);
 }
 
 static void dispc7_vp_unprepare(struct dispc_device *dispc, u32 hw_videoport)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	if (dispc->vp_data[hw_videoport].oldi) {
 		dispc7_vp_write(dispc, hw_videoport, DISPC_VP_DSS_OLDI_CFG, 0);
 
@@ -818,11 +862,15 @@ static void dispc7_vp_unprepare(struct dispc_device *dispc, u32 hw_videoport)
 static bool dispc7_vp_go_busy(struct dispc_device *dispc,
 			      u32 hw_videoport)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	return VP_REG_GET(dispc, hw_videoport, DISPC_VP_CONTROL, 5, 5);
 }
 
 static void dispc7_vp_go(struct dispc_device *dispc, u32 hw_videoport)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	VP_REG_FLD_MOD(dispc, hw_videoport, DISPC_VP_CONTROL, 1, 5, 5);
 }
 
@@ -859,6 +907,8 @@ static void dispc7_vp_setup(struct dispc_device *dispc, u32 hw_videoport,
 {
 	u64 v;
 
+	check_vp_access(dispc, hw_videoport);
+
 	v = argb8888_to_argb12121212(info->default_color);
 
 	dispc7_ovr_write(dispc, hw_videoport,
@@ -872,6 +922,8 @@ static enum drm_mode_status dispc7_vp_check_mode(struct dispc_device *dispc,
 						 const struct drm_display_mode *mode)
 {
 	u32 hsw, hfp, hbp, vsw, vfp, vbp;
+
+	check_vp_access(dispc, hw_videoport);
 
 	if (mode->clock * 1000 < dispc->feat->min_pclk)
 		return MODE_CLOCK_LOW;
@@ -916,6 +968,8 @@ static int dispc7_vp_check_config(struct dispc_device *dispc, u32 hw_videoport,
 {
 	enum drm_mode_status ok;
 
+	check_vp_access(dispc, hw_videoport);
+
 	ok = dispc7_vp_check_mode(dispc, hw_videoport, mode);
 	if (ok != MODE_OK) 
 		return -EINVAL;
@@ -928,11 +982,15 @@ static int dispc7_vp_check_config(struct dispc_device *dispc, u32 hw_videoport,
 
 static int dispc7_vp_enable_clk(struct dispc_device *dispc, u32 hw_videoport)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	return clk_prepare_enable(dispc->vp_clk[hw_videoport]);
 }
 
 static void dispc7_vp_disable_clk(struct dispc_device *dispc, u32 hw_videoport)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	clk_disable_unprepare(dispc->vp_clk[hw_videoport]);
 }
 
@@ -953,6 +1011,8 @@ static int dispc7_vp_set_clk_rate(struct dispc_device *dispc, u32 hw_videoport,
 {
 	int r;
 	unsigned long new_rate;
+
+	check_vp_access(dispc, hw_videoport);
 
 	r = clk_set_rate(dispc->vp_clk[hw_videoport], rate);
 	if (r) {
@@ -979,6 +1039,8 @@ static void dispc7_am6_ovr_setup(struct dispc_device *dispc,
 				 u32 hw_plane, u32 hw_videoport,
 				 uint x, uint y, uint zpos)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	OVR_REG_FLD_MOD(dispc, hw_videoport, DISPC_OVR_ATTRIBUTES(zpos),
 			hw_plane, 4, 1);
 	OVR_REG_FLD_MOD(dispc, hw_videoport, DISPC_OVR_ATTRIBUTES(zpos),
@@ -991,6 +1053,8 @@ static void dispc7_dra8_ovr_setup(struct dispc_device *dispc,
 				  u32 hw_plane, u32 hw_videoport,
 				  uint x, uint y, uint zpos)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	OVR_REG_FLD_MOD(dispc, hw_videoport, DISPC_OVR_ATTRIBUTES(zpos),
 			hw_plane, 4, 1);
 	OVR_REG_FLD_MOD(dispc, hw_videoport, DISPC_OVR_ATTRIBUTES2(zpos),
@@ -1003,6 +1067,8 @@ static void dispc7_ovr_setup(struct dispc_device *dispc,
 			     u32 hw_plane, u32 hw_videoport,
 			     uint x, uint y, uint z)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	switch (dispc->feat->subrev) {
 	case DSS7_AM6:
 		dispc7_am6_ovr_setup(dispc, hw_plane, hw_videoport, x, y, z);
@@ -1019,6 +1085,8 @@ static void dispc7_ovr_setup(struct dispc_device *dispc,
 static void dispc7_ovr_enable(struct dispc_device *dispc, u32 hw_videoport,
 			      uint zpos, bool enable)
 {
+	check_vp_access(dispc, hw_videoport);
+
 	OVR_REG_FLD_MOD(dispc, hw_videoport, DISPC_OVR_ATTRIBUTES(zpos),
 			!!enable, 0, 0);
 }
@@ -1114,6 +1182,8 @@ static void dispc7_vid_write_csc(struct dispc_device *dispc, u32 hw_plane,
 	u32 regval[DISPC7_CSC_REGVAL_LEN];
 	int i;
 
+	check_plane_access(dispc, hw_plane);
+
 	csc->to_regval(csc, regval);
 
 	for (i = 0; i < ARRAY_SIZE(dispc_vid_csc_coef_reg); i++)
@@ -1204,6 +1274,8 @@ static void dispc7_vid_csc_setup(struct dispc_device *dispc, u32 hw_plane,
 {
 	const static struct dispc7_csc_coef *coef;
 
+	check_plane_access(dispc, hw_plane);
+
 	coef = dispc7_find_csc(info->color_encoding, info->color_range);
 	if (!coef) {
 		dev_err(dispc->dev, "%s: CSC (%u,%u) not found\n",
@@ -1217,6 +1289,8 @@ static void dispc7_vid_csc_setup(struct dispc_device *dispc, u32 hw_plane,
 static void dispc7_vid_csc_enable(struct dispc_device *dispc, u32 hw_plane,
 				  bool enable)
 {
+	check_plane_access(dispc, hw_plane);
+
 	VID_REG_FLD_MOD(dispc, hw_plane, DISPC_VID_ATTRIBUTES, !!enable, 9, 9);
 }
 
@@ -1256,6 +1330,8 @@ static void dispc7_vid_write_fir_coefs(struct dispc_device *dispc,
 	const u16 c0_base = c0_regs[coef_set];
 	const u16 c12_base = c12_regs[coef_set];
 	int phase;
+
+	check_plane_access(dispc, hw_plane);
 
 	if (!coefs) {
 		dev_err(dispc->dev, "%s: No coefficients given.\n", __func__);
@@ -1467,6 +1543,8 @@ static void dispc7_vid_set_scaling(struct dispc_device *dispc,
 				   struct dispc7_scaling_params *sp,
 				   u32 fourcc)
 {
+	check_plane_access(dispc, hw_plane);
+
 	/* HORIZONTAL RESIZE ENABLE */
 	VID_REG_FLD_MOD(dispc, hw_plane, DISPC_VID_ATTRIBUTES,
 			sp->scale_x, 7, 7);
@@ -1571,6 +1649,8 @@ static void dispc7_plane_set_pixel_format(struct dispc_device *dispc,
 {
 	int i;
 
+	check_plane_access(dispc, hw_plane);
+
 	for (i = 0; i < ARRAY_SIZE(dispc7_color_formats); ++i) {
 		if (dispc7_color_formats[i].fourcc == fourcc) {
 			VID_REG_FLD_MOD(dispc, hw_plane, DISPC_VID_ATTRIBUTES,
@@ -1613,6 +1693,8 @@ const struct tidss_plane_feat *dispc7_plane_feat(struct dispc_device *dispc,
 		},
 	};
 
+	check_plane_access(dispc, hw_plane);
+
 	return &pfeat;
 }
 
@@ -1625,6 +1707,9 @@ static int dispc7_plane_check(struct dispc_device *dispc, u32 hw_plane,
 		pi->height != pi->out_height;
 	struct dispc7_scaling_params sp;
 	int ret;
+
+	check_plane_access(dispc, hw_plane);
+	check_vp_access(dispc, hw_videoport);
 
 	if (dispc7_fourcc_is_yuv(pi->fourcc)) {
 		if (!dispc7_find_csc(pi->color_encoding,
@@ -1660,6 +1745,9 @@ static int dispc7_plane_setup(struct dispc_device *dispc, u32 hw_plane,
 	bool lite = dispc->feat->vid_lite[hw_plane];
 	u32 fourcc = pi->fourcc;
 	struct dispc7_scaling_params scale;
+
+	check_plane_access(dispc, hw_plane);
+	check_vp_access(dispc, hw_videoport);
 
 	dispc7_vid_calc_scaling(dispc, pi, &scale, lite);
 
@@ -1731,6 +1819,9 @@ static int dispc7_plane_setup(struct dispc_device *dispc, u32 hw_plane,
 static int dispc7_plane_enable(struct dispc_device *dispc,
 			       u32 hw_plane, bool enable)
 {
+	check_plane_access(dispc, hw_plane);
+	check_vp_access(dispc, dispc->plane_data[hw_plane].hw_videoport);
+
 	dispc7_ovr_enable(dispc, dispc->plane_data[hw_plane].hw_videoport,
 			  dispc->plane_data[hw_plane].zorder, enable);
 
@@ -1744,6 +1835,8 @@ static u32 dispc7_vid_get_fifo_size(struct dispc_device *dispc,
 {
 	const u32 unit_size = 16;	/* 128-bits */
 
+	check_plane_access(dispc, hw_plane);
+
 	return VID_REG_GET(dispc, hw_plane, DISPC_VID_BUF_SIZE_STATUS, 15, 0) *
 	       unit_size;
 }
@@ -1751,6 +1844,8 @@ static u32 dispc7_vid_get_fifo_size(struct dispc_device *dispc,
 static void dispc7_vid_set_mflag_threshold(struct dispc_device *dispc,
 					   u32 hw_plane, u32 low, u32 high)
 {
+	check_plane_access(dispc, hw_plane);
+
 	dispc7_vid_write(dispc, hw_plane, DISPC_VID_MFLAG_THRESHOLD,
 			 FLD_VAL(high, 31, 16) | FLD_VAL(low, 15, 0));
 }
@@ -1761,6 +1856,8 @@ static void dispc7_vid_mflag_setup(struct dispc_device *dispc,
 	const u32 unit_size = 16;	/* 128-bits */
 	u32 size = dispc7_vid_get_fifo_size(dispc, hw_plane);
 	u32 low, high;
+
+	check_plane_access(dispc, hw_plane);
 
 	/*
 	 * Simulation team suggests below thesholds:
@@ -1842,6 +1939,8 @@ static const struct tidss_vp_feat *dispc7_vp_feat(struct dispc_device *dispc,
 		},
 	};
 
+	check_vp_access(dispc, hw_videoport);
+
 	return &vp_feat;
 }
 
@@ -1851,6 +1950,8 @@ static void dispc7_vp_write_gamma_table(struct dispc_device *dispc,
 	u32 *table = dispc->vp_data[hw_videoport].gamma_table;
 	uint hwlen = ARRAY_SIZE(dispc->vp_data[hw_videoport].gamma_table);
 	unsigned int i;
+
+	check_vp_access(dispc, hw_videoport);
 
 	dev_dbg(dispc->dev, "%s: hw_videoport %d\n", __func__, hw_videoport);
 
@@ -1887,6 +1988,8 @@ static void dispc7_vp_set_gamma(struct dispc_device *dispc,
 	uint hwlen = ARRAY_SIZE(dispc->vp_data[hw_videoport].gamma_table);
 	static const uint hwbits = 8;
 	uint i;
+
+	check_vp_access(dispc, hw_videoport);
 
 	dev_dbg(dispc->dev, "%s: hw_videoport %d, lut len %u, hw len %u\n",
 		__func__, hw_videoport, length, hwlen);
@@ -1964,6 +2067,8 @@ static void dispc7_vp_write_csc(struct dispc_device *dispc, u32 hw_videoport,
 	u32 regval[DISPC7_CSC_REGVAL_LEN];
 	int i;
 
+	check_vp_access(dispc, hw_videoport);
+
 	csc->to_regval(csc, regval);
 
 	for (i = 0; i < ARRAY_SIZE(regval); i++)
@@ -1977,6 +2082,8 @@ static void dispc7_set_color_mgmt(struct dispc_device *dispc, u32 hw_videoport,
 	struct drm_color_lut *lut = NULL;
 	unsigned int length = 0;
 	bool colorconvenable = false;
+
+	check_vp_access(dispc, hw_videoport);
 
 	if (!state->color_mgmt_changed)
 		return;
