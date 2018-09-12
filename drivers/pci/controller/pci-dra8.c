@@ -158,15 +158,15 @@ static int __init dra8_pcie_probe(struct platform_device *pdev)
 	pcie->node = node;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "intd_cfg");
-	base = devm_ioremap_nocache(dev, res->start, resource_size(res));
-	if (!base)
-		return -ENOMEM;
+	base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(base))
+		return PTR_ERR(base);
 	pcie->intd_cfg_base = base;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "user_cfg");
-	base = devm_ioremap_nocache(dev, res->start, resource_size(res));
-	if (!base)
-		return -ENOMEM;
+	base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(base))
+		return PTR_ERR(base);
 	pcie->user_cfg_base = base;
 
 	ret = of_property_read_u32(node, "pci-mode", &mode);
