@@ -299,11 +299,13 @@ static u32 dispc7_intr_read(struct dispc_device *dispc, u16 reg)
 
 static void dispc7_cfg_write(struct dispc_device *dispc, u16 reg, u32 val)
 {
+	BUG_ON(!dispc->has_cfg_common);
 	iowrite32(val, dispc->base_common_cfg + reg);
 }
 
 static u32 dispc7_cfg_read(struct dispc_device *dispc, u16 reg)
 {
+	BUG_ON(!dispc->has_cfg_common);
 	return ioread32(dispc->base_common_cfg + reg);
 }
 
@@ -311,6 +313,7 @@ static void dispc7_vid_write(struct dispc_device *dispc, u32 hw_plane, u16 reg, 
 {
 	void __iomem *base = dispc->base_vid[hw_plane];
 
+	BUG_ON(!dispc->plane_managed[hw_plane]);
 	iowrite32(val, base + reg);
 }
 
@@ -318,6 +321,7 @@ static u32 dispc7_vid_read(struct dispc_device *dispc, u32 hw_plane, u16 reg)
 {
 	void __iomem *base = dispc->base_vid[hw_plane];
 
+	BUG_ON(!dispc->plane_managed[hw_plane]);
 	return ioread32(base + reg);
 }
 
@@ -325,6 +329,7 @@ static void dispc7_ovr_write(struct dispc_device *dispc, u32 hw_videoport, u16 r
 {
 	void __iomem *base = dispc->base_ovr[hw_videoport];
 
+	BUG_ON(!dispc->vp_managed[hw_videoport]);
 	iowrite32(val, base + reg);
 }
 
@@ -332,6 +337,7 @@ static u32 dispc7_ovr_read(struct dispc_device *dispc, u32 hw_videoport, u16 reg
 {
 	void __iomem *base = dispc->base_ovr[hw_videoport];
 
+	BUG_ON(!dispc->vp_managed[hw_videoport]);
 	return ioread32(base + reg);
 }
 
@@ -339,6 +345,7 @@ static void dispc7_vp_write(struct dispc_device *dispc, u32 hw_videoport, u16 re
 {
 	void __iomem *base = dispc->base_vp[hw_videoport];
 
+	BUG_ON(!dispc->vp_managed[hw_videoport]);
 	iowrite32(val, base + reg);
 }
 
@@ -346,6 +353,7 @@ static u32 dispc7_vp_read(struct dispc_device *dispc, u32 hw_videoport, u16 reg)
 {
 	void __iomem *base = dispc->base_vp[hw_videoport];
 
+	BUG_ON(!dispc->vp_managed[hw_videoport]);
 	return ioread32(base + reg);
 }
 
