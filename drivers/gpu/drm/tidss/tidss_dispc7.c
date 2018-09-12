@@ -285,6 +285,20 @@ static u32 dispc7_get_next_managed_plane(struct dispc_device *dispc,
 	return dispc->feat->num_planes;
 }
 
+static inline void check_plane_access(struct dispc_device *dispc, u32 hw_plane)
+{
+#if defined(CONFIG_DRM_TIDSS_DSS7_DEBUG_PARTITION)
+	WARN_ON(!dispc->plane_managed[hw_plane]);
+#endif
+}
+
+static inline void check_vp_access(struct dispc_device *dispc, u32 hw_videoport)
+{
+#if defined(CONFIG_DRM_TIDSS_DSS7_DEBUG_PARTITION)
+	WARN_ON(!dispc->vp_managed[hw_videoport]);
+#endif
+}
+
 static void dispc7_intr_write(struct dispc_device *dispc, u16 reg, u32 val)
 {
 	iowrite32(val, dispc->base_common_intr + reg);
@@ -309,12 +323,16 @@ static void dispc7_vid_write(struct dispc_device *dispc, u32 hw_plane, u16 reg, 
 {
 	void __iomem *base = dispc->base_vid[hw_plane];
 
+	check_plane_access(dispc, hw_plane);
+
 	iowrite32(val, base + reg);
 }
 
 static u32 dispc7_vid_read(struct dispc_device *dispc, u32 hw_plane, u16 reg)
 {
 	void __iomem *base = dispc->base_vid[hw_plane];
+
+	check_plane_access(dispc, hw_plane);
 
 	return ioread32(base + reg);
 }
@@ -323,12 +341,16 @@ static void dispc7_ovr_write(struct dispc_device *dispc, u32 hw_videoport, u16 r
 {
 	void __iomem *base = dispc->base_ovr[hw_videoport];
 
+	check_vp_access(dispc, hw_videoport);
+
 	iowrite32(val, base + reg);
 }
 
 static u32 dispc7_ovr_read(struct dispc_device *dispc, u32 hw_videoport, u16 reg)
 {
 	void __iomem *base = dispc->base_ovr[hw_videoport];
+
+	check_vp_access(dispc, hw_videoport);
 
 	return ioread32(base + reg);
 }
@@ -337,12 +359,16 @@ static void dispc7_vp_write(struct dispc_device *dispc, u32 hw_videoport, u16 re
 {
 	void __iomem *base = dispc->base_vp[hw_videoport];
 
+	check_vp_access(dispc, hw_videoport);
+
 	iowrite32(val, base + reg);
 }
 
 static u32 dispc7_vp_read(struct dispc_device *dispc, u32 hw_videoport, u16 reg)
 {
 	void __iomem *base = dispc->base_vp[hw_videoport];
+
+	check_vp_access(dispc, hw_videoport);
 
 	return ioread32(base + reg);
 }
@@ -426,6 +452,8 @@ static u64 dispc7_vp_read_irqstatus(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_intr_read(dispc, DISPC_VP_IRQSTATUS(hw_videoport));
 
+	check_vp_access(dispc, hw_videoport);
+
 	return dispc7_vp_irq_from_raw(stat, hw_videoport);
 }
 
@@ -433,6 +461,8 @@ static void dispc7_vp_write_irqstatus(struct dispc_device *dispc,
 				      u32 hw_videoport, u64 vpstat)
 {
 	u32 stat = dispc7_vp_irq_to_raw(vpstat, hw_videoport);
+
+	check_vp_access(dispc, hw_videoport);
 
 	dispc7_intr_write(dispc, DISPC_VP_IRQSTATUS(hw_videoport), stat);
 }
@@ -442,6 +472,8 @@ static u64 dispc7_vid_read_irqstatus(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_intr_read(dispc, DISPC_VID_IRQSTATUS(hw_plane));
 
+	check_plane_access(dispc, hw_plane);
+
 	return dispc7_vid_irq_from_raw(stat, hw_plane);
 }
 
@@ -449,6 +481,8 @@ static void dispc7_vid_write_irqstatus(struct dispc_device *dispc,
 				       u32 hw_plane, u64 vidstat)
 {
 	u32 stat = dispc7_vid_irq_to_raw(vidstat, hw_plane);
+
+	check_plane_access(dispc, hw_plane);
 
 	dispc7_intr_write(dispc, DISPC_VID_IRQSTATUS(hw_plane), stat);
 }
@@ -458,6 +492,8 @@ static u64 dispc7_vp_read_irqenable(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_intr_read(dispc, DISPC_VP_IRQENABLE(hw_videoport));
 
+	check_vp_access(dispc, hw_videoport);
+
 	return dispc7_vp_irq_from_raw(stat, hw_videoport);
 }
 
@@ -465,6 +501,8 @@ static void dispc7_vp_write_irqenable(struct dispc_device *dispc,
 				      u32 hw_videoport, u64 vpstat)
 {
 	u32 stat = dispc7_vp_irq_to_raw(vpstat, hw_videoport);
+
+	check_vp_access(dispc, hw_videoport);
 
 	dispc7_intr_write(dispc, DISPC_VP_IRQENABLE(hw_videoport), stat);
 }
@@ -475,6 +513,8 @@ static u64 dispc7_vid_read_irqenable(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_intr_read(dispc, DISPC_VID_IRQENABLE(hw_plane));
 
+	check_plane_access(dispc, hw_plane);
+
 	return dispc7_vid_irq_from_raw(stat, hw_plane);
 }
 
@@ -482,6 +522,8 @@ static void dispc7_vid_write_irqenable(struct dispc_device *dispc,
 				       u32 hw_plane, u64 vidstat)
 {
 	u32 stat = dispc7_vid_irq_to_raw(vidstat, hw_plane);
+
+	check_plane_access(dispc, hw_plane);
 
 	dispc7_intr_write(dispc, DISPC_VID_IRQENABLE(hw_plane), stat);
 }

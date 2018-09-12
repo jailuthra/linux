@@ -27,4 +27,14 @@ config DRM_TIDSS_DSS7
 	help
 	  Support for DSS7 IP on AM6 SoC
 
+if DRM_TIDSS_DSS7
+
+config DRM_TIDSS_DSS7_DEBUG_PARTITION
+	bool "DSS7 debug partitioning"
+	default n
+	help
+	  Print warnings for unmanaged plane / vp functions
+
+endif
+
 endif
