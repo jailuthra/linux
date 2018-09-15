@@ -2281,6 +2281,7 @@ int dispc7_init(struct tidss_device *tidss)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct dispc_device *dispc;
 	const struct dispc7_features *feat;
+	const char *common_name;
 	unsigned int i;
 	int r = 0;
 
@@ -2299,16 +2300,18 @@ int dispc7_init(struct tidss_device *tidss)
 	switch (feat->subrev) {
 	case DSS7_AM6:
 		dispc7_common_regmap = tidss_am6_common_regs;
+		common_name = "common";
 		break;
 	case DSS7_DRA8:
 		dispc7_common_regmap = tidss_dra8_common_regs;
+		common_name = "common_m";
 		break;
 	default:
 		WARN_ON(1);
 		return -EINVAL;
 	}
 
-	r = dispc7_iomap_resource(pdev, "common", &dispc->base_common);
+	r = dispc7_iomap_resource(pdev, common_name, &dispc->base_common);
 	if (r)
 		return r;
 
