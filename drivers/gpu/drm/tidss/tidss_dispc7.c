@@ -72,25 +72,6 @@ static const struct of_device_id dispc7_of_table[] = {
 	{ }
 };
 
-enum dispc7_oldi_mode { SPWG_18 = 0, JEIDA_24 = 1, SPWG_24 = 2 };
-
-struct dispc7_bus_format {
-	u32 bus_fmt;
-	u32 data_width;
-	bool oldi;
-	enum dispc7_oldi_mode oldi_mode;
-};
-
-static const struct dispc7_bus_format dispc7_bus_formats[] = {
-	{ MEDIA_BUS_FMT_RGB444_1X12,		12, false, 0 },
-	{ MEDIA_BUS_FMT_RGB565_1X16,		16, false, 0 },
-	{ MEDIA_BUS_FMT_RGB666_1X18,		18, false, 0 },
-	{ MEDIA_BUS_FMT_RGB888_1X24,		24, false, 0 },
-	{ MEDIA_BUS_FMT_RGB666_1X7X3_SPWG,	18, true, SPWG_18 },
-	{ MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,	24, true, SPWG_24 },
-	{ MEDIA_BUS_FMT_RGB888_1X7X4_JEIDA,	24, true, JEIDA_24 },
-};
-
 /*
  * TRM gives bitfields as start:end, where start is the higher bit
  * number. For example 7:0
@@ -444,10 +425,59 @@ static void dispc7_write_irqenable(struct dispc_device *dispc, u64 mask)
 	dispc7_read(dispc, DISPC_IRQENABLE_SET);
 }
 
+enum dispc7_oldi_mode { SPWG_18 = 0, JEIDA_24 = 1, SPWG_24 = 2 };
+
+struct dispc7_bus_format {
+	u32 bus_fmt;
+	u32 data_width;
+	bool oldi;
+	enum dispc7_oldi_mode oldi_mode;
+};
+
+static const struct dispc7_bus_format dispc7_bus_formats[] = {
+	{ MEDIA_BUS_FMT_RGB444_1X12,		12, false, 0 },
+	{ MEDIA_BUS_FMT_RGB565_1X16,		16, false, 0 },
+	{ MEDIA_BUS_FMT_RGB666_1X18,		18, false, 0 },
+	{ MEDIA_BUS_FMT_RGB888_1X24,		24, false, 0 },
+	{ MEDIA_BUS_FMT_RGB666_1X7X3_SPWG,	18, true, SPWG_18 },
+	{ MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,	24, true, SPWG_24 },
+	{ MEDIA_BUS_FMT_RGB888_1X7X4_JEIDA,	24, true, JEIDA_24 },
+};
+
+static const
+struct dispc7_bus_format *dispc7_vp_check_bus_fmt(struct dispc_device *dispc,
+						  u32 hw_videoport,
+						  u32 bus_fmt, u32 bus_flags)
+{
+	const struct dispc7_bus_format *fmt = NULL;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(dispc7_bus_formats); ++i) {
+		if (dispc7_bus_formats[i].bus_fmt != bus_fmt)
+			continue;
+
+		fmt = &dispc7_bus_formats[i];
+		break;
+	}
+
+	if (!fmt)
+		return NULL;
+
+	if ((dispc->feat->vp_enc_type[hw_videoport] == DRM_MODE_ENCODER_LVDS &&
+	     fmt->oldi) ||
+	    (dispc->feat->vp_enc_type[hw_videoport] == DRM_MODE_ENCODER_DPI &&
+	     !fmt->oldi))
+		return fmt;
+
+	return NULL;
+}
 
 static void dispc7_oldi_tx_power(struct dispc_device *dispc, bool power)
 {
 	u32 val = power ? 0 : CTRLMMR0P1_OLDI_PWRDN_TX;
+
+	if (WARN_ON(!dispc->syscon))
+		return;
 
 	regmap_update_bits(dispc->syscon, CTRLMMR0P1_OLDI_DAT0_IO_CTRL,
 			   CTRLMMR0P1_OLDI_PWRDN_TX, val);
@@ -528,16 +558,9 @@ static void dispc7_vp_prepare(struct dispc_device *dispc, u32 hw_videoport,
 			      const struct drm_display_mode *mode,
 			      u32 bus_fmt, u32 bus_flags)
 {
-	const struct dispc7_bus_format *fmt = NULL;
-	int i;
+	const struct dispc7_bus_format *fmt;
 
-	for (i = 0; i < ARRAY_SIZE(dispc7_bus_formats); ++i) {
-		if (dispc7_bus_formats[i].bus_fmt != bus_fmt)
-			continue;
-
-		fmt = &dispc7_bus_formats[i];
-		break;
-	}
+	fmt = dispc7_vp_check_bus_fmt(dispc, hw_videoport, bus_fmt, bus_flags);
 
 	if (WARN_ON(!fmt))
 		return;
@@ -556,17 +579,10 @@ static void dispc7_vp_enable(struct dispc_device *dispc, u32 hw_videoport,
 			     u32 bus_fmt, u32 bus_flags)
 {
 	bool align, onoff, rf, ieo, ipc, ihs, ivs;
-	int i;
-	const struct dispc7_bus_format *fmt = NULL;
+	const struct dispc7_bus_format *fmt;
 	u32 hsw, hfp, hbp, vsw, vfp, vbp;
 
-	for (i = 0; i < ARRAY_SIZE(dispc7_bus_formats); ++i) {
-		if (dispc7_bus_formats[i].bus_fmt != bus_fmt)
-			continue;
-
-		fmt = &dispc7_bus_formats[i];
-		break;
-	}
+	fmt = dispc7_vp_check_bus_fmt(dispc, hw_videoport, bus_fmt, bus_flags);
 
 	if (WARN_ON(!fmt))
 		return;
@@ -758,19 +774,12 @@ static int dispc7_vp_check_config(struct dispc_device *dispc, u32 hw_videoport,
 				  u32 bus_fmt, u32 bus_flags)
 {
 	enum drm_mode_status ok;
-	int i;
 
 	ok = dispc7_vp_check_mode(dispc, hw_videoport, mode);
-	if (ok != MODE_OK)
+	if (ok != MODE_OK) 
 		return -EINVAL;
 
-
-	for (i = 0; i < ARRAY_SIZE(dispc7_bus_formats); ++i) {
-		if (dispc7_bus_formats[i].bus_fmt == bus_fmt)
-			break;
-	}
-
-	if (i == ARRAY_SIZE(dispc7_bus_formats))
+	if (!dispc7_vp_check_bus_fmt(dispc, hw_videoport, bus_fmt, bus_flags))
 		return -EINVAL;
 
 	return 0;
