@@ -105,6 +105,12 @@
 			reg = <0x00 0xa5100000 0x00 0xf00000>;
 			no-map;
 		};
+
+		c66_c7_memory_regions: dsp-memories@a6000000 {
+			reg = <0x00 0xa6000000 0x00 0x04000000>;
+			alignment = <0x1000>;
+			no-map;
+		};
 	};
 
 	mbox_test {
