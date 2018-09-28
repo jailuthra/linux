@@ -152,4 +152,14 @@
 		voltage-ranges = <3300 3300>;
 		non-removable;
 	};
+
+	main_sdhci1: sdhci@4fb0000 {
+		compatible = "arasan,sdhci-8.9a";
+		reg = <0x0 0x4fb0000 0x0 0x1000>;
+		interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
+		clock-names = "clk_xin", "clk_ahb";
+		clocks = <&clk1>, <&clk2>;
+		voltage-ranges = <3300 3300>;
+		non-removable;
+	};
 };

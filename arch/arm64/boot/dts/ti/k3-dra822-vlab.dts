@@ -43,3 +43,7 @@
 &main_sdhci0 {
 	status = "okay";
 };
+
+&main_sdhci1 {
+	status = "okay";
+};
