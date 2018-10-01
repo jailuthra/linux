@@ -96,6 +96,7 @@ struct pci_epc_mem {
  * @max_functions: max number of functions that can be configured in this EPC
  * @group: configfs group representing the PCI EPC device
  * @lock: mutex to protect pci_epc ops
+ * @supported_page_size: Indicates the size to which VF BARs should be aligned
  * @function_num_map: bitmap to manage physical function number
  * @notifier: used to notify EPF of any EPC events (like linkup)
  */
@@ -109,6 +110,7 @@ struct pci_epc {
 	/* mutex to protect against concurrent access of EP controller */
 	struct mutex			lock;
 	unsigned int			features;
+	unsigned int			supported_page_size;
 	unsigned long			function_num_map;
 	struct atomic_notifier_head	notifier;
 };
