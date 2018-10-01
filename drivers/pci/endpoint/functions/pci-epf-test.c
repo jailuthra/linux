@@ -448,7 +448,7 @@ static int pci_epf_test_alloc_space(struct pci_epf *epf)
 	enum pci_barno test_reg_bar = epf_test->test_reg_bar;
 
 	base = pci_epf_alloc_space(epf, sizeof(struct pci_epf_test_reg),
-				   test_reg_bar);
+				   test_reg_bar, 0);
 	if (!base) {
 		dev_err(dev, "Failed to allocated register space\n");
 		return -ENOMEM;
@@ -458,7 +458,7 @@ static int pci_epf_test_alloc_space(struct pci_epf *epf)
 	for (bar = BAR_0; bar <= BAR_5; bar++) {
 		if (bar == test_reg_bar)
 			continue;
-		base = pci_epf_alloc_space(epf, bar_size[bar], bar);
+		base = pci_epf_alloc_space(epf, bar_size[bar], bar, 0);
 		if (!base)
 			dev_err(dev, "Failed to allocate space for BAR%d\n",
 				bar);
