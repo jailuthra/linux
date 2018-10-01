@@ -56,6 +56,10 @@
 	status = "okay";
 };
 
+&main_sdhci1 {
+	status = "okay";
+};
+
 &pcie0 {
 	pci-mode = <PCI_MODE_RC>;
 	status = "okay";
