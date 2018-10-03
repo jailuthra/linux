@@ -341,4 +341,14 @@
 			#size-cells = <0>;
 		};
 	};
+
+	gpu: gpu@4e20000000 {
+		compatible = "ti,dra822-pvr", "img,pvr-ge8430";
+		reg = <0x4E 0x20000000 0x00 0x80000>;
+		reg-names = "gpu_regs";
+		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&coreclk>, <&ctrlclk>;
+		clock-names = "core", "ctrl";
+		status = "disabled";
+	};
 };
