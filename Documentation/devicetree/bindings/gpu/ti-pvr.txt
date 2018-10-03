@@ -1,0 +1,33 @@
+Texas Instruments PowerVR 3D Graphics Processing Unit
+
+PowerVR is the family name for series of 3D Graphics Processing Units from Imagination Technologies.
+Texas Instruments SoCs have integrated different generations of PowerVR 3D GPUs. For example,
+PowerVR GE8430 (Series 8XE) GPU is integrated in TI DRA82x SoC.
+
+This binding describes PowerVR 3D GPU Series integrated in Texas Instrument SoCs.
+
+Required properties:
+ - compatible : value should take the following format:
+	"ti,<soc>-pvr", "img,pvr-<gpuversion>"
+
+   accepted values:
+	(a) "ti,dra822-pvr", "img,pvr-ge8430" for TI DRA82x SoC with PowerVR GE8430 GPU
+
+ - reg: base address and length of the GPU registers
+ - interrupts : GPU interrupt number
+ - clocks : from SoC clock binding
+
+Optional properties:
+ - reg-names : names of registers listed in reg property in same order
+ - clock-names : names of clocks listed in clocks property in the same order
+
+Examples:
+
+PowerVR Series8XE GE8430 GPU integrated in TI DRA82x SoC
+	gpu: gpu@4e20000000  {
+		compatible = "ti,dra822-pvr", "img,pvr-ge8430";
+		reg = <0x4E 0x20000000 0x00 0x80000>;
+		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&coreclk>, <&ctrlclk>;
+		clock-names = "core", "ctrl";
+	};
