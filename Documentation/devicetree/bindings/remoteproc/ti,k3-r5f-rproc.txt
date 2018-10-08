@@ -23,6 +23,8 @@ The following are the mandatory properties:
 - compatible:		Should be one of the following,
 			    "ti,am654-mcu-r5f" for MCU R5F clusters on
 			                       K3 AM65x SoCs
+			    "ti,dra822-mcu-r5f" for MCU R5F clusters on
+			                       K3 DRA82x SoCs
 - power-domains:	Should contain a phandle to a PM domain provider node
 			and an args specifier containing the DSP device id
 			value. This property is as per the binding,
@@ -53,6 +55,7 @@ The following are the mandatory properties:
 
 - compatible:		Should be one of the following,
 			    "ti,am654-r5f" for the R5F cores in K3 AM65x SoCs
+			    "ti,dra822-r5f" for the R5F cores in K3 DRA82x SOCs
 - reg:			Should contain an entry for each value in 'reg-names'.
 			Each entry should have the memory region's start address
 			and the size of the region, the representation matching
@@ -76,7 +79,7 @@ The following are the mandatory properties:
 			specifier. Please refer to the following reset bindings
 			for the reset argument specifier,
 			Documentation/devicetree/bindings/reset/ti,sci-reset.txt
-			    for AM65x SoCs
+			    for AM65x and DRA82x SoCs
 
 The following properties are mandatory for R5F Core0 in both LockStep and Split
 modes, but are mandatory for R5F Core1 in only Split mode. They are unused for
