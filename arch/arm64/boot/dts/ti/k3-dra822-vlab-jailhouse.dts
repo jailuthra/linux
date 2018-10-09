@@ -8,32 +8,27 @@
 #include "k3-dra822-vlab.dts"
 
 / {
-	compatible =  "ti,dra82-vlab", "ti,dra822";
 	model = "Texas Instruments DRA822 ASTC Vlab Model With Jailhouse support";
+};
 
-	reserved-memory {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
+&reserved_memory {
+	/*
+	 * Reserve for Jailhouse hypervisor firmware.
+	 * Must be in sync with jailhouse root cell configuration.
+	 */
+	hyp_mem: jailhouse@0xdc000000 {
+		reg = <0x0 0xdc000000 0x0 0x4000000>;
+		alignment = <0x1000>;
+		no-map;
+	};
 
-		/*
-		 * Reserve for Jailhouse hypervisor firmware.
-		 * Must be in sync with jailhouse root cell configuration.
-		 */
-		hyp_mem: jailhouse@0xdc000000 {
-			reg = <0x0 0xdc000000 0x0 0x4000000>;
-			alignment = <0x1000>;
-			no-map;
-		};
-
-		/*
-		 * Reserve for Jailhouse inmates cells
-		 * Must be in sync with jailhouse inmate cell configuration.
-		 */
-		inmate_mem: jailhouse@0xe0000000 {
-			reg = <0x0 0xe0000000 0x0 0x20000000>;
-			alignment = <0x1000>;
-			no-map;
-		};
+	/*
+	 * Reserve for Jailhouse inmates cells
+	 * Must be in sync with jailhouse inmate cell configuration.
+	 */
+	inmate_mem: jailhouse@0xe0000000 {
+		reg = <0x0 0xe0000000 0x0 0x20000000>;
+		alignment = <0x1000>;
+		no-map;
 	};
 };
