@@ -122,6 +122,7 @@ struct k3_r5_core {
  * @core: cached pointer to r5 core structure being used
  * @rmem: reserved memory regions data
  * @num_rmems: number of reserved memory regions
+ * @ipc_only: flag to indicate IPC-only mode
  */
 struct k3_r5_rproc {
 	struct device *dev;
@@ -132,6 +133,7 @@ struct k3_r5_rproc {
 	struct k3_r5_core *core;
 	struct k3_r5_mem *rmem;
 	int num_rmems;
+	unsigned int ipc_only : 1;
 };
 
 /**
@@ -373,6 +375,10 @@ static int k3_r5_rproc_prepare(struct rproc *rproc)
 	struct device *dev = kproc->dev;
 	int ret;
 
+	/* IPC-only mode does not require the cores to be released from reset */
+	if (kproc->ipc_only)
+		return 0;
+
 	ret = cluster->mode ? k3_r5_lockstep_release(cluster) :
 			      k3_r5_split_release(core);
 	if (ret)
@@ -398,6 +404,10 @@ static int k3_r5_rproc_unprepare(struct rproc *rproc)
 	struct k3_r5_core *core = kproc->core;
 	struct device *dev = kproc->dev;
 	int ret;
+
+	/* do not put back the cores into reset in IPC-only mode */
+	if (kproc->ipc_only)
+		return 0;
 
 	ret = cluster->mode ? k3_r5_lockstep_reset(cluster) :
 			      k3_r5_split_reset(core);
@@ -454,6 +464,15 @@ static int k3_r5_rproc_start(struct rproc *rproc)
 	if (ret < 0) {
 		dev_err(dev, "mbox_send_message failed: %d\n", ret);
 		goto put_mbox;
+	}
+
+	/*
+	 * no need to issue TI-SCI commands to configure and boot the R5F cores
+	 * in IPC-only mode.
+	 */
+	if (kproc->ipc_only) {
+		dev_err(dev, "R5F core initialized in IPC-only mode\n");
+		return 0;
 	}
 
 	boot_addr = rproc->bootaddr;
@@ -516,6 +535,16 @@ static int k3_r5_rproc_stop(struct rproc *rproc)
 	struct k3_r5_cluster *cluster = kproc->cluster;
 	struct k3_r5_core *core = kproc->core;
 	int ret;
+
+	/*
+	 * no need to issue TI-SCI commands to stop the R5F cores
+	 * in IPC-only mode.
+	 */
+	if (kproc->ipc_only) {
+		mbox_free_channel(kproc->mbox);
+		dev_err(kproc->dev, "R5F core deinitialized in IPC-only mode\n");
+		return 0;
+	}
 
 	/* halt all applicable cores */
 	if (cluster->mode) {
@@ -864,6 +893,14 @@ static int k3_r5_cluster_rproc_init(struct platform_device *pdev)
 		kproc->rproc = rproc;
 		core->rproc = rproc;
 
+		/* configure all J721E instances for IPC-only mode */
+		if (of_device_is_compatible(cdev->of_node, "ti,j721e-r5f")) {
+			dev_err(cdev, "configured R5F for IPC-only mode\n");
+			rproc->skip_load = 1;
+			kproc->ipc_only = 1;
+			goto init_rmem;
+		}
+
 		ret = k3_r5_rproc_configure(kproc);
 		if (ret) {
 			dev_err(dev, "initial configure failed, ret = %d\n",
@@ -871,6 +908,7 @@ static int k3_r5_cluster_rproc_init(struct platform_device *pdev)
 			goto err_config;
 		}
 
+init_rmem:
 		ret = k3_r5_reserved_mem_init(kproc);
 		if (ret) {
 			dev_err(dev, "reserved memory init failed, ret = %d\n",
