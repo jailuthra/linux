@@ -193,14 +193,47 @@ struct ti_sci_clk_ops {
 };
 
 /**
+ * struct ti_sci_proc_ops - Processor Control operations
+ * @request:	Request to control a physical processor. The requesting host
+ *		should be in the processor access list
+ * @release:	Relinquish a physical processor control
+ * @handover:	Handover a physical processor control to another host
+ *		in the permitted list
+ * @set_config:	Set base configuration of a processor
+ * @set_control: Setup limited control flags in specific cases
+ * @auth_boot:	Perform an authenticated load and boot of a processor
+ * @get_status: Get the state of physical processor
+ *
+ * NOTE: The following paramteres are generic in nature for all these ops,
+ * -handle:	Pointer to TI SCI handle as retrieved by *ti_sci_get_handle
+ * -pid:	Processor ID
+ * -hid:	Host ID
+ */
+struct ti_sci_proc_ops {
+	int (*request)(const struct ti_sci_handle *handle, u8 pid);
+	int (*release)(const struct ti_sci_handle *handle, u8 pid);
+	int (*handover)(const struct ti_sci_handle *handle, u8 pid, u8 hid);
+	int (*set_config)(const struct ti_sci_handle *handle, u8 pid,
+			  u64 boot_vector, u32 cfg_set, u32 cfg_clr);
+	int (*set_control)(const struct ti_sci_handle *handle, u8 pid,
+			   u32 ctrl_set, u32 ctrl_clr);
+	int (*auth_boot)(const struct ti_sci_handle *handle, u8 pid, u64 caddr);
+	int (*get_status)(const struct ti_sci_handle *handle, u8 pid,
+			  u64 *boot_vector, u32 *cfg_flags, u32 *ctrl_flags,
+			  u32 *status_flags);
+};
+
+/**
  * struct ti_sci_ops - Function support for TI SCI
  * @dev_ops:	Device specific operations
  * @clk_ops:	Clock specific operations
+ * @proc_ops:	Processor Control specific operations
  */
 struct ti_sci_ops {
 	struct ti_sci_core_ops core_ops;
 	struct ti_sci_dev_ops dev_ops;
 	struct ti_sci_clk_ops clk_ops;
+	struct ti_sci_proc_ops proc_ops;
 };
 
 /**
@@ -217,6 +250,8 @@ struct ti_sci_handle {
 const struct ti_sci_handle *ti_sci_get_handle(struct device *dev);
 int ti_sci_put_handle(const struct ti_sci_handle *handle);
 const struct ti_sci_handle *devm_ti_sci_get_handle(struct device *dev);
+const struct ti_sci_handle *ti_sci_get_by_phandle(struct device_node *np,
+						  const char *property);
 
 #else	/* CONFIG_TI_SCI_PROTOCOL */
 
@@ -232,6 +267,13 @@ static inline int ti_sci_put_handle(const struct ti_sci_handle *handle)
 
 static inline
 const struct ti_sci_handle *devm_ti_sci_get_handle(struct device *dev)
+{
+	return ERR_PTR(-EINVAL);
+}
+
+static inline
+const struct ti_sci_handle *ti_sci_get_by_phandle(struct device_node *np,
+						  const char *property)
 {
 	return ERR_PTR(-EINVAL);
 }
