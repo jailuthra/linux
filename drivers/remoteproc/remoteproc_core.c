@@ -41,6 +41,8 @@
 #include <linux/crc32.h>
 #include <linux/virtio_ids.h>
 #include <linux/virtio_ring.h>
+#include <linux/of.h>
+#include <linux/platform_device.h>
 #include <asm/byteorder.h>
 
 #include "remoteproc_internal.h"
@@ -539,7 +541,7 @@ static int rproc_handle_devmem(struct rproc *rproc, struct fw_rsc_devmem *rsc,
 
 	/* no point in handling this resource without a valid iommu domain */
 	if (!rproc->domain)
-		return -EINVAL;
+		return 0;
 
 	if (sizeof(*rsc) > avail) {
 		dev_err(dev, "devmem rsc is truncated\n");
@@ -709,6 +711,7 @@ static int rproc_handle_carveout(struct rproc *rproc,
 	carveout->len = rsc->len;
 	carveout->dma = dma;
 	carveout->da = rsc->da;
+	strlcpy(carveout->name, rsc->name, sizeof(carveout->name));
 
 	list_add_tail(&carveout->node, &rproc->carveouts);
 
@@ -915,11 +918,14 @@ static int rproc_start(struct rproc *rproc, const struct firmware *fw)
 	struct device *dev = &rproc->dev;
 	int ret;
 
-	/* load the ELF segments to memory */
-	ret = rproc_load_segments(rproc, fw);
-	if (ret) {
-		dev_err(dev, "Failed to load program segments: %d\n", ret);
-		return ret;
+	if (!rproc->skip_load) {
+		/* load the ELF segments to memory */
+		ret = rproc_load_segments(rproc, fw);
+		if (ret) {
+			dev_err(dev, "Failed to load program segments: %d\n",
+				ret);
+			return ret;
+		}
 	}
 
 	/*
@@ -987,7 +993,11 @@ static int rproc_fw_boot(struct rproc *rproc, const struct firmware *fw)
 	if (ret)
 		return ret;
 
-	dev_info(dev, "Booting fw image %s, size %zd\n", name, fw->size);
+	if (!rproc->skip_firmware_request)
+		dev_info(dev, "Booting fw image %s, size %zd\n",
+			 name, fw->size);
+	else
+		dev_info(dev, "Booting unspecified pre-loaded fw image\n");
 
 	/*
 	 * if enabling an IOMMU isn't relevant for this rproc, this is
@@ -1278,6 +1288,36 @@ static void rproc_crash_handler_work(struct work_struct *work)
 }
 
 /**
+ * rproc_get_id() - return the id for the rproc device
+ * @rproc: handle of a remote processor
+ *
+ * Each rproc device is associated with a platform device, which is created
+ * either from device tree (majority newer platforms) or using legacy style
+ * platform device creation (fewer legacy platforms). This function retrieves
+ * an unique id for each remote processor and is useful for clients needing
+ * to distinguish each of the remoteprocs. This unique id is derived using
+ * the platform device id for non-DT devices, or an alternate alias id for
+ * DT devices (since they do not have a valid platform device id). It is
+ * assumed that the platform devices were created with known ids or were
+ * given proper alias ids using the stem "rproc".
+ *
+ * Return: alias id for DT devices or platform device id for non-DT devices
+ * associated with the rproc
+ */
+int rproc_get_id(struct rproc *rproc)
+{
+	struct device *dev = rproc->dev.parent;
+	struct device_node *np = dev->of_node;
+	struct platform_device *pdev = to_platform_device(dev);
+
+	if (np)
+		return of_alias_get_id(np, "rproc");
+	else
+		return pdev->id;
+}
+EXPORT_SYMBOL(rproc_get_id);
+
+/**
  * rproc_boot() - boot a remote processor
  * @rproc: handle of a remote processor
  *
@@ -1321,16 +1361,19 @@ int rproc_boot(struct rproc *rproc)
 
 	dev_info(dev, "powering up %s\n", rproc->name);
 
-	/* load firmware */
-	ret = request_firmware(&firmware_p, rproc->firmware, dev);
-	if (ret < 0) {
-		dev_err(dev, "request_firmware failed: %d\n", ret);
-		goto downref_rproc;
+	if (!rproc->skip_firmware_request) {
+		/* load firmware */
+		ret = request_firmware(&firmware_p, rproc->firmware, dev);
+		if (ret < 0) {
+			dev_err(dev, "request_firmware failed: %d\n", ret);
+			goto downref_rproc;
+		}
 	}
 
 	ret = rproc_fw_boot(rproc, firmware_p);
 
-	release_firmware(firmware_p);
+	if (!rproc->skip_firmware_request)
+		release_firmware(firmware_p);
 
 downref_rproc:
 	if (ret)

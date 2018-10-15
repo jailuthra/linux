@@ -312,6 +312,7 @@ struct fw_rsc_vdev {
  * @len: length, in bytes
  * @da: device address
  * @priv: associated data
+ * @name: associated memory region name (optional)
  * @node: list node
  */
 struct rproc_mem_entry {
@@ -320,6 +321,7 @@ struct rproc_mem_entry {
 	int len;
 	u32 da;
 	void *priv;
+	char name[32];
 	struct list_head node;
 };
 
@@ -439,6 +441,8 @@ struct rproc_dump_segment {
  * @cached_table: copy of the resource table
  * @table_sz: size of @cached_table
  * @has_iommu: flag to indicate if remote processor is behind an MMU
+ * @skip_firmware_request: flag to skip requesting the firmware
+ * @skip_load: flag to skip the loading of firmware segments
  * @dump_segments: list of segments in the firmware
  */
 struct rproc {
@@ -471,6 +475,8 @@ struct rproc {
 	size_t table_sz;
 	bool has_iommu;
 	bool auto_boot;
+	unsigned int skip_firmware_request	: 1;
+	unsigned int skip_load			: 1;
 	struct list_head dump_segments;
 };
 
@@ -557,6 +563,7 @@ int rproc_boot(struct rproc *rproc);
 void rproc_shutdown(struct rproc *rproc);
 void rproc_report_crash(struct rproc *rproc, enum rproc_crash_type type);
 int rproc_coredump_add_segment(struct rproc *rproc, dma_addr_t da, size_t size);
+int rproc_get_id(struct rproc *rproc);
 
 static inline struct rproc_vdev *vdev_to_rvdev(struct virtio_device *vdev)
 {
