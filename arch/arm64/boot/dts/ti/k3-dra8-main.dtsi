@@ -47,6 +47,18 @@
 		#clock-cells = <0>;
 		clock-frequency = <100000000>;
 	};
+
+	coreclk: gpu_core_clock {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <100000000>;
+	};
+
+	ctrlclk: gpu_pll_control_clock {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <100000000>;
+	};
 };
 
 &cbass_main {
