@@ -47,6 +47,18 @@
 		#clock-cells = <0>;
 		clock-frequency = <100000000>;
 	};
+
+	coreclk: gpu_core_clock {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <100000000>;
+	};
+
+	ctrlclk: gpu_pll_control_clock {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <100000000>;
+	};
 };
 
 &cbass_main {
@@ -340,5 +352,15 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
+	};
+
+	gpu: gpu@4e20000000 {
+		compatible = "ti,dra822-pvr", "img,pvr-ge8430";
+		reg = <0x4E 0x20000000 0x00 0x80000>;
+		reg-names = "gpu_regs";
+		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&coreclk>, <&ctrlclk>;
+		clock-names = "core", "ctrl";
+		status = "disabled";
 	};
 };
