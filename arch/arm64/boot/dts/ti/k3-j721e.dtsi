@@ -35,6 +35,8 @@
 		rproc3 = &mcu_r5fss0_core1;
 		rproc4 = &main_r5fss0_core1;
 		rproc5 = &main_r5fss1_core1;
+		rproc6 = &c66_0;
+		rproc7 = &c66_1;
 	};
 
 	chosen { };
