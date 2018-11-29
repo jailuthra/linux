@@ -35,6 +35,8 @@
 		rproc3 = &mcu0_r5f1;
 		rproc4 = &mcu1_r5f1;
 		rproc5 = &mcu2_r5f1;
+		rproc6 = &c66_0;
+		rproc7 = &c66_1;
 	};
 
 	chosen { };
