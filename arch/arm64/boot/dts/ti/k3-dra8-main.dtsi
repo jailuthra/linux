@@ -420,7 +420,18 @@
 		#mbox-cells = <1>;
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
-		status = "disabled";
+		interrupt-parent = <&main_navss_intr>;
+		interrupts = <211 0 IRQ_TYPE_LEVEL_HIGH>;
+
+		mbox_mcu0_r5f0: mbox-mcu0-r5f0 {
+			ti,mbox-rx = <0 0 0>;
+			ti,mbox-tx = <1 0 0>;
+		};
+
+		mbox_mcu0_r5f1: mbox-mcu0-r5f1 {
+			ti,mbox-rx = <2 0 0>;
+			ti,mbox-tx = <3 0 0>;
+		};
 	};
 
 	mailbox0_cluster1: mailbox@31f81000 {
@@ -429,7 +440,18 @@
 		#mbox-cells = <1>;
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
-		status = "disabled";
+		interrupt-parent = <&main_navss_intr>;
+		interrupts = <212 0 IRQ_TYPE_LEVEL_HIGH>;
+
+		mbox_mcu1_r5f0: mbox-mcu1-r5f0 {
+			ti,mbox-rx = <0 0 0>;
+			ti,mbox-tx = <1 0 0>;
+		};
+
+		mbox_mcu1_r5f1: mbox-mcu1-r5f1 {
+			ti,mbox-rx = <2 0 0>;
+			ti,mbox-tx = <3 0 0>;
+		};
 	};
 
 	mailbox0_cluster2: mailbox@31f82000 {
@@ -438,7 +460,18 @@
 		#mbox-cells = <1>;
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
-		status = "disabled";
+		interrupt-parent = <&main_navss_intr>;
+		interrupts = <213 0 IRQ_TYPE_LEVEL_HIGH>;
+
+		mbox_mcu2_r5f0: mbox-mcu2-r5f0 {
+			ti,mbox-rx = <0 0 0>;
+			ti,mbox-tx = <1 0 0>;
+		};
+
+		mbox_mcu2_r5f1: mbox-mcu2-r5f1 {
+			ti,mbox-rx = <2 0 0>;
+			ti,mbox-tx = <3 0 0>;
+		};
 	};
 
 	mailbox0_cluster3: mailbox@31f83000 {
@@ -447,7 +480,18 @@
 		#mbox-cells = <1>;
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
-		status = "disabled";
+		interrupt-parent = <&main_navss_intr>;
+		interrupts = <214 0 IRQ_TYPE_LEVEL_HIGH>;
+
+		mbox_c660: mbox-c660 {
+			ti,mbox-rx = <0 0 0>;
+			ti,mbox-tx = <1 0 0>;
+		};
+
+		mbox_c661: mbox-c661 {
+			ti,mbox-rx = <2 0 0>;
+			ti,mbox-tx = <3 0 0>;
+		};
 	};
 
 	mailbox0_cluster4: mailbox@31f84000 {
@@ -456,7 +500,13 @@
 		#mbox-cells = <1>;
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
-		status = "disabled";
+		interrupt-parent = <&main_navss_intr>;
+		interrupts = <215 0 IRQ_TYPE_LEVEL_HIGH>;
+
+		mbox_c71: mbox-c71 {
+			ti,mbox-rx = <0 0 0>;
+			ti,mbox-tx = <1 0 0>;
+		};
 	};
 
 	mailbox0_cluster5: mailbox@31f85000 {
