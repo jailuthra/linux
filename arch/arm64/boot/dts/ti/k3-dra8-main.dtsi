@@ -363,4 +363,14 @@
 		clock-names = "core", "ctrl";
 		status = "disabled";
 	};
+
+	smmu0: smmu@d0040000 {
+		compatible = "arm,smmu-v3";
+		reg = <0x0 0x36600000 0x0 0x100000>;
+		interrupt-parent = <&gic500>;
+		interrupts = <GIC_SPI 772 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 768 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "eventq", "gerror";
+		#iommu-cells = <1>;
+	};
 };
