@@ -94,7 +94,8 @@ PCI Controller in DRA8:
  - reg : Two register ranges as listed in the reg-names property
  - reg-names : The first entry must be "intd_cfg" used for handling legacy
      interrupts. The second entry must be "user_cfg" and it has registers
-     for enabling the LTSSM
+     for enabling the LTSSM. The third entry must be "vmap" and it has
+     registers for programming the requestor ID to VIRTID mapping and ATYPE.
  - #address-cells : should be 1 to indicate the child node should use 1 cell
      for address
  - #size-cells : should be 1 to indicate the child node should use 1 cell for
