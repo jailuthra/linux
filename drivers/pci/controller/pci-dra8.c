@@ -22,13 +22,38 @@
 #define STATUS_REG_SYS_0	0x500
 #define INTx_EN(num)		(1 << (num))
 
+#define DRA8_TRANS_CTRL(a)		((a) * 0xc)
+#define DRA8_TRANS_REQ_ID(a)		(((a) * 0xc) + 0x4)
+#define DRA8_TRANS_VIRT_ID(a)		(((a) * 0xc) + 0x8)
+
+#define DRA8_REQID_MASK			0xfff
+#define DRA8_REQID_SHIFT		16
+
+#define DRA8_EN				BIT(0)
+#define DRA8_ATYPE_SHIFT		16
+
+enum dra8_atype {
+	PHYS_ADDR,
+	INT_ADDR,
+	VIRT_ADDR,
+	TRANS_ADDR,
+};
+
 struct dra8_pcie {
 	struct device		*dev;
 	struct device_node	*node;
 	void __iomem		*intd_cfg_base;
 	void __iomem		*user_cfg_base;
+	void __iomem		*vmap_lp_base;
+	u8			vmap_lp_index;
 	struct irq_domain	*legacy_irq_domain;
 };
+
+static inline void dra8_pcie_vmap_writel(struct dra8_pcie *pcie, u32 offset,
+					 u32 value)
+{
+	writel(value, pcie->vmap_lp_base + offset);
+}
 
 static inline u32 dra8_pcie_intd_readl(struct dra8_pcie *pcie, u32 offset)
 {
@@ -51,6 +76,54 @@ static inline void dra8_pcie_user_writel(struct dra8_pcie *pcie, u32 offset,
 {
 	writel(value, pcie->user_cfg_base + offset);
 }
+
+static void dra8_pcie_quirk(struct pci_dev *pci_dev)
+{
+	struct pci_bus *root_bus;
+	struct pci_dev *bridge;
+	struct dra8_pcie *pcie;
+	struct pci_bus *bus;
+	struct device *dev;
+	int index;
+	u32 val;
+
+	static const struct pci_device_id rc_pci_devids[] = {
+		/* Should be replaced by TI Specific VendorID, DeviceID */
+		{ PCI_DEVICE(0x17CD, 0x200),
+		.class = PCI_CLASS_BRIDGE_PCI << 8, .class_mask = ~0, },
+		{ 0, },
+	};
+
+	dev = pci_get_host_bridge_device(pci_dev);
+	pcie = dev_get_drvdata(dev->parent->parent);
+	bus = pci_dev->bus;
+	index = pcie->vmap_lp_index;
+
+	if (index >= 32)
+		return;
+
+	if (pci_is_root_bus(bus))
+		return;
+
+	root_bus = bus;
+	while (!pci_is_root_bus(root_bus)) {
+		bridge = root_bus->self;
+		root_bus = root_bus->parent;
+	}
+
+	if (pci_match_id(rc_pci_devids, bridge)) {
+		val = DRA8_REQID_MASK << DRA8_REQID_SHIFT |
+			(bus->number << 8 | pci_dev->devfn);
+		dra8_pcie_vmap_writel(pcie, DRA8_TRANS_REQ_ID(index), val);
+		val = (bus->number << 8 | pci_dev->devfn) & DRA8_REQID_MASK;
+		val |= VIRT_ADDR << DRA8_ATYPE_SHIFT;
+		dra8_pcie_vmap_writel(pcie, DRA8_TRANS_VIRT_ID(index), val);
+		dra8_pcie_vmap_writel(pcie, DRA8_TRANS_CTRL(index), DRA8_EN);
+	}
+
+	pcie->vmap_lp_index++;
+}
+DECLARE_PCI_FIXUP_ENABLE(PCI_ANY_ID, PCI_ANY_ID, dra8_pcie_quirk);
 
 static void dra8_pcie_legacy_irq_handler(struct irq_desc *desc)
 {
@@ -175,6 +248,7 @@ static int __init dra8_pcie_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	dev_set_drvdata(dev, pcie);
 	pm_runtime_enable(dev);
 	ret = pm_runtime_get_sync(dev);
 	if (ret < 0) {
@@ -188,6 +262,13 @@ static int __init dra8_pcie_probe(struct platform_device *pdev)
 			ret = -ENODEV;
 			goto err_get_sync;
 		}
+
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+						   "vmap");
+		base = devm_ioremap_resource(dev, res);
+		if (IS_ERR(base))
+			return PTR_ERR(base);
+		pcie->vmap_lp_base = base;
 
 		ret = dra8_pcie_config_legacy_irq(pcie);
 		if (ret < 0)
