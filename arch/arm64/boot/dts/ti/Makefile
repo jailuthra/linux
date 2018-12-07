@@ -10,6 +10,7 @@ DTC_FLAGS += -@
 
 dtb-$(CONFIG_ARCH_K3_AM6_SOC) += k3-am654-base-board.dtb
 dtb-$(CONFIG_ARCH_K3_DRA8_SOC) += k3-dra822-vlab.dtb
+dtb-$(CONFIG_ARCH_K3_DRA8_SOC) += k3-dra822-vlab-dss-partition.dtb
 dtb-$(CONFIG_ARCH_K3_DRA8_SOC) += k3-dra822-vlab-jailhouse.dtb
 dtb-$(CONFIG_ARCH_K3_AM6_SOC) += $(shell grep -s incbin $(srctree)/$(src)/*.its | grep dtb | cut -d "\"" -f 2)
 

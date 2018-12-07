@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source for DRA822 ASTC VLAB Model with DSS partitionig support
+ *
+ * Copyright (C) 2016-2018 Texas Instruments Incorporated - http://www.ti.com/
+ */
+
+#include "k3-dra822-vlab.dts"
+
+&dss {
+	status = "ok";
+
+	dss_planes: dss_planes {
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	dss_vps: dss_vps {
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	dss_commons: dss_commons {
+		#address-cells = <0>;
+		#size-cells = <0>;
+	};
+};
+
+&dss_planes {
+	plane@0 {
+
+		/*vid1*/
+
+		reg = <0>;
+
+		managed = <1>;
+	};
+
+	plane@1 {
+
+		/*vidl1*/
+
+		reg = <1>;
+
+		managed = <1>;
+	};
+
+	plane@2 {
+
+		/*vid2*/
+
+		reg = <2>;
+
+		managed = <1>;
+	};
+
+	plane@3 {
+
+		/*vidl2*/
+
+		reg = <3>;
+
+		managed = <1>;
+	};
+};
+
+&dss_vps {
+	vp@0 {
+		reg = <0>;
+
+		managed = <1>;
+	};
+
+	vp@1 {
+		reg = <1>;
+
+		managed = <1>;
+	};
+
+	vp@2 {
+		reg = <2>;
+
+		managed = <1>;
+	};
+
+	vp@3 {
+		reg = <3>;
+
+		managed = <1>;
+	};
+};
+
+&dss_commons {
+	interrupt-handling-common = <0>;
+	configuration-common = <0>;
+};
