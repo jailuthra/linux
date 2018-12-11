@@ -446,14 +446,14 @@ static int ti_sci_clk_probe(struct platform_device *pdev)
 	while (1) {
 		ret = provider->ops->get_num_parents(provider->sci, dev_id,
 						     clk_id, &num_parents);
-		if (ret) {
+		if (ret || clk_id > 255) {
 			gap_size++;
 			if (!clk_id) {
 				if (gap_size >= 5)
 					break;
 				dev_id++;
 			} else {
-				if (gap_size >= 2) {
+				if (gap_size >= 2 || clk_id > 255) {
 					dev_id++;
 					clk_id = 0;
 					gap_size = 0;
