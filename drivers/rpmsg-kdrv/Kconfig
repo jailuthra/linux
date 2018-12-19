@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0
+
+menu "Rpmsg virtual device drivers"
+
+# RPMSG always gets selected by whoever wants it
+config RPMSG_KDRV
+	tristate "RPMSG virtual device interface"
+	depends on RPMSG
+
+config RPMSG_KDRV_DISPLAY
+	tristate "RPMSG virtual display device support"
+	depends on RPMSG_KDRV
+
+endmenu
