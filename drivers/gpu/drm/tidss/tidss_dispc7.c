@@ -2539,11 +2539,16 @@ static int dispc7_dra8_setup_commons(struct dispc_device *dispc)
 	if (dispc->irq < 0)
 		return dispc->irq;
 
-	r = dispc_dra8_get_managed_common_cfg(dispc, &common_cfg_id);
-	if (r) {
-		dev_dbg(dev, "%s: continuing without common_cfg\n", __func__);
+	if (tidss->rdev) {
+		dev_dbg(dev, "%s: continuing with remote device\n", __func__);
 		dispc->has_cfg_common = false;
 		return 0;
+	}
+
+	r = dispc_dra8_get_managed_common_cfg(dispc, &common_cfg_id);
+	if (r) {
+		dev_err(dev, "%s: could not find configuration device\n", __func__);
+		return -EINVAL;
 	}
 
 	if (!dispc->feat->common_cfg[common_cfg_id]) {
