@@ -14684,6 +14684,16 @@ Q:	http://patchwork.linuxtv.org/project/linux-media/list/
 S:	Maintained
 F:	drivers/media/platform/ti-vpe/
 
+TI VXD-DEC DRIVER
+M:	Sunita Nadampalli <sunitan@ti.com>
+M:	David Huang <d-huang@ti.com>
+M:	Angela Stegmaier <angelabaker@ti.com>
+L:	linux-media@vger.kernel.org
+W:	http://linuxtv.org/
+Q:	http://patchwork.linuxtv.org/project/linux-media/list/
+S:	Maintained
+F:	drivers/media/platform/vxd-dec/
+
 TI WILINK WIRELESS DRIVERS
 L:	linux-wireless@vger.kernel.org
 W:	http://wireless.kernel.org/en/users/Drivers/wl12xx
