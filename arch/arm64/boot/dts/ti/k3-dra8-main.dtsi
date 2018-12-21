@@ -18,36 +18,6 @@
 		clock-frequency = <25000000>;
 	};
 
-	dssclk: dssclock {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <100000000>;
-	};
-
-	vp1clk: vp1clock {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <100000000>;
-	};
-
-	vp2clk: vp2clock {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <100000000>;
-	};
-
-	vp3clk: vp3clock {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <100000000>;
-	};
-
-	vp4clk: vp4clock {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <100000000>;
-	};
-
 	coreclk: gpu_core_clock {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -368,8 +338,11 @@
 			"vp1", "vp2", "vp3", "vp4",
 			"wb";
 
-		clocks = <&dssclk>, <&vp1clk>, <&vp2clk>, <&vp3clk>,
-				<&vp4clk>;
+		clocks =	<&k3_clks 148 9>,
+				<&k3_clks 148 15>,
+				<&k3_clks 148 19>,
+				<&k3_clks 148 18>,
+				<&k3_clks 148 17>;
 		clock-names = "fck", "vp1", "vp2", "vp3", "vp4";
 
 		interrupts = <GIC_SPI 602 IRQ_TYPE_EDGE_RISING>,
