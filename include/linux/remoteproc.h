@@ -312,6 +312,7 @@ struct fw_rsc_vdev {
  * @len: length, in bytes
  * @da: device address
  * @priv: associated data
+ * @name: associated memory region name (optional)
  * @node: list node
  */
 struct rproc_mem_entry {
@@ -320,6 +321,7 @@ struct rproc_mem_entry {
 	int len;
 	u32 da;
 	void *priv;
+	char name[32];
 	struct list_head node;
 };
 
@@ -328,6 +330,8 @@ struct firmware;
 
 /**
  * struct rproc_ops - platform-specific device handlers
+ * @prepare:	prepare device for code loading
+ * @unprepare:	unprepare device after stop
  * @start:	power on the device and boot it
  * @stop:	power off the device
  * @kick:	kick a virtqueue (virtqueue id given as a parameter)
@@ -340,6 +344,8 @@ struct firmware;
  * @get_boot_addr:	get boot address to entry point specified in firmware
  */
 struct rproc_ops {
+	int (*prepare)(struct rproc *rproc);
+	int (*unprepare)(struct rproc *rproc);
 	int (*start)(struct rproc *rproc);
 	int (*stop)(struct rproc *rproc);
 	void (*kick)(struct rproc *rproc, int vqid);
@@ -439,12 +445,15 @@ struct rproc_dump_segment {
  * @cached_table: copy of the resource table
  * @table_sz: size of @cached_table
  * @has_iommu: flag to indicate if remote processor is behind an MMU
+ * @deny_sysfs_ops: flag to not permit sysfs operations on state and firmware
+ * @skip_firmware_request: flag to skip requesting the firmware
+ * @skip_load: flag to skip the loading of firmware segments
  * @dump_segments: list of segments in the firmware
  */
 struct rproc {
 	struct list_head node;
 	struct iommu_domain *domain;
-	const char *name;
+	char *name;
 	char *firmware;
 	void *priv;
 	struct rproc_ops *ops;
@@ -471,6 +480,9 @@ struct rproc {
 	size_t table_sz;
 	bool has_iommu;
 	bool auto_boot;
+	unsigned int deny_sysfs_ops		: 1;
+	unsigned int skip_firmware_request	: 1;
+	unsigned int skip_load			: 1;
 	struct list_head dump_segments;
 };
 
@@ -558,6 +570,8 @@ void rproc_shutdown(struct rproc *rproc);
 void rproc_report_crash(struct rproc *rproc, enum rproc_crash_type type);
 void *rproc_da_to_va(struct rproc *rproc, u64 da, int len);
 int rproc_coredump_add_segment(struct rproc *rproc, dma_addr_t da, size_t size);
+int rproc_get_id(struct rproc *rproc);
+int rproc_pa_to_da(struct rproc *rproc, phys_addr_t pa, u64 *da);
 
 static inline struct rproc_vdev *vdev_to_rvdev(struct virtio_device *vdev)
 {
