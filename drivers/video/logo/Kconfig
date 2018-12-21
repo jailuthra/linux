@@ -68,4 +68,9 @@ config LOGO_SUPERH_CLUT224
 	depends on SUPERH
 	default y
 
+config LOGO_LINUX_TI_CLUT224
+	bool "Standard 224-color Linux logo for Texas Instruments  Platforms"
+	depends on ARCH_OMAP1 || ARCH_OMAP2 || ARCH_DAVINCI || C6X || \
+		ARCH_KEYSTONE || ARCH_K3
+	default y
 endif # LOGO
