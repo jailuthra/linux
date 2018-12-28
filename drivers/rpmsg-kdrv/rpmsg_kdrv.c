@@ -57,7 +57,7 @@ static int rpmsg_kdrv_match_id(struct device *dev, void *data)
 
 static int rpmsg_kdrv_match_name(struct device *dev, void *data)
 {
-	char *name = data;
+	const char *name = data;
 	struct rpmsg_kdrv_device *kddev = container_of(dev, struct rpmsg_kdrv_device, dev);
 
 	if (strcmp(kddev->device_name, name) == 0)
@@ -130,12 +130,12 @@ static int rpmsg_kdrv_connect(struct rpmsg_device *rpdev, struct rpmsg_kdrv_devi
 	return ret;
 }
 
-struct rpmsg_remotedev *rpmsg_remotedev_get_named_device(char *device_name)
+struct rpmsg_remotedev *rpmsg_remotedev_get_named_device(const char *device_name)
 {
 	struct device *dev;
 	struct rpmsg_kdrv_device *kddev = NULL;
 
-	dev = bus_find_device(&rpmsg_kdrv_bus, NULL, device_name, rpmsg_kdrv_match_name);
+	dev = bus_find_device(&rpmsg_kdrv_bus, NULL, (void *)device_name, rpmsg_kdrv_match_name);
 	if (!dev)
 		return ERR_PTR(-EPROBE_DEFER);
 
