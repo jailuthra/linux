@@ -43,6 +43,7 @@
 		k3_clks: clocks {
 			compatible = "ti,k2g-sci-clk";
 			#clock-cells = <2>;
+			ti,scan-clocks-from-dt;
 		};
 
 		k3_reset: reset-controller {
