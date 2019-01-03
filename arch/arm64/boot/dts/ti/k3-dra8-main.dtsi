@@ -6,18 +6,6 @@
  */
 
 / {
-	clk1: dummy1 {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <25000000>;
-	};
-
-	clk2: dummy2 {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <25000000>;
-	};
-
 	coreclk: gpu_core_clock {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -291,8 +279,11 @@
 		compatible = "arasan,sdhci-8.9a";
 		reg = <0x0 0x4f80000 0x0 0x1000>;
 		interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
+		power-domains = <&k3_pds 90>;
 		clock-names = "clk_xin", "clk_ahb";
-		clocks = <&clk1>, <&clk2>;
+		clocks = <&k3_clks 90 1>, <&k3_clks 90 0>;
+		assigned-clocks = <&k3_clks 90 1>;
+		assigned-clock-parents = <&k3_clks 90 2>;
 		voltage-ranges = <3300 3300>;
 		non-removable;
 	};
@@ -301,8 +292,11 @@
 		compatible = "arasan,sdhci-8.9a";
 		reg = <0x0 0x4fb0000 0x0 0x1000>;
 		interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
+		power-domains = <&k3_pds 91>;
 		clock-names = "clk_xin", "clk_ahb";
-		clocks = <&clk1>, <&clk2>;
+		clocks = <&k3_clks 91 1>, <&k3_clks 91 6>;
+		assigned-clocks = <&k3_clks 91 1>;
+		assigned-clock-parents = <&k3_clks 91 3>;
 		voltage-ranges = <3300 3300>;
 		non-removable;
 	};
