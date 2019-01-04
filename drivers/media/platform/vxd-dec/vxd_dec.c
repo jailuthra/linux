@@ -1297,8 +1297,8 @@ static int vxd_dec_probe(struct platform_device *pdev)
 
 	vxd->fw_refcnt = 0;
 	vxd->hw_on = 0;
-	vxd->hw_pm_delay = 100;
-	vxd->hw_dwr_period = 100;
+	vxd->hw_pm_delay = 1000;
+	vxd->hw_dwr_period = 1000;
 
 	mutex_init(&vxd->mutex);
 
