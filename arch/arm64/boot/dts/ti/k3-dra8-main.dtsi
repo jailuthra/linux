@@ -553,7 +553,7 @@
 
 	mcu1_r5f_cluster: mcu_r5f_cluster@5c00000 {
 		compatible = "ti,dra822-mcu-r5f";
-		lockstep-mode = <1>;
+		lockstep-mode = <0>;
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges = <0x5c00000 0x00 0x5c00000 0x20000>,
