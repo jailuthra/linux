@@ -8,6 +8,17 @@
 /dts-v1/;
 /plugin/;
 
+&reserved_memory {
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	tiovx_shared_memory_region: tiovx-shared-memory@a9000000 {
+	        reg = <0x00 0xa9000000 0x00 0x01000000>;
+	        alignment = <0x1000>;
+	        no-map;
+	};
+};
+
 &dss {
 	status = "ok";
 
@@ -18,7 +29,7 @@
 		/*vid1*/
 		plane@0 {
 			reg = <0>;
-			managed = <1>;
+			managed = <0>;
 		};
 
 		/*vidl1*/
@@ -30,13 +41,13 @@
 		/*vid2*/
 		plane@2 {
 			reg = <2>;
-			managed = <1>;
+			managed = <0>;
 		};
 
 		/*vidl2*/
 		plane@3 {
 			reg = <3>;
-			managed = <1>;
+			managed = <0>;
 		};
 	};
 
@@ -51,17 +62,17 @@
 
 		vp@1 {
 			reg = <1>;
-			managed = <1>;
+			managed = <0>;
 		};
 
 		vp@2 {
 			reg = <2>;
-			managed = <1>;
+			managed = <0>;
 		};
 
 		vp@3 {
 			reg = <3>;
-			managed = <1>;
+			managed = <0>;
 		};
 	};
 
@@ -69,7 +80,13 @@
 		#address-cells = <0>;
 		#size-cells = <0>;
 
-		interrupt-handling-common = <0>;
-		configuration-common = <0>;
+		interrupt-handling-common = <1>;
+	};
+
+	dss_remote: dss_remote {
+		#address-cells = <0>;
+		#size-cells = <0>;
+
+		remote-name = "r5f-tidss";
 	};
 };
