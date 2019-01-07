@@ -178,7 +178,7 @@ found:
 	buffer->width = pstate->src_w >> 16;
 	buffer->height = pstate->src_h >> 16;
 	buffer->format = fb->format->format;
-	buffer->num_planes = min(fb->format->num_planes, RPMSG_REMOTEDEV_DISPLAY_MAX_PLANES);
+	buffer->num_planes = min_t(u32, fb->format->num_planes, RPMSG_REMOTEDEV_DISPLAY_MAX_PLANES);
 	WARN_ON(buffer->num_planes != fb->format->num_planes);
 
 	for (cnt = 0; cnt < buffer->num_planes; cnt++) {

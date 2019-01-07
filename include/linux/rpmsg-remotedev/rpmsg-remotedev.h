@@ -101,9 +101,9 @@ struct rpmsg_remotedev {
 };
 
 #ifdef CONFIG_RPMSG_KDRV
-extern struct rpmsg_remotedev *rpmsg_remotedev_get_named_device(char *device_name);
+extern struct rpmsg_remotedev *rpmsg_remotedev_get_named_device(const char *device_name);
 #else
-static inline struct rpmsg_remotedev *rpmsg_remotedev_get_named_device(char *device_name)
+static inline struct rpmsg_remotedev *rpmsg_remotedev_get_named_device(const char *device_name)
 {
 	return NULL;
 }
