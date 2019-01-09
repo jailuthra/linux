@@ -423,7 +423,7 @@ static int k3_dsp_rproc_of_get_memories(struct platform_device *pdev,
 				res->start & KEYSTONE_RPROC_LOCAL_ADDRESS_MASK;
 		kproc->mem[i].size = resource_size(res);
 
-		dev_err(dev, "memory %8s: bus addr %pa size 0x%zx va %pK da 0x%x\n",
+		dev_dbg(dev, "memory %8s: bus addr %pa size 0x%zx va %pK da 0x%x\n",
 			mem_names[i], &kproc->mem[i].bus_addr,
 			kproc->mem[i].size, kproc->mem[i].cpu_addr,
 			kproc->mem[i].dev_addr);
@@ -506,7 +506,7 @@ static int k3_dsp_reserved_mem_init(struct k3_dsp_rproc *kproc)
 			goto unmap_rmem;
 		}
 
-		dev_err(dev, "reserved memory%d: bus addr %pa size 0x%zx va %pK da 0x%x\n",
+		dev_dbg(dev, "reserved memory%d: bus addr %pa size 0x%zx va %pK da 0x%x\n",
 			i + 1, &kproc->rmem[i].bus_addr,
 			kproc->rmem[i].size, kproc->rmem[i].cpu_addr,
 			kproc->rmem[i].dev_addr);
