@@ -249,7 +249,7 @@ static int k3_dsp_rproc_start(struct rproc *rproc)
 	 * in IPC-only mode.
 	 */
 	if (kproc->ipc_only) {
-		dev_err(dev, "started DSP core in IPC-only mode\n");
+		dev_err(dev, "DSP initialized in IPC-only mode\n");
 		return 0;
 	}
 
@@ -294,7 +294,7 @@ static int k3_dsp_rproc_stop(struct rproc *rproc)
 	 * in IPC-only mode.
 	 */
 	if (kproc->ipc_only) {
-		dev_err(kproc->dev, "stopped DSP core in IPC-only mode\n");
+		dev_err(kproc->dev, "DSP deinitialized in IPC-only mode\n");
 		return 0;
 	}
 
@@ -570,6 +570,8 @@ static int k3_dsp_rproc_probe(struct platform_device *pdev)
 	struct k3_dsp_rproc *kproc;
 	struct rproc *rproc;
 	const char *fw_name;
+	bool r_state = false;
+	bool p_state = false;
 	int ret = 0;
 	int ret1;
 
@@ -661,11 +663,26 @@ static int k3_dsp_rproc_probe(struct platform_device *pdev)
 		goto disable_clk;
 	}
 
+	ret = kproc->ti_sci->ops.dev_ops.is_on(kproc->ti_sci, kproc->ti_sci_id,
+					       &r_state, &p_state);
+	if (ret) {
+		dev_err(dev, "failed to get initial state, mode cannot be determined, ret = %d\n",
+			ret);
+		goto release_mem;
+	}
+
 	/* configure all DRA8 instances for IPC-only mode */
 	if (of_device_is_compatible(np, "ti,dra822-c66-dsp") ||
 	    of_device_is_compatible(np, "ti,dra822-c711-dsp")) {
-		rproc->skip_load = 1;
-		kproc->ipc_only = 1;
+		if (p_state) {
+			dev_err(dev, "configured DSP for IPC-only mode\n");
+			rproc->skip_load = 1;
+			kproc->ipc_only = 1;
+		} else {
+			dev_err(dev, "failed IPC-only mode, bootloader did not boot the DSP\n");
+			ret = -ENODEV;
+			goto release_mem;
+		}
 	}
 
 	ret = rproc_add(rproc);
