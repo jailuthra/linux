@@ -671,7 +671,7 @@ static int k3_dsp_rproc_probe(struct platform_device *pdev)
 		goto release_mem;
 	}
 
-	/* configure all J721E instances for IPC-only mode */
+	/* configure J721E devices for either remoteproc or IPC-only mode */
 	if (of_device_is_compatible(np, "ti,j721e-c66-dsp") ||
 	    of_device_is_compatible(np, "ti,j721e-c71-dsp")) {
 		if (p_state) {
@@ -679,9 +679,7 @@ static int k3_dsp_rproc_probe(struct platform_device *pdev)
 			rproc->skip_load = 1;
 			kproc->ipc_only = 1;
 		} else {
-			dev_err(dev, "failed IPC-only mode, bootloader did not boot the DSP\n");
-			ret = -ENODEV;
-			goto release_mem;
+			dev_err(dev, "configured DSP for remoteproc mode\n");
 		}
 	}
 
