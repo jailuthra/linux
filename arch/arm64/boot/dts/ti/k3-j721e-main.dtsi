@@ -337,6 +337,12 @@
 		assigned-clock-parents = <&k3_clks 93 1>;
 	};
 
+	hwspinlock: spinlock@30e00000 {
+		compatible = "ti,am654-hwspinlock";
+		reg = <0x00 0x30e00000 0x00 0x1000>;
+		#hwlock-cells = <1>;
+	};
+
 	smmu0: smmu@d0040000 {
 		compatible = "arm,smmu-v3";
 		reg = <0x0 0x36600000 0x0 0x100000>;
