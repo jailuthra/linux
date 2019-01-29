@@ -634,6 +634,19 @@
 		mboxes = <&mailbox0_cluster3 &mbox_c66_1>;
 	};
 
+	c71_0: dsp@64800000 {
+		compatible = "ti,j721e-c71-dsp";
+		reg = <0x00 0x64800000 0x00 0x00080000>,
+		      <0x00 0x64e00000 0x00 0x0000c000>;
+		reg-names = "l2sram", "l1dram";
+		ti,sci = <&dmsc>;
+		ti,sci-dev-id = <15>;
+		ti,sci-proc-ids = <0x30 0xFF>;
+		resets = <&k3_reset 15 1>;
+		/*power-domains = <&k3_pds 15>;*/
+		mboxes = <&mailbox0_cluster4 &mbox_c71_0>;
+	};
+
 	smmu0: smmu@d0040000 {
 		compatible = "arm,smmu-v3";
 		reg = <0x0 0x36600000 0x0 0x100000>;
