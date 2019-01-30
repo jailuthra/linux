@@ -141,4 +141,30 @@
 		clock-frequency = <48000000>;
 		power-domains = <&k3_pds 283>;
 	};
+
+	main_sdhci0: sdhci@4f80000 {
+		compatible = "arasan,sdhci-8.9a";
+		reg = <0x00 0x04f80000 0x00 0x1000>;
+		interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
+		power-domains = <&k3_pds 90>;
+		clock-names = "clk_xin", "clk_ahb";
+		clocks = <&k3_clks 90 1>, <&k3_clks 90 0>;
+		assigned-clocks = <&k3_clks 90 1>;
+		assigned-clock-parents = <&k3_clks 90 2>;
+		voltage-ranges = <3300 3300>;
+		non-removable;
+	};
+
+	main_sdhci1: sdhci@4fb0000 {
+		compatible = "arasan,sdhci-8.9a";
+		reg = <0x00 0x04fb0000 0x00 0x1000>;
+		interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
+		power-domains = <&k3_pds 91>;
+		clock-names = "clk_xin", "clk_ahb";
+		clocks = <&k3_clks 91 1>, <&k3_clks 91 6>;
+		assigned-clocks = <&k3_clks 91 1>;
+		assigned-clock-parents = <&k3_clks 91 3>;
+		voltage-ranges = <3300 3300>;
+		non-removable;
+	};
 };
