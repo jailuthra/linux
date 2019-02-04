@@ -1801,8 +1801,7 @@ static void dispc7_vp_init(struct dispc_device *dispc)
 
 	/* Enable the gamma Shadow bit-field for all VPs*/
 	for (i = 0; i < dispc->feat->num_vps; i++)
-		// XXX: gamma tables temporarily disabled, write 1 to enable
-		VP_REG_FLD_MOD(dispc, i, DISPC_VP_CONFIG, 0, 2, 2);
+		VP_REG_FLD_MOD(dispc, i, DISPC_VP_CONFIG, 1, 2, 2);
 }
 
 static void dispc7_initial_config(struct dispc_device *dispc)
