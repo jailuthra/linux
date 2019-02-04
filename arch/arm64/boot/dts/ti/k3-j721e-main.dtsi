@@ -187,7 +187,10 @@
 	dss: dss@04a00000 {
 		compatible = "ti,j721e-dss";
 		reg =
-			<0x00 0x04a00000 0x00 0x10000>, /* common */
+			<0x00 0x04a00000 0x00 0x10000>, /* common_m */
+			<0x00 0x04a10000 0x00 0x10000>, /* common_s0*/
+			<0x00 0x04b00000 0x00 0x10000>, /* common_s1*/
+			<0x00 0x04b10000 0x00 0x10000>, /* common_s2*/
 
 			<0x00 0x04a20000 0x00 0x10000>, /* vidl1 */
 			<0x00 0x04a30000 0x00 0x10000>, /* vidl2 */
@@ -205,7 +208,8 @@
 			<0x00 0x04ae0000 0x00 0x10000>, /* vp4 */
 			<0x00 0x04af0000 0x00 0x10000>; /* wb */
 
-		reg-names = "common",
+		reg-names = "common_m", "common_s0",
+			"common_s1", "common_s2",
 			"vidl1", "vidl2","vid1","vid2",
 			"ovr1", "ovr2", "ovr3", "ovr4",
 			"vp1", "vp2", "vp3", "vp4",
@@ -218,7 +222,14 @@
 				<&k3_clks 148 17>;
 		clock-names = "fck", "vp1", "vp2", "vp3", "vp4";
 
-		interrupts = <GIC_SPI 602 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 602 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 603 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 604 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 605 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "common_m",
+				  "common_s0",
+				  "common_s1",
+				  "common_s2";
 
 		status = "disabled";
 
