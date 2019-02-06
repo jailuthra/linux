@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2019 Texas Instruments Incorporated - http://www.ti.com/
+ */
+
+/dts-v1/;
+/plugin/;
+
+&reserved_memory {
+	/*
+	 * Reserve for Jailhouse hypervisor firmware and inmates.
+	 * Must be in sync with jailhouse cell configurations.
+	 */
+	hyp_mem: jailhouse@cfb00000 {
+		reg = <0x0 0xcfb00000 0x0 0x20500000>;
+		alignment = <0x1000>;
+		no-map;
+	};
+};
