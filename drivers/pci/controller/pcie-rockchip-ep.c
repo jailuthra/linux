@@ -121,7 +121,7 @@ static void rockchip_pcie_prog_ep_ob_atu(struct rockchip_pcie *rockchip, u8 fn,
 			    ROCKCHIP_PCIE_AT_OB_REGION_CPU_ADDR1(r));
 }
 
-static int rockchip_pcie_ep_write_header(struct pci_epc *epc, u8 fn,
+static int rockchip_pcie_ep_write_header(struct pci_epc *epc, u8 fn, u8 vf,
 					 struct pci_epf_header *hdr)
 {
 	struct rockchip_pcie_ep *ep = epc_get_drvdata(epc);
@@ -158,7 +158,7 @@ static int rockchip_pcie_ep_write_header(struct pci_epc *epc, u8 fn,
 	return 0;
 }
 
-static int rockchip_pcie_ep_set_bar(struct pci_epc *epc, u8 fn,
+static int rockchip_pcie_ep_set_bar(struct pci_epc *epc, u8 fn, u8 vf,
 				    struct pci_epf_bar *epf_bar)
 {
 	struct rockchip_pcie_ep *ep = epc_get_drvdata(epc);
@@ -226,7 +226,7 @@ static int rockchip_pcie_ep_set_bar(struct pci_epc *epc, u8 fn,
 	return 0;
 }
 
-static void rockchip_pcie_ep_clear_bar(struct pci_epc *epc, u8 fn,
+static void rockchip_pcie_ep_clear_bar(struct pci_epc *epc, u8 fn, u8 vf,
 				       struct pci_epf_bar *epf_bar)
 {
 	struct rockchip_pcie_ep *ep = epc_get_drvdata(epc);
@@ -255,7 +255,7 @@ static void rockchip_pcie_ep_clear_bar(struct pci_epc *epc, u8 fn,
 			    ROCKCHIP_PCIE_AT_IB_EP_FUNC_BAR_ADDR1(fn, bar));
 }
 
-static int rockchip_pcie_ep_map_addr(struct pci_epc *epc, u8 fn,
+static int rockchip_pcie_ep_map_addr(struct pci_epc *epc, u8 fn, u8 vf,
 				     phys_addr_t addr, u64 pci_addr,
 				     size_t size)
 {
@@ -283,7 +283,7 @@ static int rockchip_pcie_ep_map_addr(struct pci_epc *epc, u8 fn,
 	return 0;
 }
 
-static void rockchip_pcie_ep_unmap_addr(struct pci_epc *epc, u8 fn,
+static void rockchip_pcie_ep_unmap_addr(struct pci_epc *epc, u8 fn, u8 vf,
 					phys_addr_t addr)
 {
 	struct rockchip_pcie_ep *ep = epc_get_drvdata(epc);
@@ -307,7 +307,7 @@ static void rockchip_pcie_ep_unmap_addr(struct pci_epc *epc, u8 fn,
 	clear_bit(r, &ep->ob_region_map);
 }
 
-static int rockchip_pcie_ep_set_msi(struct pci_epc *epc, u8 fn,
+static int rockchip_pcie_ep_set_msi(struct pci_epc *epc, u8 fn, u8 vf,
 				    u8 multi_msg_cap)
 {
 	struct rockchip_pcie_ep *ep = epc_get_drvdata(epc);
@@ -328,7 +328,7 @@ static int rockchip_pcie_ep_set_msi(struct pci_epc *epc, u8 fn,
 	return 0;
 }
 
-static int rockchip_pcie_ep_get_msi(struct pci_epc *epc, u8 fn)
+static int rockchip_pcie_ep_get_msi(struct pci_epc *epc, u8 fn, u8 vf)
 {
 	struct rockchip_pcie_ep *ep = epc_get_drvdata(epc);
 	struct rockchip_pcie *rockchip = &ep->rockchip;
@@ -470,7 +470,7 @@ static int rockchip_pcie_ep_send_msi_irq(struct rockchip_pcie_ep *ep, u8 fn,
 	return 0;
 }
 
-static int rockchip_pcie_ep_raise_irq(struct pci_epc *epc, u8 fn,
+static int rockchip_pcie_ep_raise_irq(struct pci_epc *epc, u8 fn, u8 vf,
 				      enum pci_epc_irq_type type,
 				      u16 interrupt_num)
 {
@@ -498,9 +498,6 @@ static int rockchip_pcie_ep_start(struct pci_epc *epc)
 		cfg |= BIT(epf->func_no);
 
 	rockchip_pcie_write(rockchip, cfg, PCIE_CORE_PHY_FUNC_CFG);
-
-	list_for_each_entry(epf, &epc->pci_epf, list)
-		pci_epf_linkup(epf);
 
 	return 0;
 }
