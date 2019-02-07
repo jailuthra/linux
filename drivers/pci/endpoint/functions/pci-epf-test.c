@@ -50,6 +50,7 @@ struct pci_epf_test {
 	bool			linkup_notifier;
 	bool			msix_available;
 	struct delayed_work	cmd_handler;
+	size_t			align;
 };
 
 struct pci_epf_test_reg {
@@ -446,9 +447,10 @@ static int pci_epf_test_alloc_space(struct pci_epf *epf)
 	void *base;
 	int bar;
 	enum pci_barno test_reg_bar = epf_test->test_reg_bar;
+	size_t align = epf_test->align;
 
 	base = pci_epf_alloc_space(epf, sizeof(struct pci_epf_test_reg),
-				   test_reg_bar, 0);
+				   test_reg_bar, align);
 	if (!base) {
 		dev_err(dev, "Failed to allocated register space\n");
 		return -ENOMEM;
@@ -458,7 +460,7 @@ static int pci_epf_test_alloc_space(struct pci_epf *epf)
 	for (bar = BAR_0; bar <= BAR_5; bar++) {
 		if (bar == test_reg_bar)
 			continue;
-		base = pci_epf_alloc_space(epf, bar_size[bar], bar, 0);
+		base = pci_epf_alloc_space(epf, bar_size[bar], bar, align);
 		if (!base)
 			dev_err(dev, "Failed to allocate space for BAR%d\n",
 				bar);
@@ -487,6 +489,8 @@ static int pci_epf_test_bind(struct pci_epf *epf)
 	epf_test->msix_available = epc->features & EPC_FEATURE_MSIX_AVAILABLE;
 
 	epf_test->test_reg_bar = EPC_FEATURE_GET_BAR(epc->features);
+	if (epf->vfunc_no == 1)
+		epf_test->align = epc->supported_page_size;
 
 	ret = pci_epc_write_header(epc, epf->func_no, epf->vfunc_no, header);
 	if (ret) {
