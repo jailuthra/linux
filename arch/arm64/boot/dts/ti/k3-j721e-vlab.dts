@@ -6,6 +6,7 @@
 /dts-v1/;
 
 #include "k3-j721e.dtsi"
+#include <dt-bindings/pci/pci.h>
 
 / {
 	compatible =  "ti,j721e-vlab", "ti,j721e";
@@ -39,6 +40,16 @@
 &mcu_uart0 {
 	/* Wakeup UART is used by System firmware */
 	status = "disabled";
+};
+
+&pcie0 {
+       pci-mode = <PCI_MODE_RC>;
+       status = "okay";
+};
+
+&pcie1 {
+       pci-mode = <PCI_MODE_EP>;
+       status = "okay";
 };
 
 #include "k3-dss-640x480-port0-dpi.dtsi"
