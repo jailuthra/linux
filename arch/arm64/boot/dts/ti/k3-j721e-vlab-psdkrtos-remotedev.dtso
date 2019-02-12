@@ -1,0 +1,92 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source for J721E ASTC VLAB Model with DSS partitioning support
+ *
+ * Copyright (C) 2016-2018 Texas Instruments Incorporated - http://www.ti.com/
+ */
+
+/dts-v1/;
+/plugin/;
+
+&reserved_memory {
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	tiovx_shared_memory_region: tiovx-shared-memory@a9000000 {
+	        reg = <0x00 0xa9000000 0x00 0x01000000>;
+	        alignment = <0x1000>;
+	        no-map;
+	};
+};
+
+&dss {
+	status = "ok";
+
+	dss_planes: dss_planes {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/*vid1*/
+		plane@0 {
+			reg = <0>;
+			managed = <0>;
+		};
+
+		/*vidl1*/
+		plane@1 {
+			reg = <1>;
+			managed = <1>;
+		};
+
+		/*vid2*/
+		plane@2 {
+			reg = <2>;
+			managed = <0>;
+		};
+
+		/*vidl2*/
+		plane@3 {
+			reg = <3>;
+			managed = <0>;
+		};
+	};
+
+	dss_vps: dss_vps {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vp@0 {
+			reg = <0>;
+			managed = <1>;
+		};
+
+		vp@1 {
+			reg = <1>;
+			managed = <0>;
+		};
+
+		vp@2 {
+			reg = <2>;
+			managed = <0>;
+		};
+
+		vp@3 {
+			reg = <3>;
+			managed = <0>;
+		};
+	};
+
+	dss_commons: dss_commons {
+		#address-cells = <0>;
+		#size-cells = <0>;
+
+		interrupt-handling-common = <1>;
+	};
+
+	dss_remote: dss_remote {
+		#address-cells = <0>;
+		#size-cells = <0>;
+
+		remote-name = "r5f-tidss";
+	};
+};

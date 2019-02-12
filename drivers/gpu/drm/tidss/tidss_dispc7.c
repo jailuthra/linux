@@ -37,6 +37,10 @@ static const struct dispc7_features dispc7_am6_feats = {
 	.min_pclk = 1000,
 	.max_pclk = 200000000,
 
+	.num_commons = 1,
+	.common_name = { "common" },
+	.common_cfg = { true },
+
 	.scaling = {
 		.in_width_max_5tap_rgb = 1280,
 		.in_width_max_3tap_rgb = 2560,
@@ -78,6 +82,10 @@ static const struct dispc7_features dispc7_am6_feats = {
 static const struct dispc7_features dispc7_j721e_feats = {
 	.min_pclk = 1000,
 	.max_pclk = 200000000,
+
+	.num_commons = 4,
+	.common_name = { "common_m", "common_s0", "common_s1", "common_s2" },
+	.common_cfg = { true, false, false, false },
 
 	/* XXX: Scaling features are copied from AM6 and should be checked */
 	.scaling = {
@@ -135,11 +143,11 @@ static const struct of_device_id dispc7_of_table[] = {
 #define FLD_MOD(orig, val, start, end) \
 	(((orig) & ~FLD_MASK(start, end)) | FLD_VAL(val, start, end))
 
-#define REG_GET(dispc, idx, start, end) \
-	FLD_GET(dispc7_read(dispc, idx), start, end)
+#define CFG_REG_GET(dispc, idx, start, end) \
+	FLD_GET(dispc7_cfg_read(dispc, idx), start, end)
 
-#define REG_FLD_MOD(dispc, idx, val, start, end) \
-	dispc7_write(dispc, idx, FLD_MOD(dispc7_read(dispc, idx), val, start, end))
+#define CFG_REG_FLD_MOD(dispc, idx, val, start, end) \
+	dispc7_cfg_write(dispc, idx, FLD_MOD(dispc7_cfg_read(dispc, idx), val, start, end))
 
 #define VID_REG_GET(dispc, hw_plane, idx, start, end) \
 	FLD_GET(dispc7_vid_read(dispc, hw_plane, idx), start, end)
@@ -228,16 +236,24 @@ struct dispc_device {
 	struct tidss_device *tidss;
 	struct device *dev;
 
-	void __iomem *base_common;
+	void __iomem *base_common_cfg;
+	void __iomem *base_common_intr;
 	void __iomem *base_vid[DISPC7_MAX_PLANES];
 	void __iomem *base_ovr[DISPC7_MAX_PORTS];
 	void __iomem *base_vp[DISPC7_MAX_PORTS];
+
+	int irq;
+
+	bool has_cfg_common;
 
 	struct regmap *syscon;
 
 	struct clk *vp_clk[DISPC7_MAX_PORTS];
 
 	const struct dispc7_features *feat;
+
+	bool vp_managed[DISPC7_MAX_PORTS];
+	bool plane_managed[DISPC7_MAX_PLANES];
 
 	struct clk *fclk;
 
@@ -248,20 +264,66 @@ struct dispc_device {
 	struct dss_plane_data plane_data[DISPC7_MAX_PLANES];
 };
 
+#define dispc_for_each_managed_vp(dispc, hw_videoport) \
+	for ((hw_videoport) = 0; (hw_videoport) < (dispc)->feat->num_vps; (hw_videoport)++) \
+		if ((dispc)->vp_managed[(hw_videoport)])
 
-static void dispc7_write(struct dispc_device *dispc, u16 reg, u32 val)
+#define dispc_for_each_managed_plane(dispc, hw_plane) \
+	for ((hw_plane) = 0; (hw_plane) < (dispc)->feat->num_planes; (hw_plane)++) \
+		if ((dispc)->plane_managed[(hw_plane)])
+
+static u32 dispc7_get_next_managed_plane(struct dispc_device *dispc,
+					 u32 *plane_idx)
 {
-	iowrite32(val, dispc->base_common + reg);
+	while (*plane_idx < dispc->feat->num_planes) {
+		u32 plane_id = dispc->feat->vid_order[(*plane_idx)++];
+
+		if (dispc->plane_managed[plane_id])
+			return plane_id;
+	}
+
+	return dispc->feat->num_planes;
 }
 
-static u32 dispc7_read(struct dispc_device *dispc, u16 reg)
+static inline void check_plane_access(struct dispc_device *dispc, u32 hw_plane)
 {
-	return ioread32(dispc->base_common + reg);
+#if defined(CONFIG_DRM_TIDSS_DSS7_DEBUG_PARTITION)
+	WARN_ON(!dispc->plane_managed[hw_plane]);
+#endif
+}
+
+static inline void check_vp_access(struct dispc_device *dispc, u32 hw_videoport)
+{
+#if defined(CONFIG_DRM_TIDSS_DSS7_DEBUG_PARTITION)
+	WARN_ON(!dispc->vp_managed[hw_videoport]);
+#endif
+}
+
+static void dispc7_intr_write(struct dispc_device *dispc, u16 reg, u32 val)
+{
+	iowrite32(val, dispc->base_common_intr + reg);
+}
+
+static u32 dispc7_intr_read(struct dispc_device *dispc, u16 reg)
+{
+	return ioread32(dispc->base_common_intr + reg);
+}
+
+static void dispc7_cfg_write(struct dispc_device *dispc, u16 reg, u32 val)
+{
+	iowrite32(val, dispc->base_common_cfg + reg);
+}
+
+static u32 dispc7_cfg_read(struct dispc_device *dispc, u16 reg)
+{
+	return ioread32(dispc->base_common_cfg + reg);
 }
 
 static void dispc7_vid_write(struct dispc_device *dispc, u32 hw_plane, u16 reg, u32 val)
 {
 	void __iomem *base = dispc->base_vid[hw_plane];
+
+	check_plane_access(dispc, hw_plane);
 
 	iowrite32(val, base + reg);
 }
@@ -270,12 +332,16 @@ static u32 dispc7_vid_read(struct dispc_device *dispc, u32 hw_plane, u16 reg)
 {
 	void __iomem *base = dispc->base_vid[hw_plane];
 
+	check_plane_access(dispc, hw_plane);
+
 	return ioread32(base + reg);
 }
 
 static void dispc7_ovr_write(struct dispc_device *dispc, u32 hw_videoport, u16 reg, u32 val)
 {
 	void __iomem *base = dispc->base_ovr[hw_videoport];
+
+	check_vp_access(dispc, hw_videoport);
 
 	iowrite32(val, base + reg);
 }
@@ -284,6 +350,8 @@ static u32 dispc7_ovr_read(struct dispc_device *dispc, u32 hw_videoport, u16 reg
 {
 	void __iomem *base = dispc->base_ovr[hw_videoport];
 
+	check_vp_access(dispc, hw_videoport);
+
 	return ioread32(base + reg);
 }
 
@@ -291,12 +359,16 @@ static void dispc7_vp_write(struct dispc_device *dispc, u32 hw_videoport, u16 re
 {
 	void __iomem *base = dispc->base_vp[hw_videoport];
 
+	check_vp_access(dispc, hw_videoport);
+
 	iowrite32(val, base + reg);
 }
 
 static u32 dispc7_vp_read(struct dispc_device *dispc, u32 hw_videoport, u16 reg)
 {
 	void __iomem *base = dispc->base_vp[hw_videoport];
+
+	check_vp_access(dispc, hw_videoport);
 
 	return ioread32(base + reg);
 }
@@ -378,7 +450,9 @@ static u32 dispc7_vid_irq_to_raw(u64 vidstat, u32 hw_plane)
 static u64 dispc7_vp_read_irqstatus(struct dispc_device *dispc,
 				    u32 hw_videoport)
 {
-	u32 stat = dispc7_read(dispc, DISPC_VP_IRQSTATUS(hw_videoport));
+	u32 stat = dispc7_intr_read(dispc, DISPC_VP_IRQSTATUS(hw_videoport));
+
+	check_vp_access(dispc, hw_videoport);
 
 	return dispc7_vp_irq_from_raw(stat, hw_videoport);
 }
@@ -388,13 +462,17 @@ static void dispc7_vp_write_irqstatus(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_vp_irq_to_raw(vpstat, hw_videoport);
 
-	dispc7_write(dispc, DISPC_VP_IRQSTATUS(hw_videoport), stat);
+	check_vp_access(dispc, hw_videoport);
+
+	dispc7_intr_write(dispc, DISPC_VP_IRQSTATUS(hw_videoport), stat);
 }
 
 static u64 dispc7_vid_read_irqstatus(struct dispc_device *dispc,
 				     u32 hw_plane)
 {
-	u32 stat = dispc7_read(dispc, DISPC_VID_IRQSTATUS(hw_plane));
+	u32 stat = dispc7_intr_read(dispc, DISPC_VID_IRQSTATUS(hw_plane));
+
+	check_plane_access(dispc, hw_plane);
 
 	return dispc7_vid_irq_from_raw(stat, hw_plane);
 }
@@ -404,13 +482,17 @@ static void dispc7_vid_write_irqstatus(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_vid_irq_to_raw(vidstat, hw_plane);
 
-	dispc7_write(dispc, DISPC_VID_IRQSTATUS(hw_plane), stat);
+	check_plane_access(dispc, hw_plane);
+
+	dispc7_intr_write(dispc, DISPC_VID_IRQSTATUS(hw_plane), stat);
 }
 
 static u64 dispc7_vp_read_irqenable(struct dispc_device *dispc,
 				    u32 hw_videoport)
 {
-	u32 stat = dispc7_read(dispc, DISPC_VP_IRQENABLE(hw_videoport));
+	u32 stat = dispc7_intr_read(dispc, DISPC_VP_IRQENABLE(hw_videoport));
+
+	check_vp_access(dispc, hw_videoport);
 
 	return dispc7_vp_irq_from_raw(stat, hw_videoport);
 }
@@ -420,14 +502,18 @@ static void dispc7_vp_write_irqenable(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_vp_irq_to_raw(vpstat, hw_videoport);
 
-	dispc7_write(dispc, DISPC_VP_IRQENABLE(hw_videoport), stat);
+	check_vp_access(dispc, hw_videoport);
+
+	dispc7_intr_write(dispc, DISPC_VP_IRQENABLE(hw_videoport), stat);
 }
 
 
 static u64 dispc7_vid_read_irqenable(struct dispc_device *dispc,
 				     u32 hw_plane)
 {
-	u32 stat = dispc7_read(dispc, DISPC_VID_IRQENABLE(hw_plane));
+	u32 stat = dispc7_intr_read(dispc, DISPC_VID_IRQENABLE(hw_plane));
+
+	check_plane_access(dispc, hw_plane);
 
 	return dispc7_vid_irq_from_raw(stat, hw_plane);
 }
@@ -437,7 +523,9 @@ static void dispc7_vid_write_irqenable(struct dispc_device *dispc,
 {
 	u32 stat = dispc7_vid_irq_to_raw(vidstat, hw_plane);
 
-	dispc7_write(dispc, DISPC_VID_IRQENABLE(hw_plane), stat);
+	check_plane_access(dispc, hw_plane);
+
+	dispc7_intr_write(dispc, DISPC_VID_IRQENABLE(hw_plane), stat);
 }
 
 static void dispc7_clear_irqstatus(struct dispc_device *dispc, u64 clearmask)
@@ -445,22 +533,22 @@ static void dispc7_clear_irqstatus(struct dispc_device *dispc, u64 clearmask)
 	unsigned int i;
 	u32 top_clear = 0;
 
-	for (i = 0; i < dispc->feat->num_vps; ++i) {
+	dispc_for_each_managed_vp(dispc, i) {
 		if (clearmask & DSS_IRQ_VP_MASK(i)) {
 			dispc7_vp_write_irqstatus(dispc, i, clearmask);
 			top_clear |= BIT(i);
 		}
 	}
-	for (i = 0; i < dispc->feat->num_planes; ++i) {
+	dispc_for_each_managed_plane(dispc, i) {
 		if (clearmask & DSS_IRQ_PLANE_MASK(i)) {
 			dispc7_vid_write_irqstatus(dispc, i, clearmask);
 			top_clear |= BIT(4 + i);
 		}
 	}
-	dispc7_write(dispc, DISPC_IRQSTATUS, top_clear);
+	dispc7_intr_write(dispc, DISPC_IRQSTATUS, top_clear);
 
 	/* Flush posted writes */
-	dispc7_read(dispc, DISPC_IRQSTATUS);
+	dispc7_intr_read(dispc, DISPC_IRQSTATUS);
 }
 
 static u64 dispc7_read_and_clear_irqstatus(struct dispc_device *dispc)
@@ -468,10 +556,10 @@ static u64 dispc7_read_and_clear_irqstatus(struct dispc_device *dispc)
 	u64 status = 0;
 	unsigned int i;
 
-	for (i = 0; i < dispc->feat->num_vps; ++i)
+	dispc_for_each_managed_vp(dispc, i)
 		status |= dispc7_vp_read_irqstatus(dispc, i);
 
-	for (i = 0; i < dispc->feat->num_planes; ++i)
+	dispc_for_each_managed_plane(dispc, i)
 		status |= dispc7_vid_read_irqstatus(dispc, i);
 
 	dispc7_clear_irqstatus(dispc, status);
@@ -484,10 +572,10 @@ static u64 dispc7_read_irqenable(struct dispc_device *dispc)
 	u64 enable = 0;
 	unsigned int i;
 
-	for (i = 0; i < dispc->feat->num_vps; ++i)
+	dispc_for_each_managed_vp(dispc, i)
 		enable |= dispc7_vp_read_irqenable(dispc, i);
 
-	for (i = 0; i < dispc->feat->num_planes; ++i)
+	dispc_for_each_managed_plane(dispc, i)
 		enable |= dispc7_vid_read_irqenable(dispc, i);
 
 	return enable;
@@ -504,7 +592,7 @@ static void dispc7_write_irqenable(struct dispc_device *dispc, u64 mask)
 	/* clear the irqstatus for newly enabled irqs */
 	dispc7_clear_irqstatus(dispc, (old_mask ^ mask) & mask);
 
-	for (i = 0; i < dispc->feat->num_vps; ++i) {
+	dispc_for_each_managed_vp(dispc, i) {
 		dispc7_vp_write_irqenable(dispc, i, mask);
 		if (mask & DSS_IRQ_VP_MASK(i))
 			main_enable |= BIT(i);		/* VP IRQ */
@@ -512,7 +600,7 @@ static void dispc7_write_irqenable(struct dispc_device *dispc, u64 mask)
 			main_disable |= BIT(i);		/* VP IRQ */
 	}
 
-	for (i = 0; i < dispc->feat->num_planes; ++i) {
+	dispc_for_each_managed_plane(dispc, i) {
 		dispc7_vid_write_irqenable(dispc, i, mask);
 		if (mask & DSS_IRQ_PLANE_MASK(i))
 			main_enable |= BIT(i + 4);	/* VID IRQ */
@@ -521,13 +609,13 @@ static void dispc7_write_irqenable(struct dispc_device *dispc, u64 mask)
 	}
 
 	if (main_enable)
-		dispc7_write(dispc, DISPC_IRQENABLE_SET, main_enable);
+		dispc7_intr_write(dispc, DISPC_IRQENABLE_SET, main_enable);
 
 	if (main_disable)
-		dispc7_write(dispc, DISPC_IRQENABLE_CLR, main_disable);
+		dispc7_intr_write(dispc, DISPC_IRQENABLE_CLR, main_disable);
 
 	/* Flush posted writes */
-	dispc7_read(dispc, DISPC_IRQENABLE_SET);
+	dispc7_intr_read(dispc, DISPC_IRQENABLE_SET);
 }
 
 enum dispc7_oldi_mode { SPWG_18 = 0, JEIDA_24 = 1, SPWG_24 = 2 };
@@ -637,11 +725,11 @@ static void dispc7_enable_oldi(struct dispc_device *dispc, u32 hw_videoport,
 
 	dispc7_vp_write(dispc, hw_videoport, DISPC_VP_DSS_OLDI_CFG, oldi_cfg);
 
-	while (!(oldi_reset_bit & dispc7_read(dispc, DSS_SYSSTATUS)) &&
+	while (!(oldi_reset_bit & dispc7_cfg_read(dispc, DSS_SYSSTATUS)) &&
 	       count < 10000)
 		count++;
 
-	if (!(oldi_reset_bit & dispc7_read(dispc, DSS_SYSSTATUS)))
+	if (!(oldi_reset_bit & dispc7_cfg_read(dispc, DSS_SYSSTATUS)))
 		dev_warn(dispc->dev, "%s: timeout waiting OLDI reset done\n",
 			 __func__);
 }
@@ -664,7 +752,8 @@ static void dispc7_vp_prepare(struct dispc_device *dispc, u32 hw_videoport,
 	if (dispc->feat->vp_bus_type[hw_videoport] == DISPC7_VP_OLDI) {
 		dispc7_oldi_tx_power(dispc, true);
 
-		dispc7_enable_oldi(dispc, hw_videoport, fmt);
+		if (dispc->has_cfg_common)
+			dispc7_enable_oldi(dispc, hw_videoport, fmt);
 	}
 }
 
@@ -1771,12 +1860,16 @@ static void dispc7_mflag_setup(struct dispc_device *dispc)
 {
 	unsigned int i;
 
-	/* MFLAG_CTRL = ENABLED */
-	REG_FLD_MOD(dispc, DISPC_GLOBAL_MFLAG_ATTRIBUTE, 2, 1, 0);
-	/* MFLAG_START = MFLAGNORMALSTARTMODE */
-	REG_FLD_MOD(dispc, DISPC_GLOBAL_MFLAG_ATTRIBUTE, 0, 6, 6);
+	if (!dispc->has_cfg_common)
+		goto no_cfg;
 
-	for (i = 0; i < dispc->feat->num_planes; i++)
+	/* MFLAG_CTRL = ENABLED */
+	CFG_REG_FLD_MOD(dispc, DISPC_GLOBAL_MFLAG_ATTRIBUTE, 2, 1, 0);
+	/* MFLAG_START = MFLAGNORMALSTARTMODE */
+	CFG_REG_FLD_MOD(dispc, DISPC_GLOBAL_MFLAG_ATTRIBUTE, 0, 6, 6);
+
+no_cfg:
+	dispc_for_each_managed_plane(dispc, i)
 		dispc7_vid_mflag_setup(dispc, i);
 }
 
@@ -1787,7 +1880,7 @@ static void dispc7_plane_init(struct dispc_device *dispc)
 	dev_dbg(dispc->dev, "%s()\n", __func__);
 
 	/* FIFO underflows when scaling if preload is not high enough */
-	for (i = 0; i < dispc->feat->num_planes; i++)
+	dispc_for_each_managed_plane(dispc, i)
 		if (!dispc->feat->vid_lite[i])
 			VID_REG_FLD_MOD(dispc, i, DISPC_VID_PRELOAD,
 					0x7FF, 11, 0);
@@ -1800,7 +1893,7 @@ static void dispc7_vp_init(struct dispc_device *dispc)
 	dev_dbg(dispc->dev, "%s()\n", __func__);
 
 	/* Enable the gamma Shadow bit-field for all VPs*/
-	for (i = 0; i < dispc->feat->num_vps; i++)
+	dispc_for_each_managed_vp(dispc, i)
 		VP_REG_FLD_MOD(dispc, i, DISPC_VP_CONFIG, 1, 2, 2);
 }
 
@@ -1862,7 +1955,7 @@ static void dispc7_restore_gamma_tables(struct dispc_device *dispc)
 
 	dev_dbg(dispc->dev, "%s()\n", __func__);
 
-	for (i = 0; i < dispc->feat->num_vps; i++)
+	dispc_for_each_managed_vp(dispc, i)
 		dispc7_vp_write_gamma_table(dispc, i);
 }
 
@@ -2014,7 +2107,7 @@ static int dispc7_init_gamma_tables(struct dispc_device *dispc)
 
 	dev_dbg(dispc->dev, "%s()\n", __func__);
 
-	for (i = 0; i < dispc->feat->num_vps; i++)
+	dispc_for_each_managed_vp(dispc, i)
 		dispc7_vp_set_gamma(dispc, i, NULL, 0);
 
 	return 0;
@@ -2053,25 +2146,29 @@ static int dispc7_runtime_resume(struct dispc_device *dispc)
 
 	clk_prepare_enable(dispc->fclk);
 
-	if (REG_GET(dispc, DSS_SYSSTATUS, 0, 0) == 0)
+	if (!dispc->has_cfg_common)
+		goto no_cfg;
+
+	if (CFG_REG_GET(dispc, DSS_SYSSTATUS, 0, 0) == 0)
 		dev_warn(dispc->dev, "DSS FUNC RESET not done!\n");
 
 	dev_dbg(dispc->dev, "OMAP DSS7 rev 0x%x\n",
-		dispc7_read(dispc, DSS_REVISION));
+		dispc7_cfg_read(dispc, DSS_REVISION));
 
 	dev_dbg(dispc->dev, "VP RESETDONE %d,%d,%d\n",
-		REG_GET(dispc, DSS_SYSSTATUS, 1, 1),
-		REG_GET(dispc, DSS_SYSSTATUS, 2, 2),
-		REG_GET(dispc, DSS_SYSSTATUS, 3, 3));
+		CFG_REG_GET(dispc, DSS_SYSSTATUS, 1, 1),
+		CFG_REG_GET(dispc, DSS_SYSSTATUS, 2, 2),
+		CFG_REG_GET(dispc, DSS_SYSSTATUS, 3, 3));
 
 	dev_dbg(dispc->dev, "OLDI RESETDONE %d,%d,%d\n",
-		REG_GET(dispc, DSS_SYSSTATUS, 5, 5),
-		REG_GET(dispc, DSS_SYSSTATUS, 6, 6),
-		REG_GET(dispc, DSS_SYSSTATUS, 7, 7));
+		CFG_REG_GET(dispc, DSS_SYSSTATUS, 5, 5),
+		CFG_REG_GET(dispc, DSS_SYSSTATUS, 6, 6),
+		CFG_REG_GET(dispc, DSS_SYSSTATUS, 7, 7));
 
 	dev_dbg(dispc->dev, "DISPC IDLE %d\n",
-		REG_GET(dispc, DSS_SYSSTATUS, 9, 9));
+		CFG_REG_GET(dispc, DSS_SYSSTATUS, 9, 9));
 
+no_cfg:
 	dispc7_initial_config(dispc);
 
 	dispc7_restore_gamma_tables(dispc);
@@ -2094,19 +2191,18 @@ static int dispc7_modeset_init(struct dispc_device *dispc)
 		u32 enc_type;
 	};
 
-	u32 max_vps = dispc->feat->num_vps;
-	u32 max_planes = dispc->feat->num_planes;
-
 	struct pipe pipes[DISPC7_MAX_PORTS];
 	u32 num_pipes = 0;
+	u32 plane_idx = 0;
 	u32 crtc_mask;
 
 	for (i = 0; i < ARRAY_SIZE(fourccs); ++i)
 		fourccs[i] = dispc7_color_formats[i].fourcc;
 
 	/* first find all the connected panels & bridges */
+	/* exclude the VPs that are not managed.         */
 
-	for (i = 0; i < max_vps; i++) {
+	dispc_for_each_managed_vp(dispc, i) {
 		struct drm_panel *panel;
 		struct drm_bridge *bridge;
 		u32 enc_type = DRM_MODE_ENCODER_NONE;
@@ -2164,8 +2260,14 @@ static int dispc7_modeset_init(struct dispc_device *dispc)
 		struct tidss_plane *tplane;
 		struct tidss_crtc *tcrtc;
 		struct drm_encoder *enc;
-		u32 hw_plane_id = dispc->feat->vid_order[tidss->num_planes];
+		u32 hw_plane_id;
 		int ret;
+
+		hw_plane_id = dispc7_get_next_managed_plane(dispc, &plane_idx);
+		if (hw_plane_id == dispc->feat->num_planes) {
+			dev_err(tidss->dev, "no managed HW plane found for CRTC\n");
+			return -EINVAL;
+		}
 
 		tplane = tidss_plane_create(tidss, hw_plane_id,
 					    DRM_PLANE_TYPE_PRIMARY, crtc_mask,
@@ -2174,6 +2276,8 @@ static int dispc7_modeset_init(struct dispc_device *dispc)
 			dev_err(tidss->dev, "plane create failed\n");
 			return PTR_ERR(tplane);
 		}
+
+		hw_plane_id++;
 
 		tidss->planes[tidss->num_planes++] = &tplane->plane;
 
@@ -2202,9 +2306,13 @@ static int dispc7_modeset_init(struct dispc_device *dispc)
 
 	/* create overlay planes of the leftover planes */
 
-	while (tidss->num_planes < max_planes) {
+	while (tidss->num_planes < dispc->feat->num_planes) {
 		struct tidss_plane *tplane;
-		u32 hw_plane_id = dispc->feat->vid_order[tidss->num_planes];
+		u32 hw_plane_id;
+
+		hw_plane_id = dispc7_get_next_managed_plane(dispc, &plane_idx);
+		if (hw_plane_id == dispc->feat->num_planes)
+			break;
 
 		tplane = tidss_plane_create(tidss, hw_plane_id,
 					    DRM_PLANE_TYPE_OVERLAY, crtc_mask,
@@ -2215,10 +2323,17 @@ static int dispc7_modeset_init(struct dispc_device *dispc)
 			return PTR_ERR(tplane);
 		}
 
+		hw_plane_id++;
+
 		tidss->planes[tidss->num_planes++] = &tplane->plane;
 	}
 
 	return 0;
+}
+
+static int dispc7_get_irq(struct dispc_device *dispc)
+{
+	return dispc->irq;
 }
 
 static void dispc7_remove(struct dispc_device *dispc)
@@ -2268,6 +2383,8 @@ static const struct tidss_dispc_ops dispc7_ops = {
 	.remove = dispc7_remove,
 
 	.modeset_init = dispc7_modeset_init,
+
+	.get_irq = dispc7_get_irq,
 };
 
 static int dispc7_iomap_resource(struct platform_device *pdev, const char *name,
@@ -2293,13 +2410,244 @@ static int dispc7_iomap_resource(struct platform_device *pdev, const char *name,
 	return 0;
 }
 
+static int dispc_j721e_get_managed_common_intr(struct dispc_device *dispc,
+		u32 *intr)
+{
+	int ret;
+	struct tidss_device *tidss = dispc->tidss;
+	struct device *dev = tidss->dev;
+	struct device_node *dss_commons_node;
+	u32 value;
+
+	dss_commons_node = of_get_child_by_name(dev->of_node, "dss_commons");
+	if (!dss_commons_node) {
+		*intr = 0;
+		return 0;
+	}
+
+	ret = of_property_read_u32(dss_commons_node, "interrupt-handling-common", &value);
+	if (ret)
+		goto out;
+
+	*intr = value;
+
+out:
+	of_node_put(dss_commons_node);
+	return ret;
+}
+
+static int dispc_j721e_get_managed_common_cfg(struct dispc_device *dispc,
+		u32 *cfg)
+{
+	int ret;
+	struct tidss_device *tidss = dispc->tidss;
+	struct device *dev = tidss->dev;
+	struct device_node *dss_commons_node;
+	u32 value;
+
+	dss_commons_node = of_get_child_by_name(dev->of_node, "dss_commons");
+	if (!dss_commons_node) {
+		*cfg = 0;
+		return 0;
+	}
+
+	ret = of_property_read_u32(dss_commons_node, "configuration-common", &value);
+	if (ret)
+		goto out;
+
+	*cfg = value;
+
+out:
+	of_node_put(dss_commons_node);
+	return ret;
+}
+
+static int dispc7_j721e_setup_commons(struct dispc_device *dispc)
+{
+	int r;
+	struct tidss_device *tidss = dispc->tidss;
+	struct device *dev = tidss->dev;
+	struct platform_device *pdev = to_platform_device(dev);
+	u32 common_intr_id, common_cfg_id;
+
+	r = dispc_j721e_get_managed_common_intr(dispc, &common_intr_id);
+	if (r)
+		return -EINVAL;
+
+	r = dispc7_iomap_resource(pdev, dispc->feat->common_name[common_intr_id],
+			&dispc->base_common_intr);
+	if (r)
+		return r;
+
+	dispc->irq = platform_get_irq(pdev, common_intr_id);
+	if (dispc->irq < 0)
+		return dispc->irq;
+
+	if (tidss->rdev) {
+		dev_dbg(dev, "%s: continuing with remote device\n", __func__);
+		dispc->has_cfg_common = false;
+		return 0;
+	}
+
+	r = dispc_j721e_get_managed_common_cfg(dispc, &common_cfg_id);
+	if (r) {
+		dev_err(dev, "%s: could not find configuration device\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!dispc->feat->common_cfg[common_cfg_id]) {
+		dev_err(dev, "%s: cannot assign common_sx to cfg\n", __func__);
+		return -EINVAL;
+	}
+
+	if (common_intr_id == common_cfg_id)
+		dispc->base_common_cfg = dispc->base_common_intr;
+	else {
+		r = dispc7_iomap_resource(pdev, dispc->feat->common_name[common_cfg_id],
+				&dispc->base_common_cfg);
+		if (r)
+			return r;
+	}
+
+	dispc->has_cfg_common = true;
+
+	return 0;
+}
+
+static int dispc7_am6_setup_commons(struct dispc_device *dispc)
+{
+	int r;
+	struct tidss_device *tidss = dispc->tidss;
+	struct platform_device *pdev = to_platform_device(tidss->dev);
+
+	r = dispc7_iomap_resource(pdev, "common", &dispc->base_common_cfg);
+	if (r)
+		return r;
+
+	dispc->base_common_intr = dispc->base_common_cfg;
+
+	dispc->irq = platform_get_irq(pdev, 0);
+	if (dispc->irq < 0)
+		return dispc->irq;
+
+	dispc->has_cfg_common = true;
+
+	return 0;
+}
+
+static int dispc7_setup_commons(struct dispc_device *dispc)
+{
+	switch (dispc->feat->subrev) {
+	case DSS7_AM6:
+		return dispc7_am6_setup_commons(dispc);
+	case DSS7_J721E:
+		return dispc7_j721e_setup_commons(dispc);
+	default:
+		WARN_ON(1);
+		return -EINVAL;
+	}
+}
+
+static struct device_node *dispc7_of_dss_plane_for_id(struct device_node *parent, u32 id)
+{
+	struct device_node *dss_planes_node, *plane;
+
+	dss_planes_node = of_get_child_by_name(parent, "dss_planes");
+	if (!dss_planes_node)
+		return NULL;
+
+	for_each_child_of_node(dss_planes_node, plane) {
+		u32 plane_id = 0;
+
+		if (of_node_cmp(plane->name, "plane") != 0)
+			continue;
+		of_property_read_u32(plane, "reg", &plane_id);
+		if (id == plane_id)
+			break;
+	}
+
+	of_node_put(dss_planes_node);
+
+	return plane;
+}
+
+static struct device_node *dispc7_of_dss_vp_for_id(struct device_node *parent, u32 id)
+{
+	struct device_node *dss_vps_node, *vp;
+
+	dss_vps_node = of_get_child_by_name(parent, "dss_vps");
+	if (!dss_vps_node)
+		return NULL;
+
+	for_each_child_of_node(dss_vps_node, vp) {
+		u32 vp_id = 0;
+
+		if (of_node_cmp(vp->name, "vp") != 0)
+			continue;
+		of_property_read_u32(vp, "reg", &vp_id);
+		if (id == vp_id)
+			break;
+	}
+
+	of_node_put(dss_vps_node);
+
+	return vp;
+}
+
+static bool dispc7_is_plane_managed(struct tidss_device *tidss, u32 plane_id)
+{
+	struct device *dev = tidss->dev;
+	struct device_node *plane;
+	u32 managed;
+	bool ret;
+
+	plane = dispc7_of_dss_plane_for_id(dev->of_node, plane_id);
+	if (!plane)
+		return true;
+
+	ret = true;
+
+	if (of_property_read_u32(plane, "managed", &managed))
+		goto out;
+
+	if (!managed)
+		ret = false;
+
+out:
+	of_node_put(plane);
+	return ret;
+}
+
+static bool dispc7_is_vp_managed(struct tidss_device *tidss, u32 vp_id)
+{
+	struct device *dev = tidss->dev;
+	struct device_node *vp;
+	u32 managed;
+	bool ret;
+
+	vp = dispc7_of_dss_vp_for_id(dev->of_node, vp_id);
+	if (!vp)
+		return true;
+
+	ret = true;
+
+	if (of_property_read_u32(vp, "managed", &managed))
+		goto out;
+
+	if (!managed)
+		ret = false;
+
+out:
+	of_node_put(vp);
+	return ret;
+}
+
 int dispc7_init(struct tidss_device *tidss)
 {
 	struct device *dev = tidss->dev;
 	struct platform_device *pdev = to_platform_device(dev);
 	struct dispc_device *dispc;
 	const struct dispc7_features *feat;
-	const char *common_name;
 	unsigned int i;
 	int r = 0;
 
@@ -2318,22 +2666,28 @@ int dispc7_init(struct tidss_device *tidss)
 	switch (feat->subrev) {
 	case DSS7_AM6:
 		dispc7_common_regmap = tidss_am6_common_regs;
-		common_name = "common";
 		break;
 	case DSS7_J721E:
 		dispc7_common_regmap = tidss_j721e_common_regs;
-		common_name = "common_m";
 		break;
 	default:
 		WARN_ON(1);
 		return -EINVAL;
 	}
 
-	r = dispc7_iomap_resource(pdev, common_name, &dispc->base_common);
-	if (r)
+	r = dispc7_setup_commons(dispc);
+	if (r) {
+		dev_err(dev, "%s: could not setup common regions\n", __func__);
 		return r;
+	}
 
-	for (i = 0; i < dispc->feat->num_planes; i++) {
+	for (i = 0; i < dispc->feat->num_vps; i++)
+		dispc->vp_managed[i] = dispc7_is_vp_managed(tidss, i);
+
+	for (i = 0; i < dispc->feat->num_planes; i++)
+		dispc->plane_managed[i] = dispc7_is_plane_managed(tidss, i);
+
+	dispc_for_each_managed_plane(dispc, i) {
 		r = dispc7_iomap_resource(pdev, dispc->feat->vid_name[i],
 					  &dispc->base_vid[i]);
 		dev_dbg(dev, "%s: %u %s %d\n", __func__,
@@ -2342,7 +2696,7 @@ int dispc7_init(struct tidss_device *tidss)
 			return r;
 	}
 
-	for (i = 0; i < dispc->feat->num_vps; i++) {
+	dispc_for_each_managed_vp(dispc, i) {
 		struct clk *clk;
 
 		r = dispc7_iomap_resource(pdev, dispc->feat->ovr_name[i],

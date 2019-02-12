@@ -117,6 +117,58 @@ static const struct dev_pm_ops tidss_pm_ops = {
  * Platform driver
  */
 
+static int tidss_init_remote_device(struct tidss_device *tidss)
+{
+	int ret;
+	struct device *dev = tidss->dev;
+	struct device_node *dss_remote_dev_node;
+	const char *name;
+
+	dss_remote_dev_node = of_get_child_by_name(dev->of_node, "dss_remote");
+	if (!dss_remote_dev_node)
+		return 0;
+
+	if (!of_find_property(dss_remote_dev_node, "remote-name", NULL))
+		return 0;
+
+	ret = of_property_read_string(dss_remote_dev_node, "remote-name", &name);
+	if (ret) {
+		dev_err(dev, "%s: could not read remote-name property\n", __func__);
+		goto out;
+	}
+
+	tidss->rdev = rpmsg_remotedev_get_named_device(name);
+	if (!tidss->rdev) {
+		ret = -EPROBE_DEFER;
+		goto out;
+	} else if (IS_ERR(tidss->rdev)) {
+		ret = PTR_ERR(tidss->rdev);
+		goto out;
+	}
+
+	tidss->rdev->cb_data = tidss;
+
+	if (tidss->rdev->device.display.ops->ready == NULL ||
+			tidss->rdev->device.display.ops->get_res_info == NULL ||
+			tidss->rdev->device.display.ops->commit == NULL) {
+		dev_err(dev, "%s: rpmsg remotedev ops not complete\n", __func__);
+		ret = -EINVAL;
+		/* TODO: rpmsg_remotedev_put_device not implemented yet */
+		goto out;
+	}
+
+	/* Cant really do much if the remotedev is not ready yet */
+	if (!tidss->rdev->device.display.ops->ready(tidss->rdev)) {
+		dev_err(dev, "%s: rpmsg remotedev is not ready\n", __func__);
+		ret = -ENODEV;
+		goto out;
+	}
+
+out:
+	of_node_put(dss_remote_dev_node);
+	return ret;
+}
+
 static int tidss_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -133,6 +185,10 @@ static int tidss_probe(struct platform_device *pdev)
 
 	tidss->dev = dev;
 	tidss->features = of_device_get_match_data(dev);
+
+	ret = tidss_init_remote_device(tidss);
+	if (ret)
+		return ret;
 
 	platform_set_drvdata(pdev, tidss);
 
@@ -163,10 +219,10 @@ static int tidss_probe(struct platform_device *pdev)
 		goto err_runtime_suspend;
 	}
 
-	irq = platform_get_irq(pdev, 0);
+	irq = tidss->dispc_ops->get_irq(tidss->dispc);
 	if (irq < 0) {
 		ret = irq;
-		dev_err(dev, "platform_get_irq failed: %d\n", ret);
+		dev_err(dev, "failed to get dispc irq: %d\n", ret);
 		goto err_modeset_cleanup;
 	}
 
