@@ -288,3 +288,7 @@
 	memory-region = <&mcu_r5fss0_core1_dma_memory_region>,
 			<&mcu_r5fss0_core1_memory_region>;
 };
+
+&gpu {
+	status = "okay";
+};
