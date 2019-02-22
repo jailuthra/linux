@@ -47,6 +47,23 @@
 #define H264_MIN_CHROMA_QP_INDEX_OFFSET (-12)
 
 /*
+ * AVC Profile IDC definitions
+ */
+enum h264_profile_idc {
+	h264_profile_cavlc444   = 44,   /*  YUV 4:4:4/14 "CAVLC 4:4:4" */
+	h264_profile_baseline   = 66,   /* YUV 4:2:0/8  "Baseline" */
+	h264_profile_main       = 77,   /* YUV 4:2:0/8  "Main" */
+	h264_profile_scalable   = 83,   /* YUV 4:2:0/8  "Scalable" */
+	h264_profile_extended   = 88,   /* YUV 4:2:0/8  "Extended" */
+	h264_profile_high       = 100,  /* YUV 4:2:0/8  "High" */
+	h264_profile_hig10     = 110,  /* YUV 4:2:0/10 "High 10" */
+	h264_profile_mvc_high   = 118,  /* YUV 4:2:0/8  "Multiview High" */
+	h264_profile_high422    = 122,  /* YUV 4:2:2/10 "High 4:2:2" */
+	h264_profile_mvc_stereo = 128,  /* YUV 4:2:0/8  "Stereo High" */
+	h264_profile_high444    = 244,  /* YUV 4:4:4/14 "High 4:4:4" */
+};
+
+/*
  * Remap H.264 colour format into internal representation.
  */
 static const enum pixel_fmt_idc pixel_format_idc[] = {
@@ -205,6 +222,252 @@ static u32 h264ceillog2(u32 value)
 }
 
 /*
+ * @Function              bspp_h264_set_default_vui
+ * @Description           Sets default values of the VUI info
+ */
+static void bspp_h264_set_default_vui(struct bspp_h264_vui_info *vui_info)
+{
+	u32 *nal_hrd_bitrate_valueminus1 = NULL;
+	u32 *vcl_hrd_bitrate_valueminus1 = NULL;
+	u32 *nal_hrd_cpbsize_valueminus1 = NULL;
+	u32 *vcl_hrd_cpbsize_valueminus1 = NULL;
+	u8 *nal_hrd_cbr_flag = NULL;
+	u8 *vcl_hrd_cbr_flag = NULL;
+
+	/* Saving pointers */
+	nal_hrd_bitrate_valueminus1 = vui_info->nal_hrd_parameters.bit_rate_value_minus1;
+	vcl_hrd_bitrate_valueminus1 = vui_info->vcl_hrd_parameters.bit_rate_value_minus1;
+
+	nal_hrd_cpbsize_valueminus1 = vui_info->nal_hrd_parameters.cpb_size_value_minus1;
+	vcl_hrd_cpbsize_valueminus1 = vui_info->vcl_hrd_parameters.cpb_size_value_minus1;
+
+	nal_hrd_cbr_flag = vui_info->nal_hrd_parameters.cbr_flag;
+	vcl_hrd_cbr_flag = vui_info->vcl_hrd_parameters.cbr_flag;
+
+	/* Cleaning sVUIInfo */
+	if (vui_info->nal_hrd_parameters.bit_rate_value_minus1)
+		memset(vui_info->nal_hrd_parameters.bit_rate_value_minus1, 0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u32));
+
+	if (vui_info->nal_hrd_parameters.cpb_size_value_minus1)
+		memset(vui_info->nal_hrd_parameters.cpb_size_value_minus1, 0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u32));
+
+	if (vui_info->vcl_hrd_parameters.cpb_size_value_minus1)
+		memset(vui_info->vcl_hrd_parameters.cpb_size_value_minus1, 0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u32));
+
+	if (vui_info->nal_hrd_parameters.cbr_flag)
+		memset(vui_info->nal_hrd_parameters.cbr_flag, 0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u8));
+
+	if (vui_info->vcl_hrd_parameters.cbr_flag)
+		memset(vui_info->vcl_hrd_parameters.cbr_flag, 0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u8));
+
+	/* Make sure you set default for everything */
+	memset(vui_info, 0, sizeof(*vui_info));
+	vui_info->video_format                            = 5;
+	vui_info->colour_primaries                        = 2;
+	vui_info->transfer_characteristics                = 2;
+	vui_info->matrix_coefficients                     = 2;
+	vui_info->motion_vectors_over_pic_boundaries_flag = 1;
+	vui_info->max_bytes_per_pic_denom                 = 2;
+	vui_info->max_bits_per_mb_denom                   = 1;
+	vui_info->log2_max_mv_length_horizontal           = 16;
+	vui_info->log2_max_mv_length_vertical             = 16;
+
+#ifdef REDUCED_DPB_NO_PIC_REORDERING
+	vui_info->max_dec_frame_buffering                 = 1;
+	vui_info->num_reorder_frames                      = 0;
+#else
+	vui_info->max_dec_frame_buffering                 = 0;
+	vui_info->num_reorder_frames                      = vui_info->max_dec_frame_buffering;
+#endif
+
+	/* Restoring pointers */
+	vui_info->nal_hrd_parameters.bit_rate_value_minus1 = nal_hrd_bitrate_valueminus1;
+	vui_info->vcl_hrd_parameters.bit_rate_value_minus1 = vcl_hrd_bitrate_valueminus1;
+
+	vui_info->nal_hrd_parameters.cpb_size_value_minus1 = nal_hrd_cpbsize_valueminus1;
+	vui_info->vcl_hrd_parameters.cpb_size_value_minus1 = vcl_hrd_cpbsize_valueminus1;
+
+	vui_info->nal_hrd_parameters.cbr_flag = nal_hrd_cbr_flag;
+	vui_info->vcl_hrd_parameters.cbr_flag = vcl_hrd_cbr_flag;
+}
+
+/*
+ * @Function              bspp_h264_hrd_param_parser
+ * @Description           Parse the HRD parameter
+ */
+static enum bspp_error_type bspp_h264_hrd_param_parser(void *swsr_context,
+						       struct bspp_h264_hrdparam_info *h264_hrd_param_info)
+{
+	u32 sched_sel_idx;
+
+	VDEC_ASSERT(swsr_context);
+	h264_hrd_param_info->cpb_cnt_minus1 = swsr_read_unsigned_expgoulomb(swsr_context);
+
+	if (h264_hrd_param_info->cpb_cnt_minus1 >= 32)
+		pr_info("pb_cnt_minus1 is not within the range");
+
+	h264_hrd_param_info->bit_rate_scale = swsr_read_bits(swsr_context, 4);
+	h264_hrd_param_info->cpb_size_scale = swsr_read_bits(swsr_context, 4);
+
+	if (!h264_hrd_param_info->bit_rate_value_minus1) {
+		h264_hrd_param_info->bit_rate_value_minus1 = kcalloc(VDEC_H264_MAXIMUMVALUEOFCPB_CNT, sizeof(u32), GFP_KERNEL);
+		VDEC_ASSERT(h264_hrd_param_info->bit_rate_value_minus1);
+		if (!h264_hrd_param_info->bit_rate_value_minus1)
+			return BSPP_ERROR_OUT_OF_MEMORY;
+	}
+
+	if (!h264_hrd_param_info->cpb_size_value_minus1) {
+		h264_hrd_param_info->cpb_size_value_minus1 = kcalloc(VDEC_H264_MAXIMUMVALUEOFCPB_CNT, sizeof(u32), GFP_KERNEL);
+		VDEC_ASSERT(h264_hrd_param_info->cpb_size_value_minus1);
+		if (!h264_hrd_param_info->cpb_size_value_minus1)
+			return BSPP_ERROR_OUT_OF_MEMORY;
+	}
+
+	if (!h264_hrd_param_info->cbr_flag) {
+		h264_hrd_param_info->cbr_flag = kcalloc(VDEC_H264_MAXIMUMVALUEOFCPB_CNT, sizeof(u8), GFP_KERNEL);
+		VDEC_ASSERT(h264_hrd_param_info->cbr_flag);
+		if (!h264_hrd_param_info->cbr_flag)
+			return BSPP_ERROR_OUT_OF_MEMORY;
+	}
+
+	for (sched_sel_idx = 0; sched_sel_idx <= h264_hrd_param_info->cpb_cnt_minus1; sched_sel_idx++) {
+		h264_hrd_param_info->bit_rate_value_minus1[sched_sel_idx] = swsr_read_unsigned_expgoulomb(swsr_context);
+		h264_hrd_param_info->cpb_size_value_minus1[sched_sel_idx] = swsr_read_unsigned_expgoulomb(swsr_context);
+
+		if (h264_hrd_param_info->cpb_size_value_minus1[sched_sel_idx] == 0xffffffff)
+			/* 65 bit pattern, 32 0's -1 - 32 0's then value should be 0 */
+			h264_hrd_param_info->cpb_size_value_minus1[sched_sel_idx] = 0;
+
+		h264_hrd_param_info->cbr_flag[sched_sel_idx] = swsr_read_bits(swsr_context, 1);
+	}
+
+	h264_hrd_param_info->initial_cpb_removal_delay_length_minus1 = swsr_read_bits(swsr_context, 5);
+	h264_hrd_param_info->cpb_removal_delay_length_minus1        = swsr_read_bits(swsr_context, 5);
+	h264_hrd_param_info->dpb_output_delay_length_minus1         = swsr_read_bits(swsr_context, 5);
+	h264_hrd_param_info->time_offset_length                   = swsr_read_bits(swsr_context, 5);
+
+	return BSPP_ERROR_NONE;
+}
+
+/*
+ * @Function              bspp_h264_get_default_hrd_param
+ * @Description           Get default value of the HRD parameter
+ */
+static void bspp_h264_get_default_hrd_param(struct bspp_h264_hrdparam_info *h264_hrd_param_info)
+{
+	/* other parameters already set to '0' */
+	h264_hrd_param_info->initial_cpb_removal_delay_length_minus1 = 23;
+	h264_hrd_param_info->cpb_removal_delay_length_minus1        = 23;
+	h264_hrd_param_info->dpb_output_delay_length_minus1         = 23;
+	h264_hrd_param_info->time_offset_length                   = 24;
+}
+
+/*
+ * @Function              bspp_h264_vui_parser
+ * @Description           Parse the VUI info
+ */
+static enum bspp_error_type bspp_h264_vui_parser(void *swsr_context,
+						 struct bspp_h264_vui_info *vui_info,
+						 struct bspp_h264_sps_info *sps_info)
+{
+	enum bspp_error_type vui_parser_error = BSPP_ERROR_NONE;
+
+	vui_info->aspect_ratio_info_present_flag = swsr_read_bits(swsr_context, 1);
+	if (vui_info->aspect_ratio_info_present_flag) {
+		vui_info->aspect_ratio_idc = swsr_read_bits(swsr_context, 8);
+		/* Extended SAR */
+		if (vui_info->aspect_ratio_idc == 255) {
+			vui_info->sar_width = swsr_read_bits(swsr_context, 16);
+			vui_info->sar_height = swsr_read_bits(swsr_context, 16);
+		} else if (vui_info->aspect_ratio_idc < 17) {
+			vui_info->sar_width = pixel_aspect[vui_info->aspect_ratio_idc][0];
+			vui_info->sar_height = pixel_aspect[vui_info->aspect_ratio_idc][1];
+		} else {
+			/* we can consider this error as a aux data error */
+			vui_parser_error |= BSPP_ERROR_INVALID_VALUE;
+		}
+	}
+
+	vui_info->overscan_info_present_flag = swsr_read_bits(swsr_context, 1);
+	if (vui_info->overscan_info_present_flag)
+		vui_info->overscan_appropriate_flag = swsr_read_bits(swsr_context, 1);
+
+	vui_info->video_signal_type_present_flag = swsr_read_bits(swsr_context, 1);
+	if (vui_info->video_signal_type_present_flag) {
+		vui_info->video_format = swsr_read_bits(swsr_context, 3);
+		vui_info->video_full_range_flag = swsr_read_bits(swsr_context, 1);
+		vui_info->colour_description_present_flag = swsr_read_bits(swsr_context, 1);
+		if (vui_info->colour_description_present_flag) {
+			vui_info->colour_primaries = swsr_read_bits(swsr_context, 8);
+			vui_info->transfer_characteristics = swsr_read_bits(swsr_context, 8);
+			vui_info->matrix_coefficients = swsr_read_bits(swsr_context, 8);
+		}
+	}
+
+	vui_info->chroma_location_info_present_flag = swsr_read_bits(swsr_context, 1);
+	if (vui_info->chroma_location_info_present_flag) {
+		vui_info->chroma_sample_loc_type_top_field = swsr_read_unsigned_expgoulomb(swsr_context);
+		vui_info->chroma_sample_loc_type_bottom_field = swsr_read_unsigned_expgoulomb(swsr_context);
+	}
+
+	vui_info->timing_info_present_flag = swsr_read_bits(swsr_context, 1);
+	if (vui_info->timing_info_present_flag) {
+		vui_info->num_units_in_tick = swsr_read_bits(swsr_context, 16);
+		vui_info->num_units_in_tick <<= 16;     /* SR can only do up to 31 bit reads */
+		vui_info->num_units_in_tick |= swsr_read_bits(swsr_context, 16);
+		vui_info->time_scale = swsr_read_bits(swsr_context, 16);
+		vui_info->time_scale <<= 16;     /* SR can only do up to 31 bit reads */
+		vui_info->time_scale |= swsr_read_bits(swsr_context, 16);
+		if (!vui_info->num_units_in_tick || !vui_info->time_scale)
+			vui_parser_error  |=  BSPP_ERROR_INVALID_VALUE;
+
+		vui_info->fixed_frame_rate_flag = swsr_read_bits(swsr_context, 1);
+	}
+
+	/* no default values */
+	vui_info->nal_hrd_parameters_present_flag = swsr_read_bits(swsr_context, 1);
+	if (vui_info->nal_hrd_parameters_present_flag)
+		vui_parser_error |= bspp_h264_hrd_param_parser(swsr_context, &vui_info->nal_hrd_parameters);
+	else
+		bspp_h264_get_default_hrd_param(&vui_info->nal_hrd_parameters);
+
+	vui_info->vcl_hrd_parameters_present_flag = swsr_read_bits(swsr_context, 1);
+
+	if (vui_info->vcl_hrd_parameters_present_flag)
+		vui_parser_error |= bspp_h264_hrd_param_parser(swsr_context, &vui_info->vcl_hrd_parameters);
+	else
+		bspp_h264_get_default_hrd_param(&vui_info->vcl_hrd_parameters);
+
+	if (vui_info->nal_hrd_parameters_present_flag || vui_info->vcl_hrd_parameters_present_flag)
+		vui_info->low_delay_hrd_flag = swsr_read_bits(swsr_context, 1);
+
+	vui_info->pic_struct_present_flag = swsr_read_bits(swsr_context, 1);
+	vui_info->bitstream_restriction_flag = swsr_read_bits(swsr_context, 1);
+	if (vui_info->bitstream_restriction_flag) {
+		vui_info->motion_vectors_over_pic_boundaries_flag = swsr_read_bits(swsr_context, 1);
+		vui_info->max_bytes_per_pic_denom = swsr_read_unsigned_expgoulomb(swsr_context);
+		vui_info->max_bits_per_mb_denom = swsr_read_unsigned_expgoulomb(swsr_context);
+		vui_info->log2_max_mv_length_horizontal = swsr_read_unsigned_expgoulomb(swsr_context);
+		vui_info->log2_max_mv_length_vertical = swsr_read_unsigned_expgoulomb(swsr_context);
+		vui_info->num_reorder_frames = swsr_read_unsigned_expgoulomb(swsr_context);
+		vui_info->max_dec_frame_buffering = swsr_read_unsigned_expgoulomb(swsr_context);
+	}
+
+	if ((sps_info->profile_idc == h264_profile_baseline ||
+	     sps_info->profile_idc == h264_profile_extended) &&
+	    sps_info->max_num_ref_frames == 1) {
+		vui_info->bitstream_restriction_flag = 1;
+		vui_info->num_reorder_frames = 0;
+		vui_info->max_dec_frame_buffering = 1;
+	}
+
+	if (vui_info->num_reorder_frames > 32)
+		vui_parser_error |= BSPP_ERROR_UNSUPPORTED;
+
+	return vui_parser_error;
+}
+
+/*
  * Parse scaling list
  */
 static enum bspp_error_type bspp_h264_scl_listparser(void *swsr_context,
@@ -252,10 +515,15 @@ static enum bspp_error_type bspp_h264_sps_parser(void *swsr_context,
 	u32 i;
 	u8 scaling_list_num;
 	struct bspp_h264_sps_info *sps_info;
+	struct bspp_h264_vui_info *vui_info;
 	enum bspp_error_type sps_parser_error = BSPP_ERROR_NONE;
+	enum bspp_error_type vui_parser_error = BSPP_ERROR_NONE;
 
 	sps_info = &h264_seq_hdr_info->sps_info;
+	vui_info = &h264_seq_hdr_info->vui_info;
 
+	/* Set always the default VUI/MVCExt, their values may be used even if VUI/MVCExt not present */
+	bspp_h264_set_default_vui(vui_info);
 	pr_err("Parsing Sequence Parameter Set");
 
 	sps_info->profile_idc = swsr_read_bits(swsr_context, 8);
@@ -473,9 +741,21 @@ static enum bspp_error_type bspp_h264_sps_parser(void *swsr_context,
 	}
 
 	sps_info->vui_parameters_present_flag = swsr_read_bits(swsr_context, 1);
+	/* initialise matrix_coefficients to 2 (unspecified) */
+	vui_info->matrix_coefficients = 2;
 
-	if (sps_info->vui_parameters_present_flag)
-		pr_err("No VUI Support for this version\n");
+	if (sps_info->vui_parameters_present_flag) {
+		pr_info("vui_parameters_present_flag is available");
+		/* save the SPS parse error in temp variable */
+		vui_parser_error = bspp_h264_vui_parser(swsr_context, vui_info, sps_info);
+		if (vui_parser_error != BSPP_ERROR_NONE)
+			sps_parser_error  |= BSPP_ERROR_AUXDATA;
+
+#ifdef REDUCED_DPB_NO_PIC_REORDERING
+		vui_info->max_dec_frame_buffering = 1;
+		vui_info->num_reorder_frames = 0;
+#endif
+	}
 
 	if (sps_info->profile_idc == H264_PROFILE_MVC_HIGH ||
 	    sps_info->profile_idc == H264_PROFILE_MVC_STEREO) {
@@ -755,7 +1035,12 @@ static s32 bspp_h264_release_sequ_hdr_info(void *str_alloc,
 static s32 bspp_h264_reset_seq_hdr_info(void *secure_sps_info)
 {
 	struct bspp_h264_seq_hdr_info *h264_seq_hdr_info = NULL;
-
+	u32 *nal_hrd_bitrate_valueminus1 = NULL;
+	u32 *vcl_hrd_bitrate_valueminus1 = NULL;
+	u32 *nal_hrd_cpbsize_valueminus1 = NULL;
+	u32 *vcl_hrd_cpbsize_valueminus1 = NULL;
+	u8 *nal_hrd_cbrflag = NULL;
+	u8 *vcl_hrd_cbrflag = NULL;
 	u32 *offset_for_ref_frame = NULL;
 	u8 *scllst4x4seq = NULL;
 	u8 *scllst8x8seq = NULL;
@@ -764,6 +1049,34 @@ static s32 bspp_h264_reset_seq_hdr_info(void *secure_sps_info)
 		return IMG_ERROR_INVALID_PARAMETERS;
 
 	h264_seq_hdr_info = (struct bspp_h264_seq_hdr_info *)secure_sps_info;
+
+	nal_hrd_bitrate_valueminus1 = h264_seq_hdr_info->vui_info.nal_hrd_parameters.bit_rate_value_minus1;
+	vcl_hrd_bitrate_valueminus1 = h264_seq_hdr_info->vui_info.vcl_hrd_parameters.bit_rate_value_minus1;
+	nal_hrd_cpbsize_valueminus1 = h264_seq_hdr_info->vui_info.nal_hrd_parameters.cpb_size_value_minus1;
+	vcl_hrd_cpbsize_valueminus1 = h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cpb_size_value_minus1;
+	nal_hrd_cbrflag = h264_seq_hdr_info->vui_info.nal_hrd_parameters.cbr_flag;
+	vcl_hrd_cbrflag = h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cbr_flag;
+
+	/* Cleaning vui_info */
+	if (h264_seq_hdr_info->vui_info.nal_hrd_parameters.bit_rate_value_minus1)
+		memset(h264_seq_hdr_info->vui_info.nal_hrd_parameters.bit_rate_value_minus1,
+		       0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u32));
+
+	if (h264_seq_hdr_info->vui_info.nal_hrd_parameters.cpb_size_value_minus1)
+		memset(h264_seq_hdr_info->vui_info.nal_hrd_parameters.cpb_size_value_minus1,
+		       0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u32));
+
+	if (h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cpb_size_value_minus1)
+		memset(h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cpb_size_value_minus1,
+		       0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u32));
+
+	if (h264_seq_hdr_info->vui_info.nal_hrd_parameters.cbr_flag)
+		memset(h264_seq_hdr_info->vui_info.nal_hrd_parameters.cbr_flag,
+		       0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u8));
+
+	if (h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cbr_flag)
+		memset(h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cbr_flag,
+		       0x00, VDEC_H264_MAXIMUMVALUEOFCPB_CNT * sizeof(u8));
 
 	/* Cleaning sps_info */
 	if (h264_seq_hdr_info->sps_info.offset_for_ref_frame)
@@ -785,6 +1098,15 @@ static s32 bspp_h264_reset_seq_hdr_info(void *secure_sps_info)
 	h264_seq_hdr_info->sps_info.offset_for_ref_frame = offset_for_ref_frame;
 	h264_seq_hdr_info->sps_info.scllst4x4seq = scllst4x4seq;
 	h264_seq_hdr_info->sps_info.scllst8x8seq = scllst8x8seq;
+
+	h264_seq_hdr_info->vui_info.nal_hrd_parameters.bit_rate_value_minus1 = nal_hrd_bitrate_valueminus1;
+	h264_seq_hdr_info->vui_info.vcl_hrd_parameters.bit_rate_value_minus1 = vcl_hrd_bitrate_valueminus1;
+
+	h264_seq_hdr_info->vui_info.nal_hrd_parameters.cpb_size_value_minus1 = nal_hrd_cpbsize_valueminus1;
+	h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cpb_size_value_minus1 = vcl_hrd_cpbsize_valueminus1;
+
+	h264_seq_hdr_info->vui_info.nal_hrd_parameters.cbr_flag = nal_hrd_cbrflag;
+	h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cbr_flag = vcl_hrd_cbrflag;
 
 	return 0;
 }
@@ -1371,15 +1693,56 @@ static void bspp_h264_fwseq_hdr_populate(struct bspp_h264_seq_hdr_info *h264_seq
 	       sizeof(h264_fwseq_hdr_info->anchor_inter_view_reference_id_list));
 	memset(h264_fwseq_hdr_info->non_anchor_inter_view_reference_id_list, 0x00,
 	       sizeof(h264_fwseq_hdr_info->non_anchor_inter_view_reference_id_list));
+
+#ifdef REDUCED_DPB_NO_PIC_REORDERING
+	/* From VUI */
+	h264_fwseq_hdr_info->max_dec_frame_buffering = h264_seq_hdr_info->vui_info.max_dec_frame_buffering;
+	h264_fwseq_hdr_info->num_reorder_frames = h264_seq_hdr_info->vui_info.num_reorder_frames;
+#else
+	/* From VUI */
+	if (h264_seq_hdr_info->vui_info.bitstream_restriction_flag) {
+		VDEC_ASSERT(h264_seq_hdr_info->sps_info.vui_parameters_present_flag);
+		h264_fwseq_hdr_info->max_dec_frame_buffering = h264_seq_hdr_info->vui_info.max_dec_frame_buffering;
+		h264_fwseq_hdr_info->num_reorder_frames = h264_seq_hdr_info->vui_info.num_reorder_frames;
+	} else {
+		h264_fwseq_hdr_info->max_dec_frame_buffering = 1;
+		h264_fwseq_hdr_info->num_reorder_frames = 16;
+	}
+#endif
+
 }
 
 static void bspp_h264_commonseq_hdr_populate(struct bspp_h264_seq_hdr_info *h264_seq_hdr_info,
 					     struct vdec_comsequ_hdrinfo *comseq_hdr_info)
 {
 	struct bspp_h264_sps_info *sps_info = &h264_seq_hdr_info->sps_info;
+	struct bspp_h264_vui_info *vui_info = &h264_seq_hdr_info->vui_info;
 
 	comseq_hdr_info->codec_profile = sps_info->profile_idc;
 	comseq_hdr_info->codec_level = sps_info->level_idc;
+
+	if (sps_info->vui_parameters_present_flag && vui_info->timing_info_present_flag) {
+		comseq_hdr_info->frame_rate_num = vui_info->time_scale;
+		comseq_hdr_info->frame_rate_den = 2 * vui_info->num_units_in_tick;
+		comseq_hdr_info->frame_rate = ((long)comseq_hdr_info->frame_rate_num) /
+						((long)comseq_hdr_info->frame_rate_den);
+	}
+
+	/*
+	 * ColorSpace Description was present in the VUI parameters.
+	 * copy it in CommonSeqHdr info for use by application.
+	 */
+	if (vui_info->video_signal_type_present_flag & vui_info->colour_description_present_flag) {
+		comseq_hdr_info->color_space_info.is_present = true;
+		comseq_hdr_info->color_space_info.color_primaries = vui_info->colour_primaries;
+		comseq_hdr_info->color_space_info.transfer_characteristics = vui_info->transfer_characteristics;
+		comseq_hdr_info->color_space_info.matrix_coefficients = vui_info->matrix_coefficients;
+	}
+
+	if (vui_info->aspect_ratio_info_present_flag) {
+		comseq_hdr_info->aspect_ratio_num = vui_info->sar_width;
+		comseq_hdr_info->aspect_ratio_den = vui_info->sar_height;
+	}
 
 	comseq_hdr_info->interlaced_frames = sps_info->frame_mbs_only_flag ? 0 : 1;
 
@@ -1418,6 +1781,7 @@ static void bspp_h264_commonseq_hdr_populate(struct bspp_h264_seq_hdr_info *h264
 		(sps_info->frame_mbs_only_flag ? 1 : 2) * 16;
 
 	comseq_hdr_info->field_codec_mblocks = sps_info->mb_adaptive_frame_field_flag;
+	comseq_hdr_info->min_pict_buf_num = vui_info->max_dec_frame_buffering;
 
 	/* orig_display_region populate */
 	if (sps_info->frame_cropping_flag) {
@@ -1469,6 +1833,14 @@ static void bspp_h264_commonseq_hdr_populate(struct bspp_h264_seq_hdr_info *h264
 		comseq_hdr_info->orig_display_region.height = comseq_hdr_info->max_frame_size.height;
 	}
 
+#ifdef REDUCED_DPB_NO_PIC_REORDERING
+	comseq_hdr_info->max_reorder_picts = vui_info->max_dec_frame_buffering;
+#else
+	if (sps_info->vui_parameters_present_flag && vui_info->bitstream_restriction_flag)
+		comseq_hdr_info->max_reorder_picts = vui_info->max_dec_frame_buffering;
+	else
+		comseq_hdr_info->max_reorder_picts = 0;
+#endif
 	comseq_hdr_info->separate_chroma_planes = h264_seq_hdr_info->sps_info.separate_colour_plane_flag ? 1 : 0;
 }
 
@@ -1513,6 +1885,18 @@ static s32 bspp_h264_destroy_seq_hdr_info(const void *secure_sps_info)
 		return IMG_ERROR_INVALID_PARAMETERS;
 
 	h264_seq_hdr_info = (struct bspp_h264_seq_hdr_info *)secure_sps_info;
+
+	/* Cleaning vui_info */
+	kfree(h264_seq_hdr_info->vui_info.nal_hrd_parameters.bit_rate_value_minus1);
+	kfree(h264_seq_hdr_info->vui_info.nal_hrd_parameters.cpb_size_value_minus1);
+
+	kfree(h264_seq_hdr_info->vui_info.nal_hrd_parameters.cbr_flag);
+
+	kfree(h264_seq_hdr_info->vui_info.vcl_hrd_parameters.bit_rate_value_minus1);
+
+	kfree(h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cpb_size_value_minus1);
+
+	kfree(h264_seq_hdr_info->vui_info.vcl_hrd_parameters.cbr_flag);
 
 	/* Cleaning sps_info */
 	kfree(h264_seq_hdr_info->sps_info.offset_for_ref_frame);

@@ -100,6 +100,56 @@ struct bspp_h264_sps_info {
 	u8 usedefaultscalingmatrixflag_seq[12];
 };
 
+struct bspp_h264_hrdparam_info {
+	u8     cpb_cnt_minus1;
+	u8     bit_rate_scale;
+	u8     cpb_size_scale;
+	u32	*bit_rate_value_minus1;
+	u32	*cpb_size_value_minus1;
+	u8	*cbr_flag;
+	u8	initial_cpb_removal_delay_length_minus1;
+	u8	cpb_removal_delay_length_minus1;
+	u8	dpb_output_delay_length_minus1;
+	u8	time_offset_length;
+};
+
+struct bspp_h264_vui_info {
+	u8                aspect_ratio_info_present_flag;
+	u32              aspect_ratio_idc;
+	u32              sar_width;
+	u32              sar_height;
+	u8                overscan_info_present_flag;
+	u8                overscan_appropriate_flag;
+	u8                video_signal_type_present_flag;
+	u32              video_format;
+	u8                video_full_range_flag;
+	u8                colour_description_present_flag;
+	u32              colour_primaries;
+	u32              transfer_characteristics;
+	u32              matrix_coefficients;
+	u8                chroma_location_info_present_flag;
+	u32              chroma_sample_loc_type_top_field;
+	u32              chroma_sample_loc_type_bottom_field;
+	u8                timing_info_present_flag;
+	u32              num_units_in_tick;
+	u32              time_scale;
+	u8                fixed_frame_rate_flag;
+	u8                nal_hrd_parameters_present_flag;
+	struct bspp_h264_hrdparam_info  nal_hrd_parameters;
+	u8                vcl_hrd_parameters_present_flag;
+	struct bspp_h264_hrdparam_info  vcl_hrd_parameters;
+	u8                low_delay_hrd_flag;
+	u8                pic_struct_present_flag;
+	u8                bitstream_restriction_flag;
+	u8                motion_vectors_over_pic_boundaries_flag;
+	u32              max_bytes_per_pic_denom;
+	u32              max_bits_per_mb_denom;
+	u32              log2_max_mv_length_vertical;
+	u32              log2_max_mv_length_horizontal;
+	u32              num_reorder_frames;
+	u32              max_dec_frame_buffering;
+};
+
 /*
  * struct bspp_h264_seq_hdr_info
  * @Description	Contains everything parsed from the Sequence Header.
@@ -107,6 +157,7 @@ struct bspp_h264_sps_info {
 struct bspp_h264_seq_hdr_info {
 	/* Video sequence header information */
 	struct bspp_h264_sps_info sps_info;
+	struct bspp_h264_vui_info         vui_info;        /* VUI sequence header information.            */
 };
 
 /*

@@ -504,6 +504,16 @@ config HAS_HEVC
 	  decoding functionality with IMG VXD Video decoder. If you
 	  do not want HEVC decode capability, select N.
 	  If unsure, select Y
+
+config REDUCED_DPB_NO_PIC_REORDERING
+	bool "disable Picture reordering"
+	default n
+	help
+	  This config, if enabled, configures H264 video decoder to
+	  output frames in the decode order with no buffering and
+	  picture reordering inside codec.
+	  If unsure, say N
+
 endif
 
 config VIDEO_QCOM_VENUS
