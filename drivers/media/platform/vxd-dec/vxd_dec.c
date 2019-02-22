@@ -38,6 +38,7 @@
 
 #include "core.h"
 #include "h264fw_data.h"
+#include "hevcfw_data.h"
 #include "img_dec_common.h"
 #include "vxd_dec.h"
 
@@ -68,6 +69,15 @@ static struct vxd_dec_fmt vxd_dec_formats[] = {
 		.num_planes = 1,
 		.type = IMG_DEC_FMT_TYPE_OUTPUT,
 		.std = VDEC_STD_H264,
+		.pixfmt = IMG_PIXFMT_UNDEFINED,
+		.interleave = PIXEL_INVALID_CI,
+		.idc = PIXEL_FORMAT_INVALID,
+	},
+	{
+		.fourcc = V4L2_PIX_FMT_HEVC,
+		.num_planes = 1,
+		.type = IMG_DEC_FMT_TYPE_OUTPUT,
+		.std = VDEC_STD_HEVC,
 		.pixfmt = IMG_PIXFMT_UNDEFINED,
 		.interleave = PIXEL_INVALID_CI,
 		.idc = PIXEL_FORMAT_INVALID,
@@ -773,7 +783,8 @@ static int vxd_dec_try_fmt(struct file *file, void *priv,
 	return ret;
 }
 
-static int vxd_dec_alloc_bspp_resource(struct vxd_dec_ctx *ctx)
+static int vxd_dec_alloc_bspp_resource(struct vxd_dec_ctx *ctx,
+				       enum vdec_vid_std vid_std)
 {
 	struct vxd_dev *vxd_dev = ctx->dev;
 	struct device *dev = vxd_dev->v4l2_dev.dev;
@@ -786,7 +797,10 @@ static int vxd_dec_alloc_bspp_resource(struct vxd_dec_ctx *ctx)
 	attributes = SYS_MEMATTRIB_UNCACHED | SYS_MEMATTRIB_WRITECOMBINE |
 		     SYS_MEMATTRIB_INTERNAL | SYS_MEMATTRIB_CPU_WRITE;
 	heap_id = vxd_g_internal_heap_id();
-	size = sizeof(struct h264fw_sequence_ps);
+
+	size = vid_std == VDEC_STD_HEVC ?
+	sizeof(struct hevcfw_sequence_ps) : sizeof(struct h264fw_sequence_ps);
+
 	for (i = 0 ; i < MAX_SEQUENCES ; i++) {
 		ret = img_mem_alloc(vxd_dev->dev, ctx->mem_ctx, heap_id,
 				    size, attributes,
@@ -828,7 +842,9 @@ static int vxd_dec_alloc_bspp_resource(struct vxd_dec_ctx *ctx)
 		}
 	}
 
-	size = sizeof(struct h264fw_picture_ps);
+	size = vid_std == VDEC_STD_HEVC ?
+	sizeof(struct hevcfw_picture_ps) : sizeof(struct h264fw_picture_ps);
+
 	for (i = 0 ; i < MAX_PPSS ; i++) {
 		ret = img_mem_alloc(vxd_dev->dev, ctx->mem_ctx, heap_id,
 				    size, attributes,
@@ -943,7 +959,7 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 				}
 			}
 
-			vxd_dec_alloc_bspp_resource(ctx);
+			vxd_dec_alloc_bspp_resource(ctx, strcfgdata.vid_std);
 			ret = bspp_stream_create(&strcfgdata,
 						 &ctx->bspp_context,
 						 ctx->fw_sequ,

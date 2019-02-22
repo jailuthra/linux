@@ -192,6 +192,14 @@ struct bspp_pict_hdr_info {
 		u8 nal_ref_idc;
 		u16 frame_num;
 	} h264_pict_hdr_info;
+
+	struct {	/* HEVC specific frame information.*/
+		int range_ext_present;
+		int is_full_range_ext;
+		void *raw_vui_data;
+		void *raw_sei_datalist_firstfield;
+		void *raw_sei_datalist_secondfield;
+	} hevc_pict_hdr_info;
 };
 
 /*

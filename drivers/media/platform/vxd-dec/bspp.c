@@ -18,6 +18,7 @@
 
 #include "bspp.h"
 #include "h264_secure_parser.h"
+#include "hevc_secure_parser.h"
 #include "lst.h"
 #include "swsr.h"
 #include "vdecdd_defs.h"
@@ -86,6 +87,14 @@ struct bspp_stream_alloc_data {
 	struct lst_t available_ppss_list;
 	struct lst_t raw_data_list_available;
 	struct lst_t raw_data_list_used;
+	struct lst_t vps_data_list[VPS_SLOTS];
+	struct lst_t raw_sei_alloc_list;
+	struct lst_t available_vps_list;
+};
+
+struct bspp_raw_sei_alloc {
+	void **lst_link;
+	struct vdec_raw_bstr_data raw_sei_data;
 };
 
 /*
@@ -173,6 +182,22 @@ static struct bspp_parser_functions parser_fxns[VDEC_STD_MAX] = {
 	{ NULL, NULL },
 	/* VDEC_STD_H264 */
 	{ bspp_h264_set_parser_config, bspp_h264_determine_unittype },
+	/* VDEC_STD_VC1 */
+	{ NULL, NULL },
+	/* VDEC_STD_AVS */
+	{ NULL, NULL },
+	/* VDEC_STD_REAL */
+	{ NULL, NULL },
+	/* VDEC_STD_JPEG */
+	{ NULL, NULL },
+	/* VDEC_STD_VP6 */
+	{ NULL, NULL },
+	/* VDEC_STD_VP8 */
+	{ NULL, NULL },
+	/* VDEC_STD_SORENSON */
+	{ NULL, NULL },
+	/* VDEC_STD_HEVC */
+	{ bspp_hevc_set_parser_config, bspp_hevc_determine_unittype },
 };
 
 /*
@@ -677,11 +702,12 @@ static struct bspp_sequence_hdr_info *bspp_obtain_sequence_hdr(struct bspp_str_c
 
 	/*
 	 * Obtain any partially filled sequence data else provide a new one
-	 * (always new for H.264)
+	 * (always new for H.264 and HEVC)
 	 */
 	sequ_hdr_info = lst_last(&str_alloc->sequence_data_list[BSPP_DEFAULT_SEQUENCE_ID]);
 	if (!sequ_hdr_info || sequ_hdr_info->ref_count > 0 ||
-	    str_ctx->vid_std == VDEC_STD_H264) {
+	    str_ctx->vid_std == VDEC_STD_H264 ||
+	    str_ctx->vid_std == VDEC_STD_HEVC) {
 		/* Get Sequence resource. */
 		sequ_hdr_info =
 			lst_removehead(&str_alloc->available_sequence_list);
@@ -856,6 +882,36 @@ static s32 bspp_service_pictures_decoded(struct bspp_str_context *str_ctx)
 	return IMG_SUCCESS;
 }
 
+static void bspp_remove_unused_vps(struct bspp_str_context *str_ctx, u32 vps_id)
+{
+	struct bspp_stream_alloc_data *str_alloc = &str_ctx->str_alloc;
+	struct bspp_vps_info *temp_vps_info = NULL;
+	struct bspp_vps_info *next_temp_vps_info = NULL;
+
+	/*
+	 * Check the whole Vps slot list for any unused Vpss
+	 * BEFORE ADDING THE NEW ONE, if found remove them
+	 */
+	next_temp_vps_info = lst_first(&str_alloc->vps_data_list[vps_id]);
+	while (next_temp_vps_info) {
+		/* Set Temp, it is the one which we will potentially remove */
+		temp_vps_info = next_temp_vps_info;
+		/*
+		 *  Set Next Temp, it is the one for the next iteration
+		 * (we cannot ask for next after removing it)
+		 */
+		next_temp_vps_info = lst_next(temp_vps_info);
+		/* If it is not used remove it */
+		if (temp_vps_info->ref_count == 0 && next_temp_vps_info) {
+			/* Return resource to the available pool */
+			lst_remove(&str_alloc->vps_data_list[vps_id],
+				   temp_vps_info);
+			lst_addhead(&str_alloc->available_vps_list,
+				    temp_vps_info);
+		}
+	}
+}
+
 static void bspp_remove_unused_pps(struct bspp_str_context *str_ctx, u32 pps_id)
 {
 	struct bspp_stream_alloc_data *str_alloc = &str_ctx->str_alloc;
@@ -993,6 +1049,19 @@ static s32 bspp_get_resource(struct bspp_str_context *str_ctx,
 	struct bspp_stream_alloc_data *str_alloc = &str_ctx->str_alloc;
 
 	switch (unit_data->unit_type) {
+	case BSPP_UNIT_VPS:
+		/* Get VPS resource (HEVC only). */
+		if (unit_data->vid_std != VDEC_STD_HEVC)
+			break;
+		unit_data->out.vps_info =
+				lst_removehead(&str_alloc->available_vps_list);
+		if (!unit_data->out.vps_info) {
+			result = IMG_ERROR_COULD_NOT_OBTAIN_RESOURCE;
+		} else {
+			unit_data->out.vps_info->vps_id = BSPP_INVALID;
+			unit_data->out.vps_info->ref_count = 0;
+		}
+		break;
 	case BSPP_UNIT_SEQUENCE:
 		unit_data->out.sequ_hdr_info =
 			bspp_obtain_sequence_hdr(str_ctx);
@@ -1037,6 +1106,22 @@ static s32 bspp_file_resource(struct bspp_str_context *str_ctx,
 	struct bspp_stream_alloc_data *str_alloc = &str_ctx->str_alloc;
 
 	switch (unit_data->unit_type) {
+	case BSPP_UNIT_VPS:
+		/* Store or return VPS resource (HEVC only) */
+		if (unit_data->vid_std != VDEC_STD_HEVC)
+			break;
+
+		if (unit_data->out.vps_info->vps_id != BSPP_INVALID) {
+			lst_add(&str_alloc->vps_data_list[unit_data->out.vps_info->vps_id],
+				unit_data->out.vps_info);
+
+			bspp_remove_unused_vps(str_ctx,
+					       unit_data->out.vps_info->vps_id);
+		} else {
+			lst_addhead(&str_alloc->available_vps_list,
+				    unit_data->out.vps_info);
+		}
+		break;
 	case BSPP_UNIT_SEQUENCE:
 		result =
 			bspp_return_or_store_sequence_hdr(str_ctx,
@@ -1973,6 +2058,47 @@ s32 bspp_stream_destroy(void *str_context_handle)
 			bspp_remove_unused_pps(str_ctx, pps_id);
 	}
 
+	if (str_ctx->vid_std_features.uses_vps) {
+		struct bspp_vps_info *vps_info;
+
+		for (i = 0; i < VPS_SLOTS; ++i) {
+			vps_info = lst_removehead(&str_ctx->str_alloc.vps_data_list[i]);
+
+			if (vps_info)
+				lst_add(&str_ctx->str_alloc.available_vps_list, vps_info);
+
+			/*
+			 * when we are done with the stream we should have MAXIMUM 1 VPS
+			 * per slot, so after removing this one we should have none
+			 * In case of "decodenframes" this is not true because we send more
+			 * pictures for decode than what we expect to receive back, which
+			 * means that potentially additional sequences/PPS are in the list
+			 */
+			vps_info = lst_removehead(&str_ctx->str_alloc.vps_data_list[i]);
+			if (vps_info) {
+				do {
+					lst_add(&str_ctx->str_alloc.available_vps_list, vps_info);
+					vps_info = lst_removehead(&str_ctx->str_alloc.vps_data_list[i]);
+				} while (vps_info);
+			}
+			VDEC_ASSERT(lst_empty(&str_ctx->str_alloc.vps_data_list[i]));
+		}
+
+		vps_info = NULL;
+		for (i = 0; i < MAX_VPSS; ++i) {
+			VDEC_ASSERT(!lst_empty(&str_ctx->str_alloc.available_vps_list));
+			vps_info = lst_removehead(&str_ctx->str_alloc.available_vps_list);
+			if (vps_info) {
+				kfree(vps_info->secure_vpsinfo);
+				kfree(vps_info);
+			} else {
+				VDEC_ASSERT(vps_info);
+				pr_err("vps still active at shutdown\n");
+			}
+		}
+		VDEC_ASSERT(lst_empty(&str_ctx->str_alloc.available_vps_list));
+	}
+
 	/* Free the memory required for this stream. */
 	for (i = 0; i < SEQUENCE_SLOTS; i++) {
 		sequ_hdr_info =
@@ -2260,6 +2386,39 @@ s32 bspp_stream_create(const struct vdec_str_configdata *str_config_data,
 		lst_init(&str_ctx->str_alloc.raw_data_list_used);
 	}
 
+	if (str_ctx->vid_std_features.uses_vps) {
+		struct bspp_vps_info *vps_info;
+
+		lst_init(&str_ctx->str_alloc.available_vps_list);
+		for (i = 0; i < MAX_VPSS; ++i) {
+			vps_info = kmalloc(sizeof(*vps_info), GFP_KERNEL);
+			VDEC_ASSERT(vps_info);
+			if (!vps_info) {
+				result = IMG_ERROR_OUT_OF_MEMORY;
+				goto error;
+			}
+
+			memset(vps_info, 0x00, sizeof(struct bspp_vps_info));
+			/*
+			 * for VPS we do not allocate device memory since (at least for now)
+			 * there is no need to pass any data from VPS directly to FW
+			 */
+			/* Allocate memory for BSPP local VPS data structure. */
+			vps_info->secure_vpsinfo =
+				kmalloc(str_ctx->vid_std_features.vps_size, GFP_KERNEL);
+
+			VDEC_ASSERT(vps_info->secure_vpsinfo);
+			if (!vps_info->secure_vpsinfo) {
+				result = IMG_ERROR_OUT_OF_MEMORY;
+				goto error;
+			}
+			memset(vps_info->secure_vpsinfo, 0,
+			       str_ctx->vid_std_features.vps_size);
+
+			lst_add(&str_ctx->str_alloc.available_vps_list, vps_info);
+		}
+	}
+
 	/* ... and initialise the lists that will use this data */
 	for (i = 0; i < SEQUENCE_SLOTS; i++)
 		lst_init(&str_ctx->str_alloc.sequence_data_list[i]);
@@ -2294,4 +2453,80 @@ error:
 	}
 
 	return result;
+}
+
+void bspp_freeraw_sei_datacontainer(const void *str_res,
+				    struct vdec_raw_bstr_data *rawsei_datacontainer)
+{
+	struct bspp_raw_sei_alloc *rawsei_alloc = NULL;
+
+	/* Check input params. */
+	if (str_res && rawsei_datacontainer) {
+		struct bspp_stream_alloc_data *alloc_data =
+				(struct bspp_stream_alloc_data *)str_res;
+
+		rawsei_alloc = container_of(rawsei_datacontainer,
+					    struct bspp_raw_sei_alloc,
+					    raw_sei_data);
+		memset(&rawsei_alloc->raw_sei_data, 0,
+		       sizeof(rawsei_alloc->raw_sei_data));
+		lst_remove(&alloc_data->raw_sei_alloc_list, rawsei_alloc);
+		kfree(rawsei_alloc);
+	}
+}
+
+void bspp_freeraw_sei_datalist(const void *str_res,
+			       struct vdec_raw_bstr_data *rawsei_datalist)
+{
+	/* Check input params. */
+	if (rawsei_datalist && str_res) {
+		struct vdec_raw_bstr_data *sei_raw_datacurr = NULL;
+
+		/* Start fromm the first element... */
+		sei_raw_datacurr = rawsei_datalist;
+		/* Free all the linked raw SEI data containers. */
+		while (sei_raw_datacurr) {
+			struct vdec_raw_bstr_data *seiraw_datanext =
+					sei_raw_datacurr->next;
+			bspp_freeraw_sei_datacontainer(str_res, sei_raw_datacurr);
+			sei_raw_datacurr = seiraw_datanext;
+		}
+	}
+}
+
+void bspp_streamrelese_rawbstrdataplain(const void *str_res,
+					const void *rawdata)
+{
+	struct bspp_stream_alloc_data *str_alloc =
+			(struct bspp_stream_alloc_data *)str_res;
+	struct bspp_raw_bitstream_data *rawbstrdata =
+			(struct bspp_raw_bitstream_data *)rawdata;
+
+	if (rawbstrdata) {
+		/* Decrement the raw bitstream data reference count. */
+		rawbstrdata->ref_count--;
+		/* If no entity is referencing the raw
+		 * bitstream data any more
+		 */
+		if (rawbstrdata->ref_count == 0) {
+			/* ... free the raw bistream data buffer... */
+			kfree(rawbstrdata->raw_bitstream_data.data);
+			memset(&rawbstrdata->raw_bitstream_data, 0,
+			       sizeof(rawbstrdata->raw_bitstream_data));
+			/* ...and return it to the list. */
+			lst_remove(&str_alloc->raw_data_list_used, rawbstrdata);
+			lst_add(&str_alloc->raw_data_list_available, rawbstrdata);
+		}
+	}
+}
+
+struct bspp_vps_info *bspp_get_vpshdr(void *str_res, u32 vps_id)
+{
+	struct bspp_stream_alloc_data *alloc_data =
+			(struct bspp_stream_alloc_data *)str_res;
+
+	if (vps_id >= VPS_SLOTS || !alloc_data)
+		return NULL;
+
+	return lst_last(&alloc_data->vps_data_list[vps_id]);
 }

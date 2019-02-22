@@ -29,6 +29,8 @@
 
 enum bspp_unit_type {
 	BSPP_UNIT_NONE = 0,
+	/* Only relevant for HEVC. */
+	BSPP_UNIT_VPS,
 	/* Only relevant for h.264 and HEVC */
 	BSPP_UNIT_SEQUENCE, BSPP_UNIT_PPS,
 	 /*
@@ -87,6 +89,27 @@ struct bspp_h264_inter_pict_ctx {
 	struct vdec_raw_bstr_data *sei_raw_data_list;
 };
 
+/* This structure contains HEVC state to be retained between pictures. */
+struct bspp_hevc_inter_pict_ctx {
+	/* Picture count in a sequence */
+	u32 seq_pic_count;
+	struct {
+		/* There was EOS NAL detected and no new picture yet */
+		unsigned eos_detected:1;
+		/* This is first picture after EOS NAL */
+		unsigned first_after_eos:1;
+	};
+
+	/* control variable to decide when to attach the SEI info
+	 * (picture properties) to a picture.
+	 */
+	u8 sei_info_attached_to_pic;
+	/* Raw SEI list to be attached to a picture. */
+	struct vdec_raw_bstr_data *sei_rawdata_list;
+	/* Handle to a picture header field to attach the raw SEI list to. */
+	void **hndl_pichdr_sei_rawdata_list;
+};
+
 /*
  * struct bspp_inter_pict_data
  * @Brief	This structure contains state to be retained between pictures.
@@ -99,7 +122,10 @@ struct bspp_inter_pict_data {
 	/* Indicates whether or not DPB flush is needed */
 	int not_dpb_flush;
 	struct lst_t pic_prefix_seg;
+	union {
 	struct bspp_h264_inter_pict_ctx h264_ctx;
+	struct bspp_hevc_inter_pict_ctx hevc_ctx;
+	};
 };
 
 /*
@@ -183,6 +209,16 @@ enum bspp_element_status {
 	BSPP_STATUSMAX
 };
 
+struct bspp_vps_info {
+	void **lst_link;
+	/* VPS Id   INSECURE MEMORY HOST */
+	unsigned int vps_id;
+	/* Reference count for video header. INSECURE MEMORY HOST */
+	unsigned int ref_count;
+	/*!< Parsing Info. SECURE MEMORY HOST */
+	void *secure_vpsinfo;
+};
+
 /*
  * struct bspp_unit_data
  * @Brief	Contains bitstream unit data
@@ -213,6 +249,8 @@ struct bspp_unit_data {
 		struct bspp_pps_info *pps_info;
 		/* BSPP_UNIT_PICTURE. */
 		struct bspp_pict_hdr_info *pict_hdr_info;
+		/* For Video Header (HEVC) */
+		struct bspp_vps_info *vps_info;
 	} out;
 
 	/*
@@ -285,6 +323,13 @@ struct bspp_vid_std_features {
 	 * this video standard.
 	 */
 	size_t pps_size;
+	/* This video standard uses Video Parameter Sets. */
+	int uses_vps;
+	/*
+	 * The size of the Video Parameter Sets structure for
+	 * this video standard
+	 */
+	size_t vps_size;
 };
 
 /*
@@ -455,5 +500,16 @@ struct bspp_pps_info *bspp_get_pps_hdr(void *str_res_handle, u32 pps_id);
 
 struct bspp_sequence_hdr_info *bspp_get_sequ_hdr(void *str_res_handle,
 						 u32 sequ_id);
+
+struct bspp_vps_info *bspp_get_vpshdr(void *str_res, u32 vps_id);
+
+void bspp_streamrelese_rawbstrdataplain(const void *str_res,
+					const void *rawdata);
+
+void bspp_freeraw_sei_datacontainer(const void *str_res,
+				    struct vdec_raw_bstr_data *rawsei_datacontainer);
+
+void bspp_freeraw_sei_datalist(const void *str_res,
+			       struct vdec_raw_bstr_data *rawsei_datalist);
 
 #endif /* __BSPP_INT_H__   */

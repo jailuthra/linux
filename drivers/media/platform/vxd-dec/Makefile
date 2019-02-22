@@ -39,6 +39,7 @@ vxd-dec-objs += core.o
 vxd-dec-objs += swsr.o
 vxd-dec-objs += h264_secure_parser.o
 vxd-dec-objs += bspp.o
+vxd-dec-objs += hevc_secure_parser.o
 
 #UM INTERFACE & SYSDEV
 vxd-dec-objs += vxd_dec.o
