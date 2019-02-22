@@ -2486,8 +2486,8 @@ int core_stream_release_bufs(u32 res_str_id, enum vdec_buf_type buf_type)
 	case VDEC_BUFTYPE_PICTURE:
 		{
 		/* Empty all the decoded picture related buffer lists. */
-		ret = resource_empty(&core_str_ctx->pict_buf_list, true,
-				     NULL, NULL);
+		ret = resource_list_empty(&core_str_ctx->pict_buf_list, true,
+					  NULL, NULL);
 		VDEC_ASSERT(ret == IMG_SUCCESS);
 		break;
 		}
@@ -2496,9 +2496,9 @@ int core_stream_release_bufs(u32 res_str_id, enum vdec_buf_type buf_type)
 		{
 		/* Empty the stream unit queue. */
 		ret =
-		resource_empty(&core_str_ctx->str_unit_list, false,
-			       (resource_pfn_freeitem)core_fn_free_stream_unit,
-			       core_str_ctx);
+		resource_list_empty(&core_str_ctx->str_unit_list, false,
+				    (resource_pfn_freeitem)core_fn_free_stream_unit,
+				    core_str_ctx);
 		VDEC_ASSERT(ret == IMG_SUCCESS);
 		break;
 		}
@@ -2506,15 +2506,14 @@ int core_stream_release_bufs(u32 res_str_id, enum vdec_buf_type buf_type)
 	case VDEC_BUFTYPE_ALL:
 		{
 		/* Empty all the decoded picture related buffer lists. */
-		ret = resource_empty(&core_str_ctx->pict_buf_list, true, NULL,
-				     NULL);
+		ret = resource_list_empty(&core_str_ctx->pict_buf_list, true, NULL, NULL);
 		VDEC_ASSERT(ret == IMG_SUCCESS);
 
 		/* Empty the stream unit queue. */
 		ret =
-		resource_empty(&core_str_ctx->str_unit_list, false,
-			       (resource_pfn_freeitem)core_fn_free_stream_unit,
-			       core_str_ctx);
+		resource_list_empty(&core_str_ctx->str_unit_list, false,
+				    (resource_pfn_freeitem)core_fn_free_stream_unit,
+				    core_str_ctx);
 		VDEC_ASSERT(ret == IMG_SUCCESS);
 		break;
 		}

@@ -946,9 +946,9 @@ int decoder_stream_destroy(void *dec_str_context, u8 abort)
 	 * added to hold the last on front and back-end for stream.
 	 */
 	for (i = 0; i < dec_str_ctx_local->num_dec_res + 2; i++) {
-		ret = resource_empty(&dec_str_ctx_local->dec_res_lst, false,
-				     decoder_stream_decode_resource_destroy,
-				     dec_str_ctx_local);
+		ret = resource_list_empty(&dec_str_ctx_local->dec_res_lst, false,
+					  decoder_stream_decode_resource_destroy,
+					  dec_str_ctx_local);
 		VDEC_ASSERT(ret == IMG_SUCCESS);
 		if (ret != IMG_SUCCESS)
 			return ret;
@@ -956,9 +956,9 @@ int decoder_stream_destroy(void *dec_str_context, u8 abort)
 	VDEC_ASSERT(lst_empty(&dec_str_ctx_local->dec_res_lst));
 
 	/* Remove all stream decode resources. */
-	ret = resource_empty(&dec_str_ctx_local->ref_res_lst, false,
-			     decoder_stream_reference_resource_destroy,
-			     dec_str_ctx_local);
+	ret = resource_list_empty(&dec_str_ctx_local->ref_res_lst, false,
+				  decoder_stream_reference_resource_destroy,
+				  dec_str_ctx_local);
 
 	VDEC_ASSERT(ret == IMG_SUCCESS);
 	if (ret != IMG_SUCCESS)

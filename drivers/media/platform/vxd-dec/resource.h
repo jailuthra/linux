@@ -54,9 +54,9 @@ int resource_list_replace(struct lst_t *list, void *item, u32 id, u32 *refcnt,
 			  resource_pfn_freeitem fn_freeitem,
 			  void *free_cb_param);
 
-int resource_empty(struct lst_t *list, u32 release_item,
-		   resource_pfn_freeitem fn_freeitem,
-		   void *free_cb_param);
+int resource_list_empty(struct lst_t *list, u32 release_item,
+			resource_pfn_freeitem fn_freeitem,
+			void *free_cb_param);
 
 int resource_getnumpict(struct lst_t *list);
 

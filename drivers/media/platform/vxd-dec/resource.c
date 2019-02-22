@@ -500,9 +500,9 @@ error:
 /*
  * removes all items from a resource list.
  */
-int resource_empty(struct lst_t *list, u32 release_item,
-		   resource_pfn_freeitem fn_freeitem,
-		   void *free_cb_param)
+int resource_list_empty(struct lst_t *list, u32 release_item,
+			resource_pfn_freeitem fn_freeitem,
+			void *free_cb_param)
 {
 	struct resource_list_elem *listelem = NULL;
 	u32 result = 0;
