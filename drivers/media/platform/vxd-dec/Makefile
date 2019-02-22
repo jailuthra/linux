@@ -45,3 +45,7 @@ vxd-dec-objs += hevc_secure_parser.o
 vxd-dec-objs += vxd_dec.o
 
 obj-$(CONFIG_VIDEO_IMG_VXD_DEC) += vxd-dec.o
+
+ifeq ($(CONFIG_HAS_HEVC),y)
+KBUILD_CFLAGS   += -DHAS_HEVC
+endif

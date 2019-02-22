@@ -23,12 +23,18 @@
 #include "decoder.h"
 #include "img_errors.h"
 #include "img_pixfmts.h"
+#include "img_profiles_levels.h"
 #include "lst.h"
 #include "resource.h"
 #include "rman_api.h"
 #include "vdecdd_utils.h"
 #include "vdec_mmu_wrapper.h"
 #include "vxd_dec.h"
+
+#ifdef HAS_HEVC
+#define SEQ_RES_NEEDED
+#define GENC_BUFF_COUNT 4
+#endif
 
 /*
  * This enum defines resource availability masks.
@@ -48,25 +54,19 @@ struct core_mbparam_alloc_info {
 };
 
 static struct core_mbparam_alloc_info mbparam_allocinfo[VDEC_STD_MAX - 1] = {
-    /*                AllocFlag    MBParamSize    Overalloc     */
-    /* MPEG2    */  { true,    0xc8,          0             },
-    /* MPEG4    */  { true,    0xc8,          0             },
-    /* H263     */  { true,    0xc8,          0             },
-    /* H264     */  { true,    0x80,          0             },
-    /* VC1      */  { true,    0x80,          (4096 * 2) / 0x80 },
-    /* AVS      */  { true,    0x80,          0             },
-    /* REAL     */  { true,    0x80,          0             },
-    /* JPEG     */  { false,   0x00,          0             },
-    /* VP6      */  { true,    0x80,          0             },
-    /* VP8      */  { true,    0x80,          0             },
-    /* SORENSON */  { true,    0xc8,          0             },
-    /* HEVC     */  { true,    0x40,          0             },
-};
-
-struct core_pict_resinfo {
-	u32	pict_res_num;
-	u32	mb_param_bufsize;
-	u8	is_valid;
+	/*                AllocFlag    MBParamSize    Overalloc     */
+	/* MPEG2    */  { true,    0xc8,          0             },
+	/* MPEG4    */  { true,    0xc8,          0             },
+	/* H263     */  { true,    0xc8,          0             },
+	/* H264     */  { true,    0x80,          0             },
+	/* VC1      */  { true,    0x80,          (4096 * 2) / 0x80 },
+	/* AVS      */  { true,    0x80,          0             },
+	/* REAL     */  { true,    0x80,          0             },
+	/* JPEG     */  { false,   0x00,          0             },
+	/* VP6      */  { true,    0x80,          0             },
+	/* VP8      */  { true,    0x80,          0             },
+	/* SORENSON */  { true,    0xc8,          0             },
+	/* HEVC     */  { true,    0x40,          0             },
 };
 
 struct vxdio_mempool {
@@ -76,8 +76,6 @@ struct vxdio_mempool {
 
 static u32 global_avail_slots;
 static u8 is_core_initialized;
-
-struct core_stream_ctx;
 
 /*
  * This structure contains the core Context.
@@ -94,6 +92,104 @@ struct core_context {
 static struct core_context *global_core_ctx;
 
 /*
+ * This structure contains the picture buffer size info.
+ * @brief  Picture Resource Info
+ */
+struct core_pict_bufsize_info {
+	u32 mbparams_bufsize;
+
+#ifdef HAS_HEVC
+	union {
+		struct hevc_bufsize_pict {
+			/* Size of GENC fragment buffer for HEVC */
+			u32 genc_fragment_bufsize;
+		} hevc_bufsize_pict;
+	};
+#endif
+};
+
+/*
+ * This structure contains the sequence resource info.
+ * @brief  Sequence Resource Info
+ */
+struct core_seq_resinfo {
+	union {
+#ifdef HAS_HEVC
+		struct hevc_bufsize_seqres {
+			u32 genc_bufsize; /* Size of GEN buffers for HEVC */
+			u32 intra_bufsize; /* Size of GEN buffers for HEVC */
+			u32 aux_bufsize;   /* Size of GEN buffers for HEVC */
+		} hevc_bufsize_seqres;
+#endif
+
+#ifndef SEQ_RES_NEEDED
+		u32 dummy;
+#endif
+	};
+};
+
+struct core_pict_resinfo {
+	u32 pict_res_num;
+	struct core_pict_bufsize_info size_info;
+	u8 is_valid;
+};
+
+/*
+ * This structure contains the standard specific part of plant context.
+ * @brief  Standard Specific Context
+ */
+struct core_std_spec_context {
+	union {
+#ifdef HAS_HEVC
+	struct hevc_ctx {
+		/* Counts genc buffer allocations  */
+		u16 genc_id_gen;
+	} hevc_ctx;
+#else
+	u32 dummy;
+#endif
+	};
+};
+
+struct core_stream_context;
+
+struct core_std_spec_operations {
+	/* Allocates standard specific picture buffers.  */
+	int (*alloc_picture_buffers)(struct core_stream_context *core_strctx,
+				     struct vdecdd_pict_resint *pict_resint,
+				     struct vxdio_mempool mem_pool,
+				     struct core_pict_resinfo *pict_res_info);
+
+	/* Frees standard specific picture buffers.  */
+	int (*free_picture_resource)(struct core_stream_context *core_strctx,
+				     struct vdecdd_pict_resint *pic_res_int);
+
+	/* Allocates standard specific sequence buffers.  */
+	int (*alloc_sequence_buffers)(struct core_stream_context *core_strctx,
+				      struct vdecdd_seq_resint *seq_res_int,
+				      struct vxdio_mempool mem_pool,
+				      struct core_seq_resinfo *seq_res_info);
+
+	/* Frees standard specific sequence buffers.  */
+	int (*free_sequence_resource)(struct core_stream_context *core_strctx,
+				      struct vdecdd_seq_resint *seq_res_int);
+
+	/* Returns buffer's sizes (common and standard specific).  */
+	int (*bufs_get_size)(struct core_stream_context *core_strctx,
+			     const struct vdec_comsequ_hdrinfo *seq_hdrinfo,
+			     struct vdec_pict_size *max_pict_size,
+			     struct core_pict_bufsize_info *size_info,
+			     struct core_seq_resinfo *seq_resinfo,
+			     u8 *resource_needed);
+
+	/* Checks whether resource is still suitable.  */
+	u8 (*is_stream_resource_suitable)(struct core_pict_resinfo *pict_resinfo,
+					  struct core_pict_resinfo *old_pict_resinfo,
+					  struct core_seq_resinfo *seq_resinfo,
+					  struct core_seq_resinfo *old_seq_resinfo);
+};
+
+/*
  * This structure contains the core Stream Context.
  * @brief  core Stream Context
  */
@@ -102,14 +198,31 @@ struct core_stream_context {
 	struct core_context	*core_ctx;
 	struct vdecdd_ddstr_ctx	*dd_str_ctx;
 	struct vxd_dec_ctx	*vxd_dec_context;
-	/* List of picture buffers */
+
+	/* list of picture buffers */
 	struct lst_t		pict_buf_list;
-	/* List of auxiliary picture resources */
+
+	/* List of picture resources allocated for this stream */
 	struct lst_t		pict_res_list;
+	struct lst_t		old_pict_res_list;
+
+	struct lst_t		aux_pict_res_list;
+
+#ifdef SEQ_RES_NEEDED
+	/* List of active sequence resources that are allocated for this stream. */
+	struct lst_t                seq_res_list;
+	/*
+	 * List of sequence resources that are allocated for this stream but no
+	 * longer suitable for new sequence(s).
+	 */
+	struct lst_t                old_seq_res_list;
+#endif
+
 	/* List of sequence header information */
 	struct lst_t		seq_hdr_list;
 	/* Queue of stream units to be processed */
 	struct lst_t		str_unit_list;
+
 	struct vdec_comsequ_hdrinfo	comseq_hdr_info;
 	u8	opcfg_set;
 	/* Picture buffer layout to use for decoding. */
@@ -120,13 +233,87 @@ struct core_stream_context {
 	u8	no_prev_refs_used;
 	u32	avail_slots;
 	u32	res_avail;
-	u32	mbparams_bufsize;
 	u8	stopped;
 	struct core_pict_resinfo	pict_resinfo;
+	/* Current sequence resource info. */
+	struct core_seq_resinfo       seq_resinfo;
+
 	/* Reconstructed picture buffer */
 	struct vdecdd_ddpict_buf	recon_pictbuf;
 	/* Coded picture size of last reconfiguration */
 	struct vdec_pict_size		coded_pict_size;
+	/* Standard specific operations. */
+	struct core_std_spec_operations *std_spec_ops;
+	/* Standard specific context. */
+	struct core_std_spec_context      std_spec_context;
+};
+
+#ifdef HAS_HEVC
+static int core_free_hevc_picture_resource(struct core_stream_context *core_strctx, struct vdecdd_pict_resint *pic_res_int);
+
+static int core_free_hevc_sequence_resource(struct core_stream_context *core_strctx, struct vdecdd_seq_resint *seq_res_int);
+
+static int core_hevc_bufs_get_size(struct core_stream_context *core_str_ctx,
+				   const struct vdec_comsequ_hdrinfo *seq_hdr_info,
+				   struct vdec_pict_size *max_pict_size,
+				   struct core_pict_bufsize_info *size_info,
+				   struct core_seq_resinfo *seq_res_info,
+				   u8 *resource_needed);
+
+static u8 core_is_hevc_stream_resource_suitable(struct core_pict_resinfo *pict_res_info,
+						struct core_pict_resinfo *old_pict_res_info,
+						struct core_seq_resinfo *seq_res_info,
+						struct core_seq_resinfo *old_seq_res_info);
+
+static int core_alloc_hevc_specific_seq_buffers(struct core_stream_context *core_strctx,
+						struct vdecdd_seq_resint *seq_res_int,
+						struct vxdio_mempool mempool,
+						struct core_seq_resinfo *seq_res_info);
+
+static int core_alloc_hevc_specific_pict_buffers(struct core_stream_context *core_strctx,
+						 struct vdecdd_pict_resint *pict_res_int,
+						 struct vxdio_mempool mempool,
+						 struct core_pict_resinfo *pict_res_info);
+#endif
+
+static int
+core_common_bufs_getsize(struct core_stream_context *core_str_ctx,
+			 const struct vdec_comsequ_hdrinfo *comseq_hdrinfo,
+			 struct vdec_pict_size *max_pict_size,
+			 struct core_pict_bufsize_info     *size_info,
+			 struct core_seq_resinfo  *seq_res_info, u8 *res_needed);
+
+static struct core_std_spec_operations std_specific_ops[VDEC_STD_MAX - 1] = {
+	/*                AllocPicture    FreePicture    AllocSeq    FreeSeq    BufsGetSize    IsStreamResourceSuitable   */
+	/* MPEG2    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+	/* MPEG4    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+	/* H263    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+
+	/* H264     */  { NULL,       NULL,      NULL,   NULL,  core_common_bufs_getsize,      NULL},
+
+	/* VC1    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+
+	/* AVS    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+
+	/* REAL    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+
+	/* JPEG    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+
+	/* VP6    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+
+	/* VP8    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+
+	/* SORENSON    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+#ifdef HAS_HEVC
+	/* HEVC     */  { core_alloc_hevc_specific_pict_buffers,
+				core_free_hevc_picture_resource,
+				core_alloc_hevc_specific_seq_buffers,
+				core_free_hevc_sequence_resource,
+				core_hevc_bufs_get_size,
+				core_is_hevc_stream_resource_suitable},
+#else
+	/* HEVC    */  { NULL,       NULL,      NULL,   NULL,  NULL,      NULL},
+#endif
 };
 
 static void core_fw_response_cb(int res_str_id, u32 *msg, u32 msg_size,
@@ -154,7 +341,7 @@ static void core_fw_response_cb(int res_str_id, u32 *msg, u32 msg_size,
 }
 
 /*
- * @Function CORE_Initialise
+ * @Function core_initialise
  */
 int core_initialise(void *dev_handle, u32 int_heap_id, void *vxd_cb_ptr)
 {
@@ -663,69 +850,242 @@ core_free_common_picture_resource(struct core_stream_context *core_str_ctx,
 	return ret;
 }
 
-/*
- * @Function  core_fn_free_stream
- */
-static void core_fn_free_stream(void *param)
+static int core_free_resbuf(struct vdecdd_ddbuf_mapinfo **buf_handle, void *mmu_handle)
 {
-	int	ret;
-	struct vdecdd_ddstr_ctx	*dd_str_context;
-	struct vdecdd_dddev_context *dd_dev_ctx;
-	struct core_stream_context *core_str_ctx;
-	struct vdecdd_pict_resint *pict_resint;
+	int ret = IMG_SUCCESS;
+	struct vdecdd_ddbuf_mapinfo *buf = *buf_handle;
 
-	/* Validate input arguments */
-	VDEC_ASSERT(param);
-
-	core_str_ctx = (struct core_stream_context *)param;
-
-	dd_str_context = core_str_ctx->dd_str_ctx;
-
-	VDEC_ASSERT(dd_str_context);
-	if (!dd_str_context)
-		return;
-
-	dd_dev_ctx = dd_str_context->dd_dev_context;
-	VDEC_ASSERT(dd_dev_ctx);
-
-	/* Destroy stream in the Decoder. */
-	if (dd_str_context->dec_ctx) {
-		ret = decoder_stream_destroy(dd_str_context->dec_ctx,
-					     false);
-		VDEC_ASSERT(ret == IMG_SUCCESS);
-		dd_str_context->dec_ctx = NULL;
+	if (buf) {
+		if (buf->ddbuf_info.hndl_memory) {
+			ret = mmu_free_mem(mmu_handle, &buf->ddbuf_info);
+			VDEC_ASSERT(ret == IMG_SUCCESS);
+		}
+		kfree(buf);
+		*buf_handle = NULL;
 	}
+	return ret;
+}
+
+/*
+ * @Function              core_free_picture_resource
+ */
+static int
+core_free_picture_resource(struct core_stream_context *core_strctx,
+			   struct vdecdd_pict_resint *pict_resint)
+{
+	int result = IMG_SUCCESS;
+
+	result = core_free_common_picture_resource(core_strctx, pict_resint);
+
+	VDEC_ASSERT(core_strctx->std_spec_ops);
+	if (core_strctx->std_spec_ops->free_picture_resource)
+		core_strctx->std_spec_ops->free_picture_resource(core_strctx,
+								 pict_resint);
+
+#ifdef SEQ_RES_NEEDED
+	if (pict_resint && pict_resint->seq_resint) {
+		resource_item_return(&pict_resint->seq_resint->ref_count);
+		pict_resint->seq_resint = 0;
+	}
+#endif
+
+	if (result == IMG_SUCCESS)
+		kfree(pict_resint);
+
+	return result;
+}
+
+/*
+ * @Function              core_free_sequence_resource
+ */
+#ifdef SEQ_RES_NEEDED
+static int
+core_free_common_sequence_resource(struct core_stream_context *core_strctx,
+				   struct vdecdd_seq_resint *seqres_int)
+{
+	int result;
+
+	result = core_free_resbuf(&seqres_int->err_pict_buf,
+				  core_strctx->dd_str_ctx->mmu_str_handle);
+	if (result != IMG_SUCCESS)
+		pr_err("MMU_Free for Error Recover Frame Store buffer failed with error %u",
+		       result);
+
+	return result;
+}
+
+static void
+core_free_sequence_resource(struct core_stream_context *core_strctx,
+			    struct vdecdd_seq_resint *seqres_int)
+{
+	VDEC_ASSERT(core_strctx->std_spec_ops);
+	core_free_common_sequence_resource(core_strctx, seqres_int);
+	if (core_strctx->std_spec_ops->free_sequence_resource)
+		core_strctx->std_spec_ops->free_sequence_resource(core_strctx,
+								  seqres_int);
+	kfree(seqres_int);
+}
+#endif
+
+/*
+ * @Function              core_stream_resource_deprecate
+ */
+static int core_stream_resource_deprecate(struct core_stream_context *core_str_ctx)
+{
+	struct vdecdd_pict_resint *picres_int;
+	int ret;
+
+	/* Free all "old" picture resources since these should now be unused. */
+	picres_int = lst_first(&core_str_ctx->old_pict_res_list);
+	while (picres_int) {
+		if (picres_int->ref_cnt != 0) {
+			pr_warn("[USERSID=0x%08X] Internal resource should be unused since it has been deprecated before",
+				core_str_ctx->dd_str_ctx->str_config_data.user_str_id);
+
+			picres_int = lst_next(picres_int);
+		} else {
+			struct vdecdd_pict_resint *picres_int_to_remove = picres_int;
+
+			picres_int = lst_next(picres_int);
+
+			lst_remove(&core_str_ctx->old_pict_res_list, picres_int_to_remove);
+			ret = core_free_picture_resource(core_str_ctx, picres_int_to_remove);
+			VDEC_ASSERT(ret == IMG_SUCCESS);
+			if (ret != IMG_SUCCESS)
+				return ret;
+		}
+	}
+
+	/* Move all "active" picture resources to the "old" list if they are still in use. */
+	picres_int = lst_removehead(&core_str_ctx->pict_res_list);
+	while (picres_int) {
+		/* Remove picture resource from the list. */
+		ret = resource_list_remove(&core_str_ctx->aux_pict_res_list, picres_int);
+
+		/* IMG_ERROR_COULD_NOT_OBTAIN_RESOURCE is a valid return code
+		 * e.g. during reconfigure we are clearing the sPictBufferList list
+		 * and then try to remove the buffers again from the same list (empty now)
+		 * though core UNMAP_BUF messages
+		 */
+		if (ret != IMG_SUCCESS && ret != IMG_ERROR_COULD_NOT_OBTAIN_RESOURCE) {
+			pr_err("[USERSID=0x%08X] Failed to remove picture resource",
+			       core_str_ctx->dd_str_ctx->str_config_data.user_str_id);
+			return ret;
+		}
+		/*
+		 * If the active resource is not being used, free now.
+		 * Otherwise add to the old list to be freed later.
+		 */
+		if (picres_int->ref_cnt == 0) {
+			ret = core_free_picture_resource(core_str_ctx, picres_int);
+			VDEC_ASSERT(ret == IMG_SUCCESS);
+			if (ret != IMG_SUCCESS)
+				return ret;
+		} else {
+			lst_add(&core_str_ctx->old_pict_res_list, picres_int);
+		}
+		picres_int = lst_removehead(&core_str_ctx->pict_res_list);
+	}
+
+	/* Reset the resource configuration. */
+	memset(&core_str_ctx->pict_resinfo, 0, sizeof(core_str_ctx->pict_resinfo));
+
+#ifdef SEQ_RES_NEEDED
+	{
+		struct vdecdd_seq_resint *seqres_int;
+
+		/* Free all "old" sequence resources since these should now be unused. */
+		seqres_int = lst_first(&core_str_ctx->old_seq_res_list);
+		while (seqres_int) {
+			if (seqres_int->ref_count != 0) {
+				pr_warn("[USERSID=0x%08X] Internal sequence resource should be unused since it has been deprecated before",
+					core_str_ctx->dd_str_ctx->str_config_data.user_str_id);
+				seqres_int = lst_next(seqres_int);
+			} else {
+				struct vdecdd_seq_resint *seqres_int_to_remove = seqres_int;
+
+				seqres_int = lst_next(seqres_int);
+
+				lst_remove(&core_str_ctx->old_seq_res_list, seqres_int_to_remove);
+				core_free_sequence_resource(core_str_ctx, seqres_int_to_remove);
+			}
+		}
+
+		/* Move all "active" sequence resources to the "old" list if they are still in use. */
+		seqres_int = lst_removehead(&core_str_ctx->seq_res_list);
+		while (seqres_int) {
+			/*
+			 * If the active resource is not being used, free now.
+			 * Otherwise add to the old list to be freed later.
+			 */
+			seqres_int->ref_count == 0 ? core_free_sequence_resource(core_str_ctx, seqres_int) :
+						lst_add(&core_str_ctx->old_seq_res_list, seqres_int);
+
+			seqres_int = lst_removehead(&core_str_ctx->seq_res_list);
+		}
+
+		/* Reset the resource configuration. */
+		memset(&core_str_ctx->seq_resinfo, 0, sizeof(core_str_ctx->seq_resinfo));
+	}
+#endif
+	return IMG_SUCCESS;
+}
+
+/*
+ * @Function              core_stream_resource_destroy
+ */
+static int core_stream_resource_destroy(struct core_stream_context *core_str_ctx)
+{
+	struct vdecdd_pict_resint *picres_int;
+	int           ret;
 
 	/* Remove any "active" picture resources allocated for this stream. */
-	pict_resint = resource_list_removehead(&core_str_ctx->pict_res_list);
-
-	while (pict_resint) {
-		ret = core_free_common_picture_resource(core_str_ctx,
-							pict_resint);
+	picres_int = lst_removehead(&core_str_ctx->pict_res_list);
+	while (picres_int) {
+		ret = core_free_picture_resource(core_str_ctx, picres_int);
 		VDEC_ASSERT(ret == IMG_SUCCESS);
 		if (ret != IMG_SUCCESS)
-			return;
+			return ret;
 
-		pict_resint =
-			resource_list_removehead(&core_str_ctx->pict_res_list);
+		picres_int = lst_removehead(&core_str_ctx->pict_res_list);
 	}
 
-	/* Destroy the MMU context for this stream. */
-	if (dd_str_context->mmu_str_handle) {
-		ret = mmu_stream_destroy(dd_str_context->mmu_str_handle);
-
+	/* Remove any "old" picture resources allocated for this stream. */
+	picres_int = lst_removehead(&core_str_ctx->old_pict_res_list);
+	while (picres_int) {
+		ret = core_free_picture_resource(core_str_ctx, picres_int);
 		VDEC_ASSERT(ret == IMG_SUCCESS);
-		dd_str_context->mmu_str_handle = NULL;
+		if (ret != IMG_SUCCESS)
+			return ret;
+		picres_int = lst_removehead(&core_str_ctx->old_pict_res_list);
 	}
 
-	/* Destroy the stream resources. */
-	if (dd_str_context->res_buck_handle) {
-		rman_destroy_bucket(dd_str_context->res_buck_handle);
-		dd_str_context->res_buck_handle = NULL;
-	}
+	/* Reset the resource configuration. */
+	memset(&core_str_ctx->pict_resinfo, 0, sizeof(core_str_ctx->pict_resinfo));
 
-	/* Free stream context. */
-	kfree(dd_str_context);
+#ifdef SEQ_RES_NEEDED
+	{
+		struct vdecdd_seq_resint *seqres_int;
+
+		/* Remove any "active" sequence resources allocated for this stream. */
+		seqres_int = lst_removehead(&core_str_ctx->seq_res_list);
+		while (seqres_int) {
+			core_free_sequence_resource(core_str_ctx, seqres_int);
+			seqres_int = lst_removehead(&core_str_ctx->seq_res_list);
+		}
+
+		/* Remove any "old" sequence resources allocated for this stream. */
+		seqres_int = lst_removehead(&core_str_ctx->old_seq_res_list);
+		while (seqres_int) {
+			core_free_sequence_resource(core_str_ctx, seqres_int);
+			seqres_int = lst_removehead(&core_str_ctx->old_seq_res_list);
+		}
+
+		/* Reset the resource configuration. */
+		memset(&core_str_ctx->seq_resinfo, 0, sizeof(core_str_ctx->seq_resinfo));
+	}
+#endif
+	return IMG_SUCCESS;
 }
 
 /*
@@ -751,6 +1111,99 @@ static int core_fn_free_stream_unit(struct vdecdd_str_unit *str_unit,
 	str_unit->decode = false;
 
 	return ret;
+}
+
+/*
+ * @Function  core_fn_free_stream
+ */
+static void core_fn_free_stream(void *param)
+{
+	int	ret;
+	struct vdecdd_ddstr_ctx	*dd_str_context;
+	struct vdecdd_dddev_context *dd_dev_ctx;
+	struct core_stream_context *core_str_ctx;
+
+	/* Validate input arguments */
+	VDEC_ASSERT(param);
+
+	core_str_ctx = (struct core_stream_context *)param;
+
+	dd_str_context = core_str_ctx->dd_str_ctx;
+
+	VDEC_ASSERT(dd_str_context);
+	if (!dd_str_context)
+		return;
+
+	dd_dev_ctx = dd_str_context->dd_dev_context;
+	VDEC_ASSERT(dd_dev_ctx);
+
+	if (!lst_empty(&core_str_ctx->str_unit_list)) {
+		/*
+		 * Try and empty the list. Since this function is tearing down the core stream,
+		 * test result using assert and continue to tidy-up as much as possible.
+		 */
+		ret = resource_list_empty(&core_str_ctx->str_unit_list, false,
+					  (resource_pfn_freeitem)core_fn_free_stream_unit,
+					  core_str_ctx);
+		VDEC_ASSERT(ret == IMG_SUCCESS);
+	}
+
+	if (!lst_empty(&core_str_ctx->pict_buf_list)) {
+		/*
+		 * Try and empty the list. Since this function is tearing down the core stream,
+		 * test result using assert and continue to tidy-up as much as possible.
+		 */
+		ret = resource_list_empty(&core_str_ctx->pict_buf_list, true, NULL, NULL);
+		VDEC_ASSERT(ret == IMG_SUCCESS);
+	}
+
+	if (!lst_empty(&core_str_ctx->aux_pict_res_list)) {
+		/*
+		 * Try and empty the list. Since this function is tearing down the core stream,
+		 * test result using assert and continue to tidy-up as much as possible.
+		 */
+		ret = resource_list_empty(&core_str_ctx->aux_pict_res_list, true, NULL, NULL);
+		VDEC_ASSERT(ret == IMG_SUCCESS);
+	}
+
+	if (!lst_empty(&core_str_ctx->seq_hdr_list)) {
+		/*
+		 * Try and empty the list. Since this function is tearing down the core stream,
+		 * test result using assert and continue to tidy-up as much as possible.
+		 */
+		ret = resource_list_empty(&core_str_ctx->seq_hdr_list, false, NULL, NULL);
+		VDEC_ASSERT(ret == IMG_SUCCESS);
+	}
+
+	/* Destroy stream in the Decoder. */
+	if (dd_str_context->dec_ctx) {
+		ret = decoder_stream_destroy(dd_str_context->dec_ctx,
+					     false);
+		VDEC_ASSERT(ret == IMG_SUCCESS);
+		dd_str_context->dec_ctx = NULL;
+	}
+
+	core_stream_resource_destroy(core_str_ctx);
+
+	/* Destroy the MMU context for this stream. */
+	if (dd_str_context->mmu_str_handle) {
+		ret = mmu_stream_destroy(dd_str_context->mmu_str_handle);
+
+		VDEC_ASSERT(ret == IMG_SUCCESS);
+		dd_str_context->mmu_str_handle = NULL;
+	}
+
+	/* Destroy the stream resources. */
+	if (dd_str_context->res_buck_handle) {
+		rman_destroy_bucket(dd_str_context->res_buck_handle);
+		dd_str_context->res_buck_handle = NULL;
+	}
+
+	/* Free stream context. */
+	kfree(dd_str_context);
+
+	/* Free the stream context. */
+	kfree(core_str_ctx);
 }
 
 /*
@@ -803,8 +1256,15 @@ int core_stream_create(void *vxd_dec_ctx_arg,
 
 	lst_init(&core_str_ctx->pict_buf_list);
 	lst_init(&core_str_ctx->pict_res_list);
+	lst_init(&core_str_ctx->old_pict_res_list);
+	lst_init(&core_str_ctx->aux_pict_res_list);
 	lst_init(&core_str_ctx->seq_hdr_list);
 	lst_init(&core_str_ctx->str_unit_list);
+
+#ifdef SEQ_RES_NEEDED
+	lst_init(&core_str_ctx->seq_res_list);
+	lst_init(&core_str_ctx->old_seq_res_list);
+#endif
 
 	/* Allocate device stream context.. */
 	dd_str_context = kzalloc(sizeof(*dd_str_context), GFP_KERNEL);
@@ -872,6 +1332,7 @@ int core_stream_create(void *vxd_dec_ctx_arg,
 		dd_str_context->res_str_id, str_cfg_data->user_str_id);
 
 	*res_str_id = dd_str_context->res_str_id;
+	core_str_ctx->std_spec_ops = &std_specific_ops[str_cfg_data->vid_std - 1];
 
 	lst_add(&global_core_ctx->core_str_ctx, core_str_ctx);
 
@@ -895,7 +1356,7 @@ core_get_resource_availability(struct core_stream_context *core_str_ctx)
 	if (resource_list_getnumavail(&core_str_ctx->pict_buf_list) == 0)
 		avail &= ~CORE_AVAIL_PICTBUF;
 
-	if (resource_list_getnumavail(&core_str_ctx->pict_res_list) == 0)
+	if (resource_list_getnumavail(&core_str_ctx->aux_pict_res_list) == 0)
 		avail &= ~CORE_AVAIL_PICTRES;
 
 	if (global_avail_slots == 0)
@@ -1247,7 +1708,8 @@ static int
 core_common_bufs_getsize(struct core_stream_context *core_str_ctx,
 			 const struct vdec_comsequ_hdrinfo *comseq_hdrinfo,
 			 struct vdec_pict_size *max_pict_size,
-			 u32 *mbparam_bufsize, u8 *res_needed)
+			 struct core_pict_bufsize_info     *size_info,
+			 struct core_seq_resinfo  *seq_res_info, u8 *res_needed)
 {
 	enum vdec_vid_std vid_std =
 		core_str_ctx->dd_str_ctx->str_config_data.vid_std;
@@ -1258,7 +1720,7 @@ core_common_bufs_getsize(struct core_stream_context *core_str_ctx,
 		return IMG_ERROR_GENERIC_FAILURE;
 
 	/* Reset the MB parameters buffer size. */
-	*mbparam_bufsize = 0;
+	size_info->mbparams_bufsize = 0;
 
 	if (mbparam_allocinfo[std_idx].alloc_mbparam_bufs) {
 		*res_needed = true;
@@ -1274,14 +1736,14 @@ core_common_bufs_getsize(struct core_stream_context *core_str_ctx,
 		mb_num += mbparam_allocinfo[std_idx].overalloc_mbnum;
 
 		/* Calculate the MB params buffer size. */
-		*mbparam_bufsize = mb_num *
+		size_info->mbparams_bufsize = mb_num *
 				   mbparam_allocinfo[std_idx].mbparam_size;
 
 		/* Adjust the buffer size for MSVDX. */
-		vdecddutils_buf_vxd_adjust_size(mbparam_bufsize);
+		vdecddutils_buf_vxd_adjust_size(&size_info->mbparams_bufsize);
 
 		if (comseq_hdrinfo->separate_chroma_planes)
-			*mbparam_bufsize *= 3;
+			size_info->mbparams_bufsize *= 3;
 	}
 
 	return IMG_SUCCESS;
@@ -1295,7 +1757,8 @@ core_pict_res_getinfo(struct core_stream_context *core_str_ctx,
 		      const struct vdec_comsequ_hdrinfo *comseq_hdrinfo,
 		      const struct vdec_str_opconfig *op_cfg,
 		      const struct vdecdd_ddpict_buf *disp_pictbuf,
-		      struct core_pict_resinfo *pict_resinfo)
+		      struct core_pict_resinfo *pict_resinfo,
+		struct core_seq_resinfo *seq_resinfo)
 {
 	struct vdec_pict_size coded_pict_size;
 	struct dec_ctx *decctx;
@@ -1307,9 +1770,11 @@ core_pict_res_getinfo(struct core_stream_context *core_str_ctx,
 
 	coded_pict_size = comseq_hdrinfo->max_frame_size;
 
-	core_common_bufs_getsize(core_str_ctx, comseq_hdrinfo,
+	VDEC_ASSERT(core_str_ctx->std_spec_ops);
+	if (core_str_ctx->std_spec_ops->bufs_get_size)
+		core_str_ctx->std_spec_ops->bufs_get_size(core_str_ctx, comseq_hdrinfo,
 				 &coded_pict_size,
-				 &pict_resinfo->mb_param_bufsize, &res_needed);
+				 &pict_resinfo->size_info, seq_resinfo, &res_needed);
 
 	/* If any picture resources are needed... */
 	if (res_needed) {
@@ -1325,8 +1790,13 @@ core_pict_res_getinfo(struct core_stream_context *core_str_ctx,
 		decctx =
 			(struct dec_ctx *)global_core_ctx->dev_ctx->dec_context;
 
-		pict_resinfo->pict_res_num +=
-		decctx->num_pipes * decctx->dev_cfg->num_slots_per_pipe - 1;
+		if (core_str_ctx->dd_str_ctx->str_config_data.vid_std == VDEC_STD_HEVC)
+			pict_resinfo->pict_res_num +=
+			decctx->dev_cfg->num_slots_per_pipe - 1;
+		else
+			pict_resinfo->pict_res_num +=
+			decctx->num_pipes * decctx->dev_cfg->num_slots_per_pipe - 1;
+
 	}
 
 	return IMG_SUCCESS;
@@ -1352,33 +1822,139 @@ static int core_alloc_resbuf(struct vdecdd_ddbuf_mapinfo **buf_handle,
 				       &buf->ddbuf_info);
 
 		VDEC_ASSERT(ret == IMG_SUCCESS);
+		if (ret != IMG_SUCCESS)
+			ret = IMG_ERROR_OUT_OF_MEMORY;
 	} else {
 		ret = IMG_ERROR_OUT_OF_MEMORY;
 	}
 	return ret;
 }
 
-/*
- * @Function core_stream_resource_create
- */
-static int
-core_stream_resource_create(struct core_stream_context *core_str_ctx,
-			    u8 closed_gop, u32 mem_heap_id,
-			    const struct vdec_comsequ_hdrinfo *comseq_hdrinfo,
-			    const struct vdec_str_opconfig *op_cfg,
-			    const struct vdecdd_ddpict_buf *disp_pict_buf)
+#ifdef SEQ_RES_NEEDED
+static int core_alloc_common_sequence_buffers(struct core_stream_context *core_str_ctx,
+					      struct vdecdd_seq_resint *seqres_int,
+					      struct vxdio_mempool mem_pool,
+					      struct core_seq_resinfo *seqres_info,
+					      struct core_pict_resinfo *pictres_info,
+					      const struct vdec_str_opconfig *op_cfg,
+					      const struct vdecdd_ddpict_buf *disp_pict_buf)
 {
-	struct vdecdd_pict_resint *pict_resint = NULL;
 	int ret = IMG_SUCCESS;
+	/* place holder for error concealment */
+	return ret;
+}
+#endif
+
+/*
+ * @Function              core_do_resource_realloc
+ */
+static u8 core_do_resource_realloc(struct core_stream_context *core_str_ctx,
+				   struct core_pict_resinfo *pictres_info,
+				   struct core_seq_resinfo *seqres_info)
+{
+	VDEC_ASSERT(core_str_ctx->std_spec_ops);
+	/* If buffer sizes are sufficient and only the greater number of resources is needed... */
+	if (core_str_ctx->pict_resinfo.size_info.mbparams_bufsize >= pictres_info->size_info.mbparams_bufsize &&
+	    (core_str_ctx->std_spec_ops->is_stream_resource_suitable ?
+	     core_str_ctx->std_spec_ops->is_stream_resource_suitable(pictres_info, &core_str_ctx->pict_resinfo,
+								     seqres_info, &core_str_ctx->seq_resinfo) : true) &&
+	    core_str_ctx->pict_resinfo.pict_res_num < pictres_info->pict_res_num)
+		/* ...full internal resource reallocation is not required. */
+		return false;
+
+	/* Otherwise request full internal resource reallocation. */
+	return true;
+}
+
+/*
+ * @Function              core_is_stream_resource_suitable
+ */
+static u8 core_is_stream_resource_suitable(struct core_stream_context *core_str_ctx,
+					   const struct vdec_comsequ_hdrinfo *comseq_hdrinfo,
+					   const struct vdec_str_opconfig *op_cfg,
+					   const struct vdecdd_ddpict_buf *disp_pict_buf,
+					   struct core_pict_resinfo *pictres_info,
+					   struct core_seq_resinfo *seqres_info_ptr)
+{
+	int              ret;
+	struct core_pict_resinfo      aux_pictes_info;
+	struct core_pict_resinfo    *aux_pictes_info_ptr;
+	struct core_seq_resinfo seqres_info;
+
+	/* If resource info is needed externally, just use it. Otherwise use internal structure. */
+	if (pictres_info)
+		aux_pictes_info_ptr = pictres_info;
+	else
+		aux_pictes_info_ptr = &aux_pictes_info;
+
+	if (!seqres_info_ptr)
+		seqres_info_ptr = &seqres_info;
+
+	/* Get the resource info for current settings. */
+	ret = core_pict_res_getinfo(core_str_ctx, comseq_hdrinfo, op_cfg, disp_pict_buf,
+				    aux_pictes_info_ptr, seqres_info_ptr);
+	VDEC_ASSERT(ret == IMG_SUCCESS);
+	if (ret != IMG_SUCCESS)
+		return false;
+
+	VDEC_ASSERT(core_str_ctx->std_spec_ops);
+	if (core_str_ctx->std_spec_ops->is_stream_resource_suitable) {
+		if (!core_str_ctx->std_spec_ops->is_stream_resource_suitable(aux_pictes_info_ptr,
+									     &core_str_ctx->pict_resinfo,
+									     seqres_info_ptr, &core_str_ctx->seq_resinfo))
+			return false;
+	}
+
+	/* Check the number of picture resources required against the current number. */
+	if (aux_pictes_info_ptr->pict_res_num > core_str_ctx->pict_resinfo.pict_res_num)
+		return false;
+
+	return true;
+}
+
+static int core_alloc_common_pict_buffers(struct core_stream_context *core_str_ctx,
+					  struct vdecdd_pict_resint *pictres_int,
+					  struct vxdio_mempool mem_pool,
+					  struct core_pict_resinfo *pictres_info)
+{
+	int ret = IMG_SUCCESS;
+
+	/* If MB params buffers are needed... */
+	if (pictres_info->size_info.mbparams_bufsize > 0)
+		/* Allocate the MB parameters buffer info structure. */
+		ret = core_alloc_resbuf(&pictres_int->mb_param_buf,
+					pictres_info->size_info.mbparams_bufsize,
+					core_str_ctx->dd_str_ctx->mmu_str_handle,
+					mem_pool);
+
+	return ret;
+}
+
+/*
+ * @Function              core_stream_resource_create
+ */
+static int core_stream_resource_create(struct core_stream_context *core_str_ctx,
+				       u8 closed_gop, u32 mem_heap_id,
+				       const struct vdec_comsequ_hdrinfo *comseq_hdrinfo,
+				       const struct vdec_str_opconfig *op_cfg,
+				       const struct vdecdd_ddpict_buf *disp_pict_buf)
+{
+	struct vdecdd_pict_resint *pictres_int = NULL;
+	int ret = IMG_SUCCESS;
+	u32 i, start_cnt = 0;
+	struct core_pict_resinfo pictres_info;
+	struct vdecdd_seq_resint *seqres_int = NULL;
+	struct core_seq_resinfo seqres_info;
 	struct vxdio_mempool mem_pool;
-	/* allocate mb_param_bufs */
-	int cnt;
 
 	mem_pool.mem_heap_id = mem_heap_id;
 	mem_pool.mem_attrib = SYS_MEMATTRIB_UNCACHED |
 				SYS_MEMATTRIB_WRITECOMBINE |
 				SYS_MEMATTRIB_INTERNAL;
 
+#ifdef SEQ_RES_NEEDED
+	seqres_int = lst_first(&core_str_ctx->seq_res_list);
+#endif
 	/*
 	 * Clear the reconstructed picture buffer layout if the previous
 	 * references are no longer used. Only under these circumstances
@@ -1395,6 +1971,114 @@ core_stream_resource_create(struct core_stream_context *core_str_ctx,
 			VDEC_ASSERT(false);
 			pr_err("Coded picture size changed within the closed GOP (i.e. mismatched references)");
 		}
+	}
+
+	/* If current buffers are not suitable for specified VSH/Output config... */
+	if (!core_is_stream_resource_suitable(core_str_ctx, comseq_hdrinfo,
+					      op_cfg, disp_pict_buf, &pictres_info,
+					      &seqres_info)) {
+		/* If full internal resource reallocation is needed... */
+		if (core_do_resource_realloc(core_str_ctx, &pictres_info, &seqres_info)) {
+			/*
+			 * Mark all the active resources as deprecated and
+			 * free-up where no longer used.
+			 */
+			core_stream_resource_deprecate(core_str_ctx);
+		} else {
+			/* Use current buffer size settings. */
+			pictres_info.size_info = core_str_ctx->pict_resinfo.size_info;
+			seqres_info = core_str_ctx->seq_resinfo;
+
+			/* Set start counter to only allocate the number of resources that are missing. */
+			start_cnt = core_str_ctx->pict_resinfo.pict_res_num;
+		}
+
+#ifdef SEQ_RES_NEEDED
+		/* allocate sequence resources */
+		{
+			seqres_int = kzalloc(sizeof(*seqres_int), GFP_KERNEL);
+			VDEC_ASSERT(seqres_int);
+			if (!seqres_int)
+				goto err_out_of_memory;
+
+			lst_add(&core_str_ctx->seq_res_list, seqres_int);
+			/* Allocate sequence buffers common for all standards. */
+			ret = core_alloc_common_sequence_buffers(core_str_ctx, seqres_int, mem_pool, &seqres_info,
+								 &pictres_info, op_cfg, disp_pict_buf);
+			if (ret != IMG_SUCCESS)
+				goto err_out_of_memory;
+
+			VDEC_ASSERT(core_str_ctx->std_spec_ops);
+			if (core_str_ctx->std_spec_ops->alloc_sequence_buffers) {
+				ret = core_str_ctx->std_spec_ops->alloc_sequence_buffers(core_str_ctx, seqres_int,
+											 mem_pool, &seqres_info);
+				if (ret != IMG_SUCCESS)
+					goto err_out_of_memory;
+			}
+		}
+#endif
+		/* Allocate resources for current settings. */
+		for (i = start_cnt; i < pictres_info.pict_res_num; i++) {
+			/* Allocate the picture resources structure. */
+			pictres_int = kzalloc(sizeof(*pictres_int), GFP_KERNEL);
+			VDEC_ASSERT(pictres_int);
+			if (!pictres_int)
+				goto err_out_of_memory;
+
+			/* Allocate picture buffers common for all standards. */
+			ret = core_alloc_common_pict_buffers(core_str_ctx, pictres_int,
+							     mem_pool, &pictres_info);
+			if (ret != IMG_SUCCESS)
+				goto err_out_of_memory;
+
+			/* Allocate standard specific picture buffers. */
+			VDEC_ASSERT(core_str_ctx->std_spec_ops);
+			if (core_str_ctx->std_spec_ops->alloc_picture_buffers) {
+				ret = core_str_ctx->std_spec_ops->alloc_picture_buffers(core_str_ctx, pictres_int,
+											mem_pool, &pictres_info);
+				if (ret != IMG_SUCCESS)
+					goto err_out_of_memory;
+			}
+
+			/* attach sequence resources */
+#ifdef SEQ_RES_NEEDED
+			resource_item_use(&seqres_int->ref_count);
+			pictres_int->seq_resint = seqres_int;
+#endif
+			lst_add(&core_str_ctx->pict_res_list, pictres_int);
+			core_str_ctx->pict_resinfo.pict_res_num++;
+		}
+	}
+
+	/*
+	 * When demand for picture resources reduces (in quantity) the extra buffers
+	 * are still retained. Preserve the existing count in case the demand increases
+	 * again, at which time these residual buffers won't need to be reallocated.
+	 */
+	pictres_info.pict_res_num = core_str_ctx->pict_resinfo.pict_res_num;
+
+	/* Store the current resource config. */
+	core_str_ctx->pict_resinfo = pictres_info;
+	core_str_ctx->seq_resinfo = seqres_info;
+
+	pictres_int = lst_first(&core_str_ctx->pict_res_list);
+	while (pictres_int) {
+		/*
+		 * Increment the reference count to indicate that this resource is also
+		 * held by plant until it is added to the Scheduler list. If the the
+		 * resource has not just been created it might already be in circulation.
+		 */
+		resource_item_use(&pictres_int->ref_cnt);
+#ifdef SEQ_RES_NEEDED
+		/* attach sequence resources */
+		resource_item_use(&seqres_int->ref_count);
+		pictres_int->seq_resint = seqres_int;
+#endif
+		/* Add the internal picture resources to the list. */
+		ret = resource_list_add(&core_str_ctx->aux_pict_res_list,
+					pictres_int, 0, &pictres_int->ref_cnt);
+
+		pictres_int = lst_next(pictres_int);
 	}
 
 	/*
@@ -1422,49 +2106,50 @@ core_stream_resource_create(struct core_stream_context *core_str_ctx,
 		}
 	}
 
-	/* Logic to create only one time */
-	if (!core_str_ctx->pict_resinfo.is_valid) {
-		/*
-		 * When demand for picture resources reduces (in quantity) the
-		 * extra buffers are still retained. Preserve the existing
-		 * count in case the demand increases again, at which time
-		 * these residual buffers won't need to be reallocated.
-		 */
-		ret = core_pict_res_getinfo(core_str_ctx, comseq_hdrinfo,
-					    op_cfg, disp_pict_buf,
-					    &core_str_ctx->pict_resinfo);
-		if (ret != IMG_SUCCESS) {
-			pr_err("core_pict_res_getinfo failed[%d]\n", ret);
-			return ret;
-		}
+	/*
+	 * When demand for picture resources reduces (in quantity) the extra buffers
+	 * are still retained. Preserve the existing count in case the demand increases
+	 * again, at which time these residual buffers won't need to be reallocated.
+	 */
+	pictres_info.pict_res_num = core_str_ctx->pict_resinfo.pict_res_num;
 
-		for (cnt = 0; cnt < core_str_ctx->pict_resinfo.pict_res_num;
-		     cnt++) {
-			pict_resint = kzalloc(sizeof(*pict_resint), GFP_KERNEL);
-			if (!pict_resint)
-				return IMG_ERROR_OUT_OF_MEMORY;
-
-			if (core_str_ctx->pict_resinfo.mb_param_bufsize > 0) {
-				ret =
-				core_alloc_resbuf(&pict_resint->mb_param_buf,
-						  core_str_ctx->pict_resinfo.mb_param_bufsize,
-						  core_str_ctx->dd_str_ctx->mmu_str_handle,
-						  mem_pool);
-				if (ret !=  IMG_SUCCESS) {
-					pr_info("core_alloc_resbuf failed[%d]\n",
-						ret);
-					return ret;
-				}
-			}
-			/* Add the internal picture resources to the list. */
-			ret = resource_list_add(&core_str_ctx->pict_res_list,
-						pict_resint, 0,
-						&pict_resint->ref_cnt);
-		}
-		core_str_ctx->pict_resinfo.is_valid = true;
-	}
+	/* Store the current resource config. */
+	core_str_ctx->pict_resinfo = pictres_info;
+	core_str_ctx->seq_resinfo = seqres_info;
 
 	return IMG_SUCCESS;
+
+	/* Handle out of memory errors. */
+err_out_of_memory:
+	/* Free resources being currently allocated. */
+	if (pictres_int) {
+		core_free_common_picture_resource(core_str_ctx, pictres_int);
+		if (core_str_ctx->std_spec_ops->free_picture_resource)
+			core_str_ctx->std_spec_ops->free_picture_resource(core_str_ctx, pictres_int);
+
+		kfree(pictres_int);
+	}
+
+#ifdef SEQ_RES_NEEDED
+	if (seqres_int) {
+		core_free_common_sequence_resource(core_str_ctx, seqres_int);
+
+		if (core_str_ctx->std_spec_ops->free_sequence_resource)
+			core_str_ctx->std_spec_ops->free_sequence_resource(core_str_ctx, seqres_int);
+
+		VDEC_ASSERT(lst_last(&core_str_ctx->seq_res_list) == seqres_int);
+		lst_remove(&core_str_ctx->seq_res_list, seqres_int);
+		kfree(seqres_int);
+	}
+#endif
+
+	/* Free all the other resources. */
+	core_stream_resource_destroy(core_str_ctx);
+
+	pr_err("[USERSID=0x%08X] Core not able to allocate stream resources due to lack of memory",
+	       core_str_ctx->dd_str_ctx->str_config_data.user_str_id);
+
+	return IMG_ERROR_OUT_OF_MEMORY;
 }
 
 static int
@@ -1552,6 +2237,7 @@ static int core_picture_prepare(struct core_stream_context *core_str_ctx,
 	vdecddutils_get_display_region(&str_unit->pict_hdr_info->coded_frame_size,
 				       &str_unit->pict_hdr_info->disp_info.enc_disp_region,
 				       &str_unit->pict_hdr_info->disp_info.disp_region);
+
 	if (ret != IMG_SUCCESS)
 		goto unwind;
 
@@ -1570,7 +2256,7 @@ static int core_picture_prepare(struct core_stream_context *core_str_ctx,
 	 * If picture resources were needed for this stream, picture resources
 	 * list wouldn't be empty
 	 */
-	need_pict_res = !lst_empty(&core_str_ctx->pict_res_list);
+	need_pict_res = !lst_empty(&core_str_ctx->aux_pict_res_list);
 	/* If there are resources available */
 	if ((core_str_ctx->res_avail & CORE_AVAIL_PICTBUF) &&
 	    (!need_pict_res ||
@@ -1578,7 +2264,7 @@ static int core_picture_prepare(struct core_stream_context *core_str_ctx,
 		/* Pick internal picture resources. */
 		if (need_pict_res) {
 			pict_local->pict_res_int =
-			resource_list_get_avail(&core_str_ctx->pict_res_list);
+			resource_list_get_avail(&core_str_ctx->aux_pict_res_list);
 
 			VDEC_ASSERT(pict_local->pict_res_int);
 			if (!pict_local->pict_res_int) {
@@ -2464,6 +3150,9 @@ int core_stream_flush(u32 res_str_id, u8 discard_refs)
 	return IMG_SUCCESS;
 }
 
+/*
+ * @Function              core_stream_release_bufs
+ */
 int core_stream_release_bufs(u32 res_str_id, enum vdec_buf_type buf_type)
 {
 	int ret;
@@ -2537,6 +3226,9 @@ int core_stream_release_bufs(u32 res_str_id, enum vdec_buf_type buf_type)
 	return IMG_SUCCESS;
 }
 
+/*
+ * @Function              core_stream_get_status
+ */
 int core_stream_get_status(u32 res_str_id,
 			   struct vdecdd_decstr_status *str_st)
 {
@@ -2565,3 +3257,270 @@ int core_stream_get_status(u32 res_str_id,
 	return IMG_SUCCESS;
 }
 
+#ifdef HAS_HEVC
+/*
+ * @Function              core_free_hevc_picture_resource
+ */
+static int core_free_hevc_picture_resource(struct core_stream_context *core_strctx,
+					   struct vdecdd_pict_resint *pic_res_int)
+{
+	int      ret = IMG_SUCCESS;
+
+	ret = core_free_resbuf(&pic_res_int->genc_fragment_buf, core_strctx->dd_str_ctx->mmu_str_handle);
+	if (ret != IMG_SUCCESS)
+		pr_err("MMU_Free for Genc Fragment buffer failed with error %u", ret);
+
+	return ret;
+}
+
+/*
+ * @Function              core_free_hevc_sequence_resource
+ */
+static int core_free_hevc_sequence_resource(struct core_stream_context *core_strctx,
+					    struct vdecdd_seq_resint *seq_res_int)
+{
+	u32    i;
+	int    local_result = IMG_SUCCESS;
+	int    ret = IMG_SUCCESS;
+
+	for (i = 0; i < GENC_BUFF_COUNT; ++i) {
+		local_result = core_free_resbuf(&seq_res_int->genc_buffers[i], core_strctx->dd_str_ctx->mmu_str_handle);
+		if (local_result != IMG_SUCCESS) {
+			ret = local_result;
+			pr_warn("MMU_Free for GENC buffer %u failed with error %u", i, local_result);
+		}
+	}
+
+	local_result = core_free_resbuf(&seq_res_int->intra_buffer, core_strctx->dd_str_ctx->mmu_str_handle);
+	if (local_result != IMG_SUCCESS) {
+		ret = local_result;
+		pr_warn("MMU_Free for GENC buffer %u failed with error %u", i, local_result);
+	}
+
+	local_result = core_free_resbuf(&seq_res_int->aux_buffer, core_strctx->dd_str_ctx->mmu_str_handle);
+	if (local_result != IMG_SUCCESS) {
+		ret = local_result;
+		pr_warn("MMU_Free for GENC buffer %u failed with error %u", i, local_result);
+	}
+
+	return ret;
+}
+
+/*
+ * @Function              core_hevc_bufs_get_size
+ */
+static int core_hevc_bufs_get_size(struct core_stream_context *core_strctx,
+				   const struct vdec_comsequ_hdrinfo *seqhdr_info,
+				   struct vdec_pict_size *max_pict_size,
+				   struct core_pict_bufsize_info *size_info,
+				   struct core_seq_resinfo *seqres_info,
+				   u8 *resource_needed)
+{
+	enum vdec_vid_std vid_std = core_strctx->dd_str_ctx->str_config_data.vid_std;
+	u32 std_idx = vid_std - 1;
+	static const u16 max_slice_segments_list[HEVC_LEVEL_MAJOR_NUM][HEVC_LEVEL_MINOR_NUM] = {
+		/* level: 1.0  1.1  1.2  */
+		{ 16,    0,   0, },
+		/* level: 2.0  2.1  2.2  */
+		{ 16,   20,   0, },
+		/* level: 3.0  3.1  3.2  */
+		{ 30,   40,   0, },
+		/* level: 4.0  4.1  4.2  */
+		{ 75,   75,   0, },
+		/* level: 5.0  5.1  5.2  */
+		{ 200, 200, 200, },
+		/* level: 6.0  6.1  6.2  */
+		{ 600, 600, 600, }
+	};
+
+	static const u8 max_tile_cols_list[HEVC_LEVEL_MAJOR_NUM][HEVC_LEVEL_MINOR_NUM] = {
+		/* level: 1.0  1.1  1.2  */
+		{   1,   0,   0, },
+		/* level: 2.0  2.1  2.2  */
+		{   1,   1,   0, },
+		/* level: 3.0  3.1  3.2  */
+		{   2,   3,   0, },
+		/* level: 4.0  4.1  4.2  */
+		{   5,   5,   0, },
+		/* level: 5.0  5.1  5.2  */
+		{  10,  10,  10, },
+		/* level: 6.0  6.1  6.2  */
+		{  20,  20,  20, }
+	};
+
+	/* TRM 3.11.11 */
+	static const u32 total_sample_per_mb[PIXEL_FORMAT_444 + 1] = { 256, 384, 384, 512, 768};
+
+	static const u32 HEVC_LEVEL_IDC_MIN = 30;
+	static const u32 HEVC_LEVEL_IDC_MAX = 186;
+	static const u32 GENC_ALIGNMENT = 0x1000;
+	static const u32 mb_size = 16;
+	static const u32 max_mb_rows_in_ctu = 4;
+	static const u32 bytes_per_fragment_pointer = 16;
+
+	const u32 max_tile_height_in_mbs =
+			seqhdr_info->max_frame_size.height / mb_size;
+
+	u8 level_maj = seqhdr_info->codec_level / 30;
+	u8 level_min = (seqhdr_info->codec_level % 30) / 3;
+
+	/*
+	 * If we are somehow able to deliver more information here (CTU size,
+	 * number of tile columns/rows) then memory usage could be reduced
+	 */
+	const struct pixel_pixinfo *pix_info = &seqhdr_info->pixel_info;
+	const u32 bit_depth = pix_info->bitdepth_y >= pix_info->bitdepth_c ?
+				pix_info->bitdepth_y : pix_info->bitdepth_c;
+	u16 max_slice_segments;
+	u8 max_tile_cols;
+	u32 raw_byte_per_mb;
+	u32 *genc_fragment_bufsize;
+	u32 *genc_buf_size;
+
+	/* Reset the MB parameters buffer size. */
+	size_info->mbparams_bufsize = 0;
+	*resource_needed = true;
+
+	if (mbparam_allocinfo[std_idx].alloc_mbparam_bufs) {
+		/* shall be == 64 (0x40)*/
+		const u32 align = mbparam_allocinfo[std_idx].mbparam_size;
+		const u32 dpb_width = (max_pict_size->width + align * 2 - 1) / align * 2;
+		const u32 pic_height = (max_pict_size->height + align - 1) / align;
+		const u32 pic_width = (max_pict_size->width + align - 1) / align;
+
+		/* calculating for worst case: max frame size, B-frame */
+		size_info->mbparams_bufsize = (align * 2) * pic_width * pic_height +
+						align * dpb_width * pic_height;
+
+		/* Adjust the buffer size for MSVDX. */
+		vdecddutils_buf_vxd_adjust_size(&size_info->mbparams_bufsize);
+	}
+
+	if (seqhdr_info->codec_level > HEVC_LEVEL_IDC_MAX ||
+	    seqhdr_info->codec_level < HEVC_LEVEL_IDC_MIN) {
+		level_maj = 6;
+		level_min = 2;
+	}
+
+	max_slice_segments = max_slice_segments_list[level_maj - 1][level_min];
+	max_tile_cols = max_tile_cols_list[level_maj - 1][level_min];
+	raw_byte_per_mb = total_sample_per_mb[pix_info->chroma_fmt_idc] *
+			VDEC_ALIGN_SIZE(bit_depth, 8) / 8;
+
+	genc_fragment_bufsize = &size_info->hevc_bufsize_pict.genc_fragment_bufsize;
+	genc_buf_size = &seqres_info->hevc_bufsize_seqres.genc_bufsize;
+
+	*genc_fragment_bufsize = bytes_per_fragment_pointer *
+				(seqhdr_info->max_frame_size.height /
+				 mb_size * max_tile_cols + max_slice_segments - 1) * max_mb_rows_in_ctu;
+
+	/*
+	 * GencBufferSize formula is taken from TRM and found by HW * CSIM teams for a sensible streams
+	 * i.e. size_of_stream < size_of_output_YUV. In videostream data base it's possible to find
+	 * pathological Argon streams that do not fulfill this sensible requirement.
+	 * eg. #58417, #58419, #58421, #58423. To make a #58417 stream running the formula below
+	 * should be changed from (2 * 384) *... ---> (3 * 384) *...
+	 * This solution is applied by DEVA.
+	 */
+	*genc_buf_size = 2 * raw_byte_per_mb * seqhdr_info->max_frame_size.width /
+			mb_size * max_tile_height_in_mbs / 4;
+
+	*genc_buf_size = VDEC_ALIGN_SIZE(*genc_buf_size, GENC_ALIGNMENT);
+	*genc_fragment_bufsize = VDEC_ALIGN_SIZE(*genc_fragment_bufsize, GENC_ALIGNMENT);
+
+	pr_info("Sizes for GENC in HEVC: 0x%X (frag), 0x%X (x4)",
+		*genc_fragment_bufsize,
+		*genc_buf_size);
+
+	seqres_info->hevc_bufsize_seqres.intra_bufsize = 4 * seqhdr_info->max_frame_size.width;
+	if (seqhdr_info->pixel_info.mem_pkg != PIXEL_BIT8_MP)
+		seqres_info->hevc_bufsize_seqres.intra_bufsize *= 2;
+
+	seqres_info->hevc_bufsize_seqres.aux_bufsize = (512 * 1024);
+
+	return IMG_SUCCESS;
+}
+
+/*
+ * @Function              core_is_hevc_stream_resource_suitable
+ */
+static u8
+core_is_hevc_stream_resource_suitable(struct core_pict_resinfo *pict_res_info,
+				      struct core_pict_resinfo *old_pict_res_info,
+				      struct core_seq_resinfo *seq_res_info,
+				      struct core_seq_resinfo *old_seq_res_info)
+{
+	return (seq_res_info->hevc_bufsize_seqres.genc_bufsize <=
+		old_seq_res_info->hevc_bufsize_seqres.genc_bufsize &&
+		seq_res_info->hevc_bufsize_seqres.intra_bufsize <=
+		old_seq_res_info->hevc_bufsize_seqres.intra_bufsize &&
+		seq_res_info->hevc_bufsize_seqres.aux_bufsize <=
+		old_seq_res_info->hevc_bufsize_seqres.aux_bufsize &&
+		pict_res_info->size_info.hevc_bufsize_pict.genc_fragment_bufsize <=
+		old_pict_res_info->size_info.hevc_bufsize_pict.genc_fragment_bufsize);
+}
+
+/*
+ * @Function  core_alloc_hevc_specific_seq_buffers
+ */
+static int
+core_alloc_hevc_specific_seq_buffers(struct core_stream_context *core_strctx,
+				     struct vdecdd_seq_resint *seqres_int,
+				     struct vxdio_mempool mempool,
+				     struct core_seq_resinfo *seqres_info)
+{
+	u32 i;
+	int ret = IMG_SUCCESS;
+
+	/* Allocate GENC buffers */
+	for (i = 0; i < GENC_BUFF_COUNT; ++i) {
+		/* Allocate the GENC buffer info structure. */
+		ret = core_alloc_resbuf(&seqres_int->genc_buffers[i],
+					seqres_info->hevc_bufsize_seqres.genc_bufsize,
+					core_strctx->dd_str_ctx->mmu_str_handle,
+					mempool);
+		if (ret != IMG_SUCCESS)
+			return ret;
+	}
+
+	seqres_int->genc_buf_id = ++core_strctx->std_spec_context.hevc_ctx.genc_id_gen;
+
+	/* Allocate the intra buffer info structure. */
+	ret = core_alloc_resbuf(&seqres_int->intra_buffer,
+				seqres_info->hevc_bufsize_seqres.intra_bufsize,
+				core_strctx->dd_str_ctx->mmu_str_handle,
+				mempool);
+	if (ret != IMG_SUCCESS)
+		return ret;
+
+	/* Allocate the aux buffer info structure. */
+	ret = core_alloc_resbuf(&seqres_int->aux_buffer,
+				seqres_info->hevc_bufsize_seqres.aux_bufsize,
+				core_strctx->dd_str_ctx->mmu_str_handle,
+				mempool);
+	if (ret != IMG_SUCCESS)
+		return ret;
+
+return IMG_SUCCESS;
+}
+
+/*
+ * @Function              core_alloc_hevc_specific_pict_buffers
+ */
+static int
+core_alloc_hevc_specific_pict_buffers(struct core_stream_context *core_strctx,
+				      struct vdecdd_pict_resint *pict_res_int,
+				      struct vxdio_mempool mempool,
+				      struct core_pict_resinfo *pict_res_info)
+{
+	int ret;
+
+	/* Allocate the GENC fragment buffer. */
+	ret = core_alloc_resbuf(&pict_res_int->genc_fragment_buf,
+				pict_res_info->size_info.hevc_bufsize_pict.genc_fragment_bufsize,
+				core_strctx->dd_str_ctx->mmu_str_handle,
+				mempool);
+
+	return ret;
+}
+#endif

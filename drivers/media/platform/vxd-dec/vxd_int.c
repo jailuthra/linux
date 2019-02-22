@@ -482,7 +482,6 @@ int vxd_set_reconpictcmds(const struct vdecdd_str_unit *str_unit,
 	u32 y_stride;
 	u32 uv_stride;
 	u32 v_stride;
-	u32 out_pic_rot;
 
 	coded_height = ALIGN(str_unit->pict_hdr_info->coded_frame_size.height,
 			     (str_unit->pict_hdr_info->field) ?
@@ -693,8 +692,7 @@ int vxd_set_reconpictcmds(const struct vdecdd_str_unit *str_unit,
 			(str_configdata->vid_std != VDEC_STD_REAL) &&
 			(str_configdata->vid_std != VDEC_STD_VC1);
 
-	out_pic_rot = pict_cmds[VDECFW_CMD_ALTERNATIVE_OUTPUT_PICTURE_ROTATION];
-	REGIO_WRITE_FIELD(out_pic_rot,
+	REGIO_WRITE_FIELD(pict_cmds[VDECFW_CMD_ALTERNATIVE_OUTPUT_PICTURE_ROTATION],
 			  MSVDX_CMDS, ALTERNATIVE_OUTPUT_PICTURE_ROTATION,
 			  USE_AUX_LINE_BUF, benable_auxline_buf ? 1 : 0);
 
@@ -909,12 +907,30 @@ int vxd_getscalercmds(const struct scaler_config *scaler_config,
 		(HIGHP - params->fixed_point_shift));
 	params->horz_startpos_chroma = params->horz_pitch_chroma >> 1;
 
+#ifdef HAS_HEVC
+	if (scaler_config->vidstd == VDEC_STD_HEVC) {
+		REGIO_WRITE_FIELD(pict_cmds[VDECFW_CMD_SCALED_DISPLAY_SIZE],
+				  MSVDX_CMDS, PVDEC_SCALED_DISPLAY_SIZE, PVDEC_SCALE_DISPLAY_WIDTH,
+				  scaler_config->recon_width - 1);
+		REGIO_WRITE_FIELD(pict_cmds[VDECFW_CMD_SCALED_DISPLAY_SIZE],
+				  MSVDX_CMDS, PVDEC_SCALED_DISPLAY_SIZE, PVDEC_SCALE_DISPLAY_HEIGHT,
+				  scaler_config->recon_height - 1);
+	} else {
+		REGIO_WRITE_FIELD(pict_cmds[VDECFW_CMD_SCALED_DISPLAY_SIZE],
+				  MSVDX_CMDS, SCALED_DISPLAY_SIZE, SCALE_DISPLAY_WIDTH,
+				  scaler_config->recon_width - 1);
+		REGIO_WRITE_FIELD(pict_cmds[VDECFW_CMD_SCALED_DISPLAY_SIZE],
+				  MSVDX_CMDS, SCALED_DISPLAY_SIZE, SCALE_DISPLAY_HEIGHT,
+				  scaler_config->recon_height - 1);
+	}
+#else
 	REGIO_WRITE_FIELD(pict_cmds[VDECFW_CMD_SCALED_DISPLAY_SIZE],
 			  MSVDX_CMDS, SCALED_DISPLAY_SIZE, SCALE_DISPLAY_WIDTH,
 			  scaler_config->recon_width - 1);
 	REGIO_WRITE_FIELD(pict_cmds[VDECFW_CMD_SCALED_DISPLAY_SIZE],
 			  MSVDX_CMDS, SCALED_DISPLAY_SIZE, SCALE_DISPLAY_HEIGHT,
 			  scaler_config->recon_height - 1);
+#endif
 
 	REGIO_WRITE_FIELD(pict_cmds[VDECFW_CMD_SCALE_OUTPUT_SIZE],
 			  MSVDX_CMDS, SCALE_OUTPUT_SIZE,

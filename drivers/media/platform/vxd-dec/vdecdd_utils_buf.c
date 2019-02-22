@@ -121,6 +121,84 @@ static int vdecddutils_ref_pic_h264_get_maxnum
 	return IMG_SUCCESS;
 }
 
+#ifdef HAS_HEVC
+/*
+ * @Function              vdecddutils_ref_pic_hevc_get_maxnum
+ */
+static int vdecddutils_ref_pic_hevc_get_maxnum(const struct vdec_comsequ_hdrinfo *comseq_hdrinfo,
+					       u32 *max_ref_picnum)
+{
+	static const u32 HEVC_LEVEL_IDC_MIN = 30;
+	static const u32 HEVC_LEVEL_IDC_MAX = 186;
+
+	static const u32
+	max_luma_ps_list[HEVC_LEVEL_MAJOR_NUM][HEVC_LEVEL_MINOR_NUM] = {
+		/* level: 1.0       1.1       1.2       */
+		{ 36864,    0,        0,        },
+		/* level: 2.0       2.1       2.2       */
+		{ 122880,   245760,   0,        },
+		/* level: 3.0       3.1       3.2       */
+		{ 552960,   983040,   0,        },
+		/* level: 4.0       4.1       4.2       */
+		{ 2228224,  2228224,  0,        },
+		/* level: 5.0       5.1       5.2       */
+		{ 8912896,  8912896,  8912896,  },
+		/* level: 6.0       6.1       6.2       */
+		{ 35651584, 35651584, 35651584, }
+	};
+
+	/* ITU-T H.265 04/2013 A.4.1 */
+
+	const u32 max_dpb_picbuf = 6;
+
+	/* this is rounded to whole Ctbs */
+	u32 pic_size_in_samples_Y = comseq_hdrinfo->frame_size.height *
+					comseq_hdrinfo->frame_size.width;
+
+	u8 level_maj, level_min;
+	u32 max_luma_ps;
+
+	/* some error resilience */
+	if (comseq_hdrinfo->codec_level > HEVC_LEVEL_IDC_MAX ||
+	    comseq_hdrinfo->codec_level < HEVC_LEVEL_IDC_MIN) {
+		pr_warn("HEVC Codec level out of range: %u, falling back to %u",
+			comseq_hdrinfo->codec_level,
+			comseq_hdrinfo->min_pict_buf_num);
+
+		*max_ref_picnum = comseq_hdrinfo->min_pict_buf_num;
+		return IMG_SUCCESS;
+	}
+
+	level_maj = comseq_hdrinfo->codec_level / 30;
+	level_min = (comseq_hdrinfo->codec_level % 30) / 3;
+	VDEC_ASSERT(level_maj > 0);
+	max_luma_ps = max_luma_ps_list[level_maj - 1][level_min];
+
+	if (max_luma_ps == 0) {
+		pr_err("Wrong HEVC level value: %u.%u (general_level_idc: %u)",
+		       level_maj, level_min, comseq_hdrinfo->codec_level);
+
+		return IMG_ERROR_VALUE_OUT_OF_RANGE;
+	}
+
+	if (max_luma_ps < pic_size_in_samples_Y)
+		pr_warn("HEVC PicSizeInSamplesY too large for level (%u > %u)",
+			pic_size_in_samples_Y, max_luma_ps);
+
+	if (pic_size_in_samples_Y <= (max_luma_ps >> 2))
+		*max_ref_picnum = vdec_size_min(4 * max_dpb_picbuf, 16);
+	else if (pic_size_in_samples_Y <= (max_luma_ps >> 1))
+		*max_ref_picnum = vdec_size_min(2 * max_dpb_picbuf, 16);
+	else if (pic_size_in_samples_Y <= ((3 * max_luma_ps) >> 2))
+		*max_ref_picnum = vdec_size_min((4 * max_dpb_picbuf) / 3, 16);
+	else
+		*max_ref_picnum = max_dpb_picbuf;
+
+	/* Return success. */
+	return IMG_SUCCESS;
+}
+#endif
+
 /*
  * The array of pointers to functions calculating the maximum number
  * of reference pictures required for each supported video standard.
@@ -138,7 +216,11 @@ static fn_ref_pic_get_max_num ref_pic_get_maxnum[VDEC_STD_MAX - 1] = {
 	NULL,
 	NULL,
 	NULL,
+#ifdef HAS_HEVC
+	vdecddutils_ref_pic_hevc_get_maxnum
+#else
 	NULL
+#endif
 };
 
 int
@@ -585,7 +667,8 @@ vdecddutils_get_render_info(const struct vdec_str_configdata *str_cfg_data,
 
 			pict_rend_info->plane_info[i].stride = h_stride;
 			if (i == VDEC_PLANE_VIDEO_UV &&
-			    str_cfg_data->vid_std == VDEC_STD_H264) {
+			    (str_cfg_data->vid_std == VDEC_STD_H264 ||
+			    str_cfg_data->vid_std == VDEC_STD_HEVC)) {
 				struct pixel_pixinfo *info =
 					pixel_get_pixinfo(pix_info->pixfmt);
 				VDEC_ASSERT(PIXEL_FORMAT_INVALID !=

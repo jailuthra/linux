@@ -260,6 +260,13 @@ struct vdecdd_pict_resint {
 	void	**link; /* to be part of single linked list */
 	struct vdecdd_ddbuf_mapinfo	*mb_param_buf;
 	u32				ref_cnt;
+
+#ifdef HAS_HEVC
+	/* GENC fragment buffer */
+	struct vdecdd_ddbuf_mapinfo	*genc_fragment_buf;
+	/* Sequence resources (GENC buffers) */
+	struct vdecdd_seq_resint	*seq_resint;
+#endif
 };
 
 /*
@@ -271,10 +278,17 @@ struct vdecdd_pict_sup_data {
 	void	*raw_sei_list_first_fld;
 	void	*raw_sei_list_second_fld;
 	u8	merged_flds;
-	struct vdecdd_h264_pict_supl_data {
-		u8	nal_ref_idc;
-		u16	frame_num;
-	} h264_pict_supl_data;
+	union {
+		struct vdecdd_h264_pict_supl_data {
+			u8	nal_ref_idc;
+			u16	frame_num;
+		} h264_pict_supl_data;
+#ifdef HAS_HEVC
+		struct vdecdd_hevc_pict_supl_data {
+			u32 pic_order_cnt;
+		} hevc_pict_supl_data;
+#endif
+	};
 };
 
 /*
@@ -398,4 +412,24 @@ enum vdecdd_bstr_segtype {
 	VDECDD_BSSEG_INSERTSCP		= (1 << 2),
 	VDECDD_BSSEG_INSERT_STARTCODE	= (1 << 3) | VDECDD_BSSEG_INSERTSCP,
 };
+
+struct vdecdd_seq_resint {
+	void **link;
+
+#ifdef HAS_HEVC
+	u16				genc_buf_id;
+	struct vdecdd_ddbuf_mapinfo	*genc_buffers[4];    /* GENC buffers */
+	struct vdecdd_ddbuf_mapinfo	*intra_buffer;    /* GENC buffers */
+	struct vdecdd_ddbuf_mapinfo	*aux_buffer;    /* GENC buffers */
+#endif
+	struct vdecdd_ddbuf_mapinfo *err_pict_buf; /* Pointer to "Error Recovery Frame Store" buffer. */
+
+	/*
+	 * Ref. counter (number of users) of sequence resources
+	 * NOTE: Internal buffer reference counters are not used
+	 * for buffers allocated as sequence resources.
+	 */
+	u32 ref_count;
+};
+
 #endif

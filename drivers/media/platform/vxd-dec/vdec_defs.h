@@ -50,6 +50,11 @@
 
 #define VDEC_ASSERT(expected) ({WARN_ON(!(expected)); 0; })
 
+#define VDEC_ALIGN_SIZE(_val, _alignment) ({ \
+		typeof(_val) val = _val; \
+		typeof(_alignment) alignment = _alignment; \
+		(((val) + (alignment) - 1) & ~((alignment) - 1)); })
+
 /*
  * This type defines the video standard.
  * @brief  VDEC Video Standards
