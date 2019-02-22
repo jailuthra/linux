@@ -1395,6 +1395,13 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 	buffers.auxline_bufsize_per_pipe = buffers.auxline_bufinfo->buf_size /
 						core_props->num_pixel_pipes;
 #endif
+
+#ifdef ERROR_CONCEALMENT
+	if (picture->pict_res_int && picture->pict_res_int->seq_resint)
+		if (picture->pict_res_int->seq_resint->err_pict_buf)
+			buffers.err_pict_bufinfo = &picture->pict_res_int->seq_resint->err_pict_buf->ddbuf_info;
+#endif
+
 	/*
 	 * Prepare Reconstructed Picture Configuration
 	 * Note: we are obtaining values of registers prepared basing on header

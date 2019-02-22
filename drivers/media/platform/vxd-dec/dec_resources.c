@@ -37,7 +37,6 @@
 #define BATCH_MSG_BUFFER_SIZE	(8 * 4096)
 #define INTRA_BUF_SIZE		(1024 * 32)
 #define AUX_LINE_BUFFER_SIZE	(512 * 1024)
-#define DEV_MMU_PAGE_ALIGNMENT	(0x1000)
 
 static void decres_pack_vlc_tables(u16 *packed, u16 *unpacked, u16 size)
 {

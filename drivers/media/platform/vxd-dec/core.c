@@ -316,6 +316,35 @@ static struct core_std_spec_operations std_specific_ops[VDEC_STD_MAX - 1] = {
 #endif
 };
 
+#ifdef ERROR_CONCEALMENT
+/*
+ * This structure contains the Error Recovery Frame Store info.
+ * @brief  Error Recovery Frame Store Info
+ */
+struct core_err_recovery_frame_info {
+	/* Flag to indicate if Error Recovery Frame Store is enabled for standard. */
+	u8	enabled;
+	/* Limitation for maximum frame size based on dimensions. */
+	u32	max_size;
+};
+
+static struct core_err_recovery_frame_info err_recovery_frame_info[VDEC_STD_MAX - 1] = {
+	/*               enabled  max_frame_size  */
+	/* MPEG2    */  { true,     ~0         },
+	/* MPEG4    */  { true,     ~0         },
+	/* H263     */  { false,     0         },
+	/* H264     */  { true,     ~0         },
+	/* VC1      */  { false,     0         },
+	/* AVS      */  { false,     0         },
+	/* REAL     */  { false,     0         },
+	/* JPEG     */  { false,     0         },
+	/* VP6      */  { false,     0         },
+	/* VP8      */  { false,     0         },
+	/* SORENSON */  { false,     0         },
+	/* HEVC     */  { true,     ~0         },
+};
+#endif
+
 static void core_fw_response_cb(int res_str_id, u32 *msg, u32 msg_size,
 				u32 msg_flags)
 {
@@ -1840,7 +1869,54 @@ static int core_alloc_common_sequence_buffers(struct core_stream_context *core_s
 					      const struct vdecdd_ddpict_buf *disp_pict_buf)
 {
 	int ret = IMG_SUCCESS;
-	/* place holder for error concealment */
+#ifdef ERROR_CONCEALMENT
+	enum vdec_vid_std vid_std = core_str_ctx->dd_str_ctx->str_config_data.vid_std;
+	u32 std_idx = vid_std - 1;
+	struct vxdio_ddbufinfo *err_buf_info;
+
+	/* Allocate error concealment pattern frame for current sequence */
+	if (err_recovery_frame_info[std_idx].enabled) {
+		struct vdec_pict_bufconfig buf_config;
+		u32 size;
+
+		buf_config = disp_pict_buf->buf_config;
+		size = buf_config.coded_width * buf_config.coded_height;
+
+		if (err_recovery_frame_info[std_idx].max_size > size) {
+			seqres_int->err_pict_buf = kzalloc(sizeof(*seqres_int->err_pict_buf), GFP_KERNEL);
+			VDEC_ASSERT(seqres_int->err_pict_buf);
+			if (!seqres_int->err_pict_buf)
+				return IMG_ERROR_OUT_OF_MEMORY;
+
+			seqres_int->err_pict_buf->mmuheap_id = MMU_HEAP_STREAM_BUFFERS;
+
+			pr_info("===== %s:%d calling MMU_StreamMalloc", __func__, __LINE__);
+			ret = mmu_stream_alloc(core_str_ctx->dd_str_ctx->mmu_str_handle,
+					       seqres_int->err_pict_buf->mmuheap_id,
+					       mem_pool.mem_heap_id,
+					       mem_pool.mem_attrib | SYS_MEMATTRIB_CPU_WRITE,
+					       buf_config.buf_size,
+					       DEV_MMU_PAGE_ALIGNMENT,
+					       &seqres_int->err_pict_buf->ddbuf_info);
+			if (ret != IMG_SUCCESS)
+				return IMG_ERROR_OUT_OF_MEMORY;
+
+			/* make grey pattern - luma & chroma at mid-rail */
+			err_buf_info = &seqres_int->err_pict_buf->ddbuf_info;
+			if (op_cfg->pixel_info.mem_pkg == PIXEL_BIT10_MP) {
+				u32 *out = (u32 *)err_buf_info->cpu_virt;
+				u32 i;
+
+				for (i = 0; i < err_buf_info->buf_size / sizeof(u32); i++)
+					/* See PIXEL_BIT10_MP layout definition */
+					out[i] = 0x20080200;
+			} else {
+				/* Note: Setting 0x80 also gives grey pattern for 10bit upacked MSB format.*/
+				memset(err_buf_info->cpu_virt, 0x80, err_buf_info->buf_size);
+			}
+		}
+	}
+#endif
 	return ret;
 }
 #endif

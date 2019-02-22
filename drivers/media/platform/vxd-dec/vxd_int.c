@@ -655,8 +655,6 @@ int vxd_set_reconpictcmds(const struct vdecdd_str_unit *str_unit,
 		pict_cmds[VDECFW_CMD_CHROMA_ERROR_PICTURE_BASE_ADDRESS] =
 			(u32)GET_HOST_ADDR(buffers->err_pict_bufinfo) +
 			buffers->recon_pict->rend_info.plane_info[1].offset;
-
-		UPDATE_DEVICE(buffers->err_pict_bufinfo);
 	}
 #endif
 

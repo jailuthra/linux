@@ -264,6 +264,8 @@ struct vdecdd_pict_resint {
 #ifdef HAS_HEVC
 	/* GENC fragment buffer */
 	struct vdecdd_ddbuf_mapinfo	*genc_fragment_buf;
+#endif
+#if defined(HAS_HEVC) || defined(ERROR_CONCEALMENT)
 	/* Sequence resources (GENC buffers) */
 	struct vdecdd_seq_resint	*seq_resint;
 #endif

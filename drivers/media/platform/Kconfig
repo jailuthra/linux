@@ -505,6 +505,14 @@ config HAS_HEVC
 	  do not want HEVC decode capability, select N.
 	  If unsure, select Y
 
+config ERROR_CONCEALMENT
+	bool "enable/disable gray patterened error concealment"
+	default y
+	help
+	  This config enables error concealment with gray pattern.
+	  Disable if you do not want error concealment capability.
+	  If unsure, say Y
+
 config REDUCED_DPB_NO_PIC_REORDERING
 	bool "disable Picture reordering"
 	default n

@@ -60,9 +60,6 @@ static inline u32 get_prev_picture_id(u32 cur_pict_id)
 	       cur_pict_id - 1);
 }
 
-/* Page alignment of the device MMU */
-#define DEV_MMU_PAGE_ALIGNMENT  (0x1000)
-
 #define H264_SGM_BUFFER_BYTES_PER_MB  1
 #define H264_SGM_MAX_MBS              3600
 
@@ -1392,7 +1389,7 @@ struct dec_decoded_pict *decoder_get_next_decpict_contiguous(struct dec_decoded_
 /*
  * @Function  decoder_next_picture
  * @Description
- * Returns the next unprocessed picture or IMG_NULL if the next picture is not
+ * Returns the next unprocessed picture or NULL if the next picture is not
  * next in bitstream decode order or there are no more decoded pictures in the
  * list.
 
@@ -1510,6 +1507,120 @@ static int decoder_picture_display(struct dec_str_ctx *dec_str_ctx,
 
 	return IMG_SUCCESS;
 }
+
+#ifdef ERROR_CONCEALMENT
+/*
+ * @Function              decoder_get_pict_processing_info
+ */
+static u8 decoder_get_pict_processing_info(struct dec_core_ctx *dec_corectx,
+					   struct dec_str_ctx *dec_strctx,
+					   struct bspp_pict_hdr_info *pict_hdr_info,
+					   struct dec_decoded_pict *decoded_pict,
+					   struct dec_decpict *dec_pict,
+					   u32 *pict_last_mb)
+{
+	int ret = IMG_SUCCESS;
+	u8  pipe_minus1;
+	struct hwctrl_state last_state;
+	u32 width_in_mb;
+	u32 height_in_mb;
+	u32 i;
+
+	memset(&last_state, 0, sizeof(last_state));
+
+	VDEC_ASSERT(pict_hdr_info);
+	width_in_mb = (pict_hdr_info->coded_frame_size.width +
+			(VDEC_MB_DIMENSION - 1)) / VDEC_MB_DIMENSION;
+	height_in_mb = (pict_hdr_info->coded_frame_size.height +
+			(VDEC_MB_DIMENSION - 1)) / VDEC_MB_DIMENSION;
+
+	VDEC_ASSERT(pict_last_mb);
+	*pict_last_mb = width_in_mb * height_in_mb;
+	VDEC_ASSERT(decoded_pict);
+
+	if (decoded_pict->first_fld_fwmsg->pict_attrs.pict_attrs.dwrfired ||
+	    decoded_pict->second_fld_fwmsg->pict_attrs.pict_attrs.dwrfired ||
+	    decoded_pict->first_fld_fwmsg->pict_attrs.pict_attrs.mmufault ||
+	    decoded_pict->second_fld_fwmsg->pict_attrs.pict_attrs.mmufault) {
+		struct dec_pict_attrs *pict_attrs = &decoded_pict->first_fld_fwmsg->pict_attrs;
+		u8 be_found = false;
+		u32 mbs_dropped = 0;
+		u32 mbs_recovered = 0;
+		u32 no_be_wdt = 0;
+		u32 max_y = 0;
+		u32 row_drop = 0;
+
+		VDEC_ASSERT(dec_corectx);
+		/* Obtain the last available core status - cached before clocks where switched off */
+		ret = hwctrl_getcore_cached_status(dec_corectx->hw_ctx, &last_state);
+		if (ret != IMG_SUCCESS)
+			return false;
+
+		/* Try to determine pipe where the last picture was decoded on (BE) */
+		for (pipe_minus1 = 0; pipe_minus1 < VDEC_MAX_PIXEL_PIPES; pipe_minus1++) {
+			for (i = VDECFW_CHECKPOINT_BE_END; i >= VDECFW_CHECKPOINT_BE_START; i--) {
+				struct vxd_pipestate *pipe_state = &last_state.core_state.fw_state.pipe_state[pipe_minus1];
+
+				if (!pipe_state->is_pipe_present)
+					continue;
+
+				if (pipe_state->acheck_point[i] == decoded_pict->transaction_id) {
+					row_drop += width_in_mb - pipe_state->be_mb.x;
+					if (pipe_state->be_mb.y > max_y)
+						max_y = pipe_state->be_mb.y;
+
+					if (pipe_state->be_mbs_dropped > mbs_dropped)
+						mbs_dropped = pipe_state->be_mbs_dropped;
+
+					if (pipe_state->be_mbs_recovered > mbs_recovered)
+						mbs_recovered = pipe_state->be_mbs_recovered;
+
+					no_be_wdt += pipe_state->be_errored_slices;
+					be_found = true;
+				}
+			}
+			if (be_found)
+				/* No need to check FE as we already have an info from BE */
+				continue;
+
+			/* If not found, we probbaly stuck on FE ? */
+			for (i = VDECFW_CHECKPOINT_FE_END; i >= VDECFW_CHECKPOINT_FE_START; i--) {
+				struct vxd_pipestate *pipe_state = &last_state.core_state.fw_state.pipe_state[pipe_minus1];
+
+				if (!pipe_state->is_pipe_present)
+					continue;
+
+				if (pipe_state->acheck_point[i] == decoded_pict->transaction_id) {
+					/* Mark all MBs as dropped */
+					pict_attrs->mbs_dropped = *pict_last_mb;
+					pict_attrs->mbs_recovered = 0;
+					return true;
+				}
+			}
+		}
+
+		if (be_found) {
+			/* Calculate last macroblock number processed on BE */
+			u32 num_mb_processed = (max_y * width_in_mb) - row_drop;
+
+			/* Sanity check, as HW may signal MbYX position beyond picture for corrupted streams */
+			if (num_mb_processed > (*pict_last_mb))
+				num_mb_processed = (*pict_last_mb); /* trim */
+
+			if (((*pict_last_mb) - num_mb_processed) > mbs_dropped)
+				mbs_dropped = (*pict_last_mb) - num_mb_processed;
+
+			pict_attrs->mbs_dropped = mbs_dropped;
+			pict_attrs->mbs_recovered = num_mb_processed;
+			pict_attrs->no_be_wdt = no_be_wdt;
+			return true;
+		}
+		return false;
+	}
+	/* Picture was decoded without DWR, so we have already the required info */
+	return true;
+}
+#endif
 
 /*
  * @Function  decoder_picture_release
@@ -3296,6 +3407,11 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 	int ret;
 	u32 pict_id;
 	struct vdec_pict_tag_container *fld_tag_container;
+#ifdef ERROR_CONCEALMENT
+	u32 first_field_err_level = 0;
+	u32 second_field_err_level = 0;
+	u32 pict_last_mb = 0;
+#endif
 
 	VDEC_ASSERT(dec_str_ctx);
 	VDEC_ASSERT(str_unit);
@@ -3452,6 +3568,35 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 			decoded_pict->second_fld_fwmsg->pict_attrs.no_be_wdt);
 		picture->dec_pict_info->err_flags |= VDEC_ERROR_BEHW_TIMEOUT;
 	}
+
+#ifdef ERROR_CONCEALMENT
+	/* Estimate error level in percentage */
+	if (decoder_get_pict_processing_info(dec_core_ctx, dec_str_ctx, pict_hdrinfo,
+					     decoded_pict, dec_pict, &pict_last_mb) == true) {
+		if (pict_last_mb) {
+			first_field_err_level = 100 - ((100 * (pict_last_mb -
+							       decoded_pict->first_fld_fwmsg->pict_attrs.mbs_dropped +
+							       decoded_pict->first_fld_fwmsg->pict_attrs.mbs_recovered)) /
+							pict_last_mb);
+
+			second_field_err_level = 100 - ((100 * (pict_last_mb -
+								decoded_pict->second_fld_fwmsg->pict_attrs.mbs_dropped +
+								decoded_pict->second_fld_fwmsg->pict_attrs.mbs_recovered)) /
+							pict_last_mb);
+		}
+
+		/* does not work properly with discontinuous mbs */
+		if (!pict_hdrinfo->discontinuous_mbs)
+			picture->dec_pict_info->err_level = first_field_err_level > second_field_err_level ?
+								first_field_err_level : second_field_err_level;
+
+		VDEC_ASSERT(picture->dec_pict_info->err_level <= 100);
+		if (picture->dec_pict_info->err_level)
+			pr_warn("[USERSID=0x%08X] [TID 0x%08X] Picture error level: %d(%%)",
+				dec_str_ctx->config.user_str_id, decoded_pict->transaction_id,
+				picture->dec_pict_info->err_level);
+	}
+#endif
 
 	if (decoded_pict->first_fld_fwmsg->pict_attrs.pict_attrs.dwrfired ||
 	    decoded_pict->second_fld_fwmsg->pict_attrs.pict_attrs.dwrfired) {
