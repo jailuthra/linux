@@ -65,6 +65,15 @@ static struct vxd_dec_fmt vxd_dec_formats[] = {
 		.idc = PIXEL_FORMAT_420,
 	},
 	{
+		.fourcc = V4L2_PIX_FMT_TI1210,
+		.num_planes = 1,
+		.type = IMG_DEC_FMT_TYPE_CAPTURE,
+		.std = VDEC_STD_UNDEFINED,
+		.pixfmt = IMG_PIXFMT_420PL12YUV10_MSB,
+		.interleave = PIXEL_UV_ORDER,
+		.idc = PIXEL_FORMAT_420,
+	},
+	{
 		.fourcc = V4L2_PIX_FMT_H264,
 		.num_planes = 1,
 		.type = IMG_DEC_FMT_TYPE_OUTPUT,
@@ -976,7 +985,7 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 		}
 	} else {
 		q_data->fmt = find_format(f, IMG_DEC_FMT_TYPE_CAPTURE);
-		q_data->size_image[0] = pix_mp->width * pix_mp->height;
+		q_data->size_image[0] = pix_mp->plane_fmt[0].sizeimage;
 
 		ctx->str_opcfg.pixel_info.pixfmt = q_data->fmt->pixfmt;
 		ctx->str_opcfg.pixel_info.chroma_interleave =
