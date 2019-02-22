@@ -3409,24 +3409,6 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 	if (!decoded_pict)
 		return IMG_ERROR_UNEXPECTED_STATE;
 
-	/*
-	 * check for eos on bitstream and propagate the same to picture
-	 * buffer
-	 */
-	if (str_unit->eos) {
-		u32  ret;
-
-		pr_info("EOS reached\n");
-
-		ret =
-		dec_str_ctx->str_processed_cb((void *)dec_str_ctx->usr_int_data,
-					      VXD_CB_STR_END, (void *)picture);
-
-		VDEC_ASSERT(ret == IMG_SUCCESS);
-		if (ret != IMG_SUCCESS)
-			return ret;
-	}
-
 	ret = dec_str_ctx->str_processed_cb((void *)dec_str_ctx->usr_int_data,
 					    VXD_CB_PICT_DECODED,
 					    (void *)picture);
@@ -3872,7 +3854,19 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 			dec_pict_num--;
 		}
 	}
-	return IMG_SUCCESS;
+
+	/*
+	 * check for eos on bitstream and propagate the same to picture
+	 * buffer
+	 */
+	if (str_unit->eos) {
+		pr_info("EOS reached\n");
+
+		ret = dec_str_ctx->str_processed_cb((void *)dec_str_ctx->usr_int_data,
+						    VXD_CB_STR_END, NULL);
+
+		VDEC_ASSERT(ret == IMG_SUCCESS);
+	}
 
 	return ret;
 }

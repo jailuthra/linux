@@ -140,6 +140,7 @@ static void return_worker(struct work_struct *work)
 	struct vxd_buffer *buf = NULL;
 	struct timespec time;
 	int loop;
+	struct v4l2_event event = {};
 
 	res = container_of(work, struct vxd_return, work);
 	ctx = res->ctx;
@@ -219,17 +220,8 @@ static void return_worker(struct work_struct *work)
 	case VXD_CB_PICT_END:
 		break;
 	case VXD_CB_STR_END:
-		mutex_lock(&ctx->mutex);
-		buf = find_buffer(res->buf_map_id, &ctx->cap_buffers);
-		if (!buf) {
-			dev_err(dev,
-				"Could not locate buf_map_id=0x%x in CAPTURE buffers list\n",
-				res->buf_map_id);
-			mutex_unlock(&ctx->mutex);
-			break;
-		}
-		buf->buffer.vb.flags |= V4L2_BUF_FLAG_LAST;
-		mutex_unlock(&ctx->mutex);
+		event.type = V4L2_EVENT_EOS;
+		v4l2_event_queue_fh(&ctx->fh, &event);
 		break;
 	case VXD_CB_ERROR_FATAL:
 		break;
@@ -1051,6 +1043,16 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 	return ret;
 }
 
+static int vxd_dec_subscribe_event(struct v4l2_fh *fh,
+				   const struct v4l2_event_subscription *sub)
+{
+	if (sub->type != V4L2_EVENT_EOS)
+		return -EINVAL;
+
+	v4l2_event_subscribe(fh, sub, 0, NULL);
+	return 0;
+}
+
 static const struct v4l2_ioctl_ops vxd_dec_ioctl_ops = {
 	.vidioc_querycap = vxd_dec_querycap,
 
@@ -1073,7 +1075,7 @@ static const struct v4l2_ioctl_ops vxd_dec_ioctl_ops = {
 	.vidioc_streamon = v4l2_m2m_ioctl_streamon,
 	.vidioc_streamoff = v4l2_m2m_ioctl_streamoff,
 	.vidioc_log_status = v4l2_ctrl_log_status,
-	.vidioc_subscribe_event = v4l2_ctrl_subscribe_event,
+	.vidioc_subscribe_event = vxd_dec_subscribe_event,
 	.vidioc_unsubscribe_event = v4l2_event_unsubscribe,
 };
 

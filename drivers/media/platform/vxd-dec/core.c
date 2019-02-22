@@ -586,7 +586,6 @@ static int core_stream_processed_cb(void *handle, int cb_type, void *cb_item)
 	case VXD_CB_PICT_DECODED:
 	case VXD_CB_PICT_DISPLAY:
 	case VXD_CB_PICT_RELEASE:
-	case VXD_CB_STR_END:
 		{
 		struct vdecdd_picture *picture =
 			(struct vdecdd_picture *)cb_item;
@@ -598,6 +597,13 @@ static int core_stream_processed_cb(void *handle, int cb_type, void *cb_item)
 						  cb_type);
 		break;
 		}
+
+	case VXD_CB_STR_END:
+		global_core_ctx->vxd_str_processed_cb(core_str_ctx->vxd_dec_context,
+						      cb_type, 0);
+		ret = IMG_SUCCESS;
+
+		break;
 
 	default:
 		return 0;
