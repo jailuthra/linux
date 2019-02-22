@@ -19,6 +19,7 @@
 #define _VXD_DEC_H
 
 #include <linux/firmware.h>
+#include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
 #include <linux/videodev2.h>
@@ -36,7 +37,6 @@
 #include "pixel_api.h"
 #include "vdecdd_defs.h"
 #include "vdec_defs.h"
-#include "vxd_pvdec_priv.h"
 
 #define VXD_MIN_STREAM_ID 1
 #define VXD_MAX_STREAMS_PER_DEV 254
@@ -56,6 +56,8 @@
 
 #define MAX_SEGMENTS 6
 #define HW_ALIGN 64
+
+#define MAX_BUF_TRACE 30
 
 enum {
 	Q_DATA_SRC = 0,
@@ -85,6 +87,15 @@ struct vxd_fw_msg {
 	u32 out_flags;
 	u32 payload_size;
 	u32 payload[0];
+};
+
+/* HW state */
+struct vxd_hw_state {
+	u32 fw_counter;
+	u32 fe_status[VXD_MAX_PIPES];
+	u32 be_status[VXD_MAX_PIPES];
+	u32 dmac_status[VXD_MAX_PIPES][2]; /* Cover DMA chan 2/3*/
+	u32 irq_status;
 };
 
 /*
@@ -190,6 +201,19 @@ struct vxd_dec_q_data {
 };
 
 /*
+ * struct time_prof - contains time taken by decoding information
+ *
+ * @id: id info
+ * @start_time: start time
+ * @end_time: end time
+ */
+struct time_prof {
+	u32 id;
+	s64 start_time;
+	s64 end_time;
+};
+
+/*
  * struct vxd_dev - The struct containing decoder driver internal parameters.
  *
  * @v4l2_dev: main struct of V4L2 device drivers
@@ -261,6 +285,8 @@ struct vxd_dev {
 	u32 hw_dwr_period;
 	unsigned long pm_start;
 	unsigned long dwr_start;
+	struct time_prof time_fw[MAX_BUF_TRACE];
+	struct time_prof time_drv[MAX_BUF_TRACE];
 };
 
 /*

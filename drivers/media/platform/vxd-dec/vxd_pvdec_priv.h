@@ -22,6 +22,7 @@
 
 #include "img_dec_common.h"
 #include "vxd_pvdec_regs.h"
+#include "vxd_dec.h"
 
 struct vxd_boot_poll_params {
 	unsigned int msleep_cycles;
@@ -66,18 +67,6 @@ struct vxd_ena_params {
 	u16 rendec_size; /* Size of a rendec buffer in 4K pages */
 };
 
-/* HW state */
-struct vxd_hw_state {
-	u32 fw_counter;
-
-	u32 fe_status[VXD_MAX_PIPES];
-	u32 be_status[VXD_MAX_PIPES];
-	u32 dmac_status[VXD_MAX_PIPES][2]; /* Cover DMA chan 2/3 */
-
-	u32 irq_status;
-
-};
-
 int vxd_pvdec_init(const struct device *dev, void __iomem *reg_base);
 
 int vxd_pvdec_ena(const struct device *dev, void __iomem *reg_base,
@@ -89,13 +78,14 @@ int vxd_pvdec_dis(const struct device *dev, void __iomem *reg_base);
 int vxd_pvdec_mmu_flush(const struct device *dev, void __iomem *reg_base);
 
 int vxd_pvdec_send_msg(const struct device *dev, void __iomem *reg_base,
-		       u32 *msg, size_t msg_size, u16 msg_id);
+		       u32 *msg, size_t msg_size, u16 msg_id,
+		       struct vxd_dev *ctx);
 
 int vxd_pvdec_pend_msg_info(const struct device *dev, void __iomem *reg_base,
 			    size_t *size, u16 *msg_id, bool *not_last_msg);
 
 int vxd_pvdec_recv_msg(const struct device *dev, void __iomem *reg_base,
-		       u32 *buf, size_t buf_size);
+		       u32 *buf, size_t buf_size, struct vxd_dev *ctx);
 
 int vxd_pvdec_check_fw_status(const struct device *dev, void __iomem *reg_base);
 

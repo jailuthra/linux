@@ -18,7 +18,7 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/io.h>
-#include <linux/time.h>
+#include <linux/slab.h>
 
 #include "img_dec_common.h"
 #include "img_pvdec_test_regs.h"
@@ -1195,12 +1195,24 @@ int vxd_pvdec_init(const struct device *dev, void __iomem *reg_base)
 
 /* Send <msg_size> dwords long message */
 int vxd_pvdec_send_msg(const struct device *dev, void __iomem *reg_base,
-		       u32 *msg, size_t msg_size, u16 msg_id)
+		       u32 *msg, size_t msg_size, u16 msg_id,
+		       struct vxd_dev *ctx)
 {
 	int ret, to_mtx_off; /* offset in dwords */
 	unsigned int wr_idx, rd_idx; /* indicies in dwords */
 	size_t to_mtx_size; /* size in dwords */
 	u32 msg_wrd;
+	struct timespec time;
+	static int cnt;
+
+	getnstimeofday(&time);
+
+	ctx->time_fw[cnt].start_time = timespec_to_ns(&time);
+	ctx->time_fw[cnt].id = msg_id;
+	cnt++;
+
+	if (cnt >= ARRAY_SIZE(ctx->time_fw))
+		cnt = 0;
 
 	ret = pvdec_get_to_mtx_cfg(reg_base, &to_mtx_size, &to_mtx_off,
 				   &wr_idx, &rd_idx);
@@ -1301,12 +1313,15 @@ int vxd_pvdec_pend_msg_info(const struct device *dev, void __iomem *reg_base,
  * moved so that message is no longer available.
  */
 int vxd_pvdec_recv_msg(const struct device *dev, void __iomem *reg_base,
-		       u32 *buf, size_t buf_size)
+		       u32 *buf, size_t buf_size, struct vxd_dev *vxd)
 {
 	int ret, to_host_off; /* offset in dwords */
 	unsigned int wr_idx, rd_idx; /* indicies in dwords */
 	size_t to_host_size, msg_size, to_read; /* sizes in dwords */
 	u32 val = 0;
+	struct timespec time;
+	u16 msg_id;
+	int loop;
 
 	ret = pvdec_get_to_host_cfg(reg_base, &to_host_size,
 				    &to_host_off, &wr_idx, &rd_idx);
@@ -1362,6 +1377,25 @@ int vxd_pvdec_recv_msg(const struct device *dev, void __iomem *reg_base,
 	VXD_WR_REG_ABS(reg_base, VLR_OFFSET +
 			PVDEC_FW_TO_HOST_RD_IDX_OFFSET, rd_idx);
 
+	msg_id = VXD_RD_REG_FIELD(val, PVDEC_FW, DEVA_GENMSG, MSG_ID);
+
+	getnstimeofday(&time);
+	for (loop = 0; loop < ARRAY_SIZE(vxd->time_fw); loop++) {
+		if (vxd->time_fw[loop].id == msg_id) {
+			vxd->time_fw[loop].end_time = timespec_to_ns(&time);
+			dev_info(dev,
+				 "fw decode time is %llu us for msg_id x%0x\n",
+				 (vxd->time_fw[loop].end_time -
+				 vxd->time_fw[loop].start_time) / 1000, msg_id);
+			break;
+		}
+	}
+
+	if (loop == ARRAY_SIZE(vxd->time_fw))
+		dev_err(dev,
+			"fw decode time for msg_id x%0x is not measured\n",
+			msg_id);
+
 	return 0;
 }
 
@@ -1393,10 +1427,16 @@ static int pvdec_send_init_msg(const struct device *dev,
 {
 	u16 msg_id = 0;
 	u32 msg[PVDEC_FW_DEVA_INIT_MSG_WRDS] = { 0 }, msg_wrd = 0;
+	struct vxd_dev *vxd;
+	int ret;
 
 	dev_dbg(dev, "%s: rendec: %d@0x%x, crc: 0x%x\n", __func__,
 		ena_params->rendec_size, ena_params->rendec_addr,
 		ena_params->crc);
+
+	vxd = kzalloc(sizeof(*vxd), GFP_KERNEL);
+	if (!vxd)
+		return -1;
 
 	/* message type */
 	msg_wrd = VXD_WR_REG_FIELD(msg_wrd, PVDEC_FW, DEVA_GENMSG, MSG_TYPE,
@@ -1433,8 +1473,11 @@ static int pvdec_send_init_msg(const struct device *dev,
 				   ena_params->fwwdt_ms);
 	VXD_WR_MSG_WRD(msg, PVDEC_FW_DEVA_INIT, FWWDT_MS, msg_wrd);
 
-	return vxd_pvdec_send_msg(dev, reg_base, msg,
-				  ARRAY_SIZE(msg), msg_id);
+	ret = vxd_pvdec_send_msg(dev, reg_base, msg,
+				 ARRAY_SIZE(msg), msg_id, vxd);
+	kfree(vxd);
+
+	return ret;
 }
 
 int vxd_pvdec_ena(const struct device *dev, void __iomem *reg_base,

@@ -40,7 +40,7 @@
 #include "h264fw_data.h"
 #include "hevcfw_data.h"
 #include "img_dec_common.h"
-#include "vxd_dec.h"
+#include "vxd_pvdec_priv.h"
 
 #define IMG_VXD_DEC_MODULE_NAME "vxd-dec"
 
@@ -138,6 +138,8 @@ static void return_worker(struct work_struct *work)
 	struct vxd_return *res;
 	struct device *dev;
 	struct vxd_buffer *buf = NULL;
+	struct timespec time;
+	int loop;
 
 	res = container_of(work, struct vxd_return, work);
 	ctx = res->ctx;
@@ -163,6 +165,23 @@ static void return_worker(struct work_struct *work)
 		break;
 	case VXD_CB_PICT_DECODED:
 		v4l2_m2m_job_finish(ctx->dev->m2m_dev, ctx->fh.m2m_ctx);
+		getnstimeofday(&time);
+		for (loop = 0; loop < ARRAY_SIZE(ctx->dev->time_drv); loop++) {
+			if (ctx->dev->time_drv[loop].id == res->buf_map_id) {
+				ctx->dev->time_drv[loop].end_time =
+						timespec_to_ns(&time);
+				dev_info(dev,
+					 "picture buf decode time is %llu us for buf_map_id 0x%x\n",
+					 (ctx->dev->time_drv[loop].end_time -
+					 ctx->dev->time_drv[loop].start_time) / 1000,
+					 res->buf_map_id);
+				break;
+			}
+		}
+
+		if (loop == ARRAY_SIZE(ctx->dev->time_drv))
+			dev_err(dev, "picture buf decode for buf_map_id x%0x is not measured\n",
+				res->buf_map_id);
 		break;
 	case VXD_CB_PICT_DISPLAY:
 		buf = find_buffer(res->buf_map_id, &ctx->cap_buffers);
@@ -1090,6 +1109,8 @@ static void device_run(void *priv)
 	u32 data_size;
 	int ret;
 	bool last = false;
+	struct timespec time;
+	static int cnt;
 
 	src_vb = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
 	if (!src_vb)
@@ -1122,6 +1143,14 @@ static void device_run(void *priv)
 					   preparsed_data, last);
 	if (ret)
 		dev_err(dev, "bspp_stream_preparse_buffers failed %d\n", ret);
+
+	getnstimeofday(&time);
+	vxd_dev->time_drv[cnt].start_time = timespec_to_ns(&time);
+	vxd_dev->time_drv[cnt].id = dst_vxdb->buf_map_id;
+	cnt++;
+
+	if (cnt >= ARRAY_SIZE(vxd_dev->time_drv))
+		cnt = 0;
 
 	core_stream_fill_pictbuf(dst_vxdb->buf_map_id);
 

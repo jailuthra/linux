@@ -27,7 +27,7 @@
 #include <linux/slab.h>
 
 #include "img_dec_common.h"
-#include "vxd_dec.h"
+#include "vxd_pvdec_priv.h"
 
 #define VXD_RENDEC_SIZE (5 * 1024 * 1024)
 
@@ -407,7 +407,7 @@ static int vxd_sched_single_locked(struct vxd_dev *vxd)
 		/* submit the message to the hardware */
 		ret = vxd_pvdec_send_msg(vxd->dev, vxd->reg_base,
 					 (u32 *)item->msg.payload, msg_size,
-					 msg_id);
+					 msg_id, vxd);
 		if (ret) {
 			dev_err(vxd->dev, "%s: failed to send msg!\n",
 				__func__);
@@ -683,7 +683,8 @@ static void vxd_drop_msg_locked(const struct vxd_dev *vxd)
 {
 	int ret;
 
-	ret = vxd_pvdec_recv_msg(vxd->dev, vxd->reg_base, NULL, 0);
+	ret = vxd_pvdec_recv_msg(vxd->dev, vxd->reg_base, NULL, 0,
+				 (struct vxd_dev *)vxd);
 	if (ret)
 		dev_warn(vxd->dev, "%s: failed to receive msg!\n", __func__);
 }
@@ -723,7 +724,7 @@ static struct vxd_item *vxd_get_orphaned_item_locked(struct vxd_dev *vxd,
 	item->stream_id = str_id;
 	item->msg.payload_size = msg_size * sizeof(u32);
 	if (vxd_pvdec_recv_msg(vxd->dev, vxd->reg_base,
-			       item->msg.payload, msg_size)) {
+			       item->msg.payload, msg_size, vxd)) {
 		dev_err(vxd->dev, "%s: failed to receive msg from VXD!\n",
 			__func__);
 		item->msg.out_flags |= VXD_FW_MSG_FLAG_DEV_ERR;
@@ -897,7 +898,7 @@ static void vxd_handle_single_msg_locked(struct vxd_dev *vxd,
 		}
 	}
 	ret = vxd_pvdec_recv_msg(dev, vxd->reg_base, item->msg.payload,
-				 msg_size);
+				 msg_size, vxd);
 	if (ret) {
 		dev_err(dev, "%s: failed to receive msg from VXD!\n", __func__);
 		item->msg.out_flags |= VXD_FW_MSG_FLAG_DEV_ERR;
