@@ -182,8 +182,9 @@ static void return_worker(struct work_struct *work)
 						timespec_to_ns(&time);
 				dev_info(dev,
 					 "picture buf decode time is %llu us for buf_map_id 0x%x\n",
-					 (ctx->dev->time_drv[loop].end_time -
-					 ctx->dev->time_drv[loop].start_time) / 1000,
+					 div_s64(ctx->dev->time_drv[loop].end_time -
+						 ctx->dev->time_drv[loop].start_time,
+						 1000),
 					 res->buf_map_id);
 				break;
 			}

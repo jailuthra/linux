@@ -750,7 +750,8 @@ int vid_ra_create(const char * const name,
 		}
 
 		if (size_arg > (u64)0) {
-			size_arg = (size_arg + quantum - 1) / quantum * quantum;
+			size_arg = div_u64((size_arg + quantum - 1), quantum);
+			size_arg *= quantum;
 
 			res = ra_insert_resource(local_arena,
 						 base_arg,
@@ -830,8 +831,9 @@ int vid_ra_add(void * const arena_hndl, u64 base_arg, u64 size_arg)
 
 	if (global_init) {
 		local_arena = (struct arena *)arena_hndl;
-		size_arg = (size_arg + local_arena->quantum - 1) /
-			local_arena->quantum * local_arena->quantum;
+		size_arg = div_u64(size_arg + local_arena->quantum - 1,
+				   local_arena->quantum);
+		size_arg *= local_arena->quantum;
 
 		res = ra_insert_resource(local_arena, base_arg, size_arg);
 		if (res != IMG_SUCCESS)
@@ -873,8 +875,9 @@ int vid_ra_alloc(void * const arena_hndl,
 
 	if (global_init) {
 		arn_ctx = (struct arena *)arena_hndl;
-		loc_size = ((loc_size + arn_ctx->quantum - 1) /
-			arn_ctx->quantum) * arn_ctx->quantum;
+		loc_size = div_u64(loc_size + arn_ctx->quantum - 1,
+				   arn_ctx->quantum);
+		loc_size *= arn_ctx->quantum;
 
 		if (actl_sz)
 			*actl_sz = loc_size;

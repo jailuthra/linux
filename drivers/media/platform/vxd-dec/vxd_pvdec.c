@@ -1385,8 +1385,9 @@ int vxd_pvdec_recv_msg(const struct device *dev, void __iomem *reg_base,
 			vxd->time_fw[loop].end_time = timespec_to_ns(&time);
 			dev_info(dev,
 				 "fw decode time is %llu us for msg_id x%0x\n",
-				 (vxd->time_fw[loop].end_time -
-				 vxd->time_fw[loop].start_time) / 1000, msg_id);
+				 div_s64(vxd->time_fw[loop].end_time -
+					 vxd->time_fw[loop].start_time, 1000),
+				 msg_id);
 			break;
 		}
 	}
