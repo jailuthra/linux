@@ -26,6 +26,7 @@
 #define PIXEL_MULTICHROME   true
 #define PIXEL_MONOCHROME    false
 #define IMG_MAX_NUM_PLANES  4
+#define PIXEL_INVALID_BDC   8
 
 extern char pix_fmt_idc_names[6][16];
 

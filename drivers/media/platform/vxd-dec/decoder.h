@@ -26,6 +26,7 @@
 #include "vxd_buf.h"
 #include "vxd_ext.h"
 #include "vxd_props.h"
+#include "hevcfw_data.h"
 
 #define MAX_CONCURRENT_STREAMS 16
 
@@ -40,6 +41,9 @@ enum dec_res_type {
 	DECODER_RESTYPE_TRANSACTION = 0,
 	DECODER_RESTYPE_HDR,
 	DECODER_RESTYPE_BATCH_MSG,
+#ifdef HAS_HEVC
+	DECODER_RESTYPE_PVDEC_BUF,
+#endif
 	DECODER_RESTYPE_MAX,
 };
 
@@ -182,6 +186,17 @@ struct dec_pict_attrs {
 };
 
 /*
+ * This union contains firmware contexts. Used to allocate buffers for firmware
+ * context.
+ */
+union dec_fw_contexts {
+	struct h264fw_context_data	h264_context;
+#ifdef HAS_HEVC
+	struct hevcfw_ctx_data	hevc_context;
+#endif
+};
+
+/*
  * for debug
  */
 struct dec_fwmsg {
@@ -213,6 +228,10 @@ struct dec_decpict {
 	u8				first_fld_rcvd;
 	struct res_resinfo		*transaction_info;
 	struct res_resinfo		*hdr_info;
+#ifdef HAS_HEVC
+	struct res_resinfo		*pvdec_info;
+	u32				temporal_out_addr;
+#endif
 	struct vdecdd_ddpict_buf	*recon_pict;
 	struct vdecdd_ddpict_buf	*alt_pict;
 	struct res_resinfo		*batch_msginfo;

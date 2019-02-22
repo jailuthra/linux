@@ -29,6 +29,9 @@
 #define MAX_PICS_IN_SYSTEM	(64)
 #define SEQUENCE_SLOTS		(64)
 #define PPS_SLOTS		(64)
+/* Only for HEVC */
+#define VPS_SLOTS		(16)
+#define MAX_VPSS		(MAX_PICS_IN_SYSTEM + VPS_SLOTS)
 #define MAX_SEQUENCES		(MAX_PICS_IN_SYSTEM + SEQUENCE_SLOTS)
 #define MAX_PPSS		(MAX_PICS_IN_SYSTEM + PPS_SLOTS)
 
@@ -46,6 +49,11 @@
 #define VDEC_H264_MVC_REF_LIST_NON_ANCHOR_L1	1
 
 #define VDEC_ASSERT(expected) ({WARN_ON(!(expected)); 0; })
+
+#define VDEC_ALIGN_SIZE(_val, _alignment) ({ \
+		typeof(_val) val = _val; \
+		typeof(_alignment) alignment = _alignment; \
+		(((val) + (alignment) - 1) & ~((alignment) - 1)); })
 
 /*
  * This type defines the video standard.

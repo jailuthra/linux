@@ -39,8 +39,21 @@ vxd-dec-objs += core.o
 vxd-dec-objs += swsr.o
 vxd-dec-objs += h264_secure_parser.o
 vxd-dec-objs += bspp.o
+vxd-dec-objs += hevc_secure_parser.o
 
 #UM INTERFACE & SYSDEV
 vxd-dec-objs += vxd_dec.o
 
 obj-$(CONFIG_VIDEO_IMG_VXD_DEC) += vxd-dec.o
+
+ifeq ($(CONFIG_HAS_HEVC),y)
+KBUILD_CFLAGS   += -DHAS_HEVC
+endif
+
+ifeq ($(CONFIG_ERROR_CONCEALMENT),y)
+KBUILD_CFLAGS   += -DERROR_CONCEALMENT
+endif
+
+ifeq ($(REDUCED_DPB_NO_PIC_REORDERING),y)
+KBUILD_CFLAGS   += -DREDUCED_DPB_NO_PIC_REORDERING
+endif

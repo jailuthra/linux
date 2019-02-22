@@ -21,6 +21,7 @@
 
 #include "decoder.h"
 #include "dec_resources.h"
+#include "hw_control.h"
 #include "h264fw_data.h"
 #include "h264_idx.h"
 #include "h264_vlc.h"
@@ -36,7 +37,6 @@
 #define BATCH_MSG_BUFFER_SIZE	(8 * 4096)
 #define INTRA_BUF_SIZE		(1024 * 32)
 #define AUX_LINE_BUFFER_SIZE	(512 * 1024)
-#define DEV_MMU_PAGE_ALIGNMENT	(0x1000)
 
 static void decres_pack_vlc_tables(u16 *packed, u16 *unpacked, u16 size)
 {
@@ -77,7 +77,10 @@ union decres_fw_hdrs {
 static const u32 res_size[DECODER_RESTYPE_MAX] = {
 	sizeof(struct vdecfw_transaction),
 	sizeof(union decres_fw_hdrs),
-	BATCH_MSG_BUFFER_SIZE
+	BATCH_MSG_BUFFER_SIZE,
+#ifdef HAS_HEVC
+	MEM_TO_REG_BUF_SIZE + SLICE_PARAMS_BUF_SIZE + ABOVE_PARAMS_BUF_SIZE,
+#endif
 };
 
 static const u8 start_code[] = {
@@ -147,6 +150,13 @@ int dec_res_picture_detach(void **res_ctx, struct dec_decpict *dec_pict)
 	lst_add(&local_res_ctx->pool_data_list[DECODER_RESTYPE_BATCH_MSG],
 		dec_pict->batch_msginfo);
 	pool_resfree(dec_pict->batch_msginfo->res);
+
+#ifdef HAS_HEVC
+	if (dec_pict->pvdec_info) {
+		lst_add(&local_res_ctx->pool_data_list[DECODER_RESTYPE_PVDEC_BUF], dec_pict->pvdec_info);
+		pool_resfree(dec_pict->pvdec_info->res);
+	}
+#endif
 
 	return IMG_SUCCESS;
 }
@@ -223,6 +233,17 @@ int dec_res_picture_attach(void **res_ctx, enum vdec_vid_std vid_std,
 	if (ret != IMG_SUCCESS)
 		return ret;
 
+#ifdef HAS_HEVC
+	/* Obtain HEVC buffer */
+	if (vid_std == VDEC_STD_HEVC) {
+		ret = decres_get_resource(local_res_ctx, DECODER_RESTYPE_PVDEC_BUF,
+					  &dec_pict->pvdec_info, true);
+
+		VDEC_ASSERT(ret == IMG_SUCCESS);
+		if (ret != IMG_SUCCESS)
+			return ret;
+	}
+#endif
 	/* Obtain picture batch message buffer */
 	ret = decres_get_resource(local_res_ctx, DECODER_RESTYPE_BATCH_MSG,
 				  &dec_pict->batch_msginfo, true);
@@ -271,7 +292,7 @@ int dec_res_create(void *mmu_handle, struct vxd_coreprops *core_props,
 	ret = mmu_stream_alloc(mmu_handle, MMU_HEAP_STREAM_BUFFERS, mem_heap_id,
 			       mem_attrib,
 			       core_props->num_pixel_pipes *
-				INTRA_BUF_SIZE * 3,
+			       INTRA_BUF_SIZE * 3,
 			       DEV_MMU_PAGE_ALIGNMENT,
 			       &local_res_ctx->intra_bufinfo);
 	VDEC_ASSERT(ret == IMG_SUCCESS);

@@ -413,6 +413,8 @@ static int vdeckm_process_msg(const void *hndl_vxd, u32 *msg,
 	u8 msg_type;
 	u8 msg_group;
 	u32 trans_id = 0;
+	struct vdec_pict_hwcrc *pict_hwcrc = NULL;
+	struct dec_decpict *pdec_pict;
 
 	if (!core_ctx || !msg || !msg_attr || !pend_pict_list || !decpict)
 		return IMG_ERROR_INVALID_PARAMETERS;
@@ -439,6 +441,76 @@ static int vdeckm_process_msg(const void *hndl_vxd, u32 *msg,
 					    decpict, msg_type, trans_id,
 					    msg_flags);
 		break;
+
+	case FW_DEVA_SIGNATURES_HEVC:
+	case FW_DEVA_SIGNATURES_LEGACY:
+	{
+		u32 *signatures = msg + (FW_DEVA_SIGNATURES_SIGNATURES_OFFSET / sizeof(u32));
+		u8 sigcount  = MEMIO_READ_FIELD(msg, FW_DEVA_SIGNATURES_MSG_SIZE) -
+				((FW_DEVA_SIGNATURES_SIZE / sizeof(u32)) - 1);
+		u32 selected = MEMIO_READ_FIELD(msg, FW_DEVA_SIGNATURES_SIGNATURE_SELECT);
+		u8 i, j = 0;
+
+		pdec_pict = lst_first(pend_pict_list);
+		while (pdec_pict) {
+			if (pdec_pict->transaction_id == trans_id)
+				break;
+			pdec_pict = lst_next(pdec_pict);
+		}
+
+		/* We must have a picture in the list that matches the tid */
+		VDEC_ASSERT(pdec_pict);
+		if (!pdec_pict) {
+			pr_err("Firmware signatures message received with no pending picture\n");
+			return IMG_ERROR_FATAL;
+		}
+
+		VDEC_ASSERT(pdec_pict->first_fld_fwmsg);
+		VDEC_ASSERT(pdec_pict->second_fld_fwmsg);
+		if (!pdec_pict->first_fld_fwmsg || !pdec_pict->second_fld_fwmsg) {
+			pr_err("Invalid pending picture struct\n");
+			return IMG_ERROR_FATAL;
+		}
+		if (pdec_pict->first_fld_fwmsg->pict_hwcrc.first_fld_rcvd) {
+			pict_hwcrc = &pdec_pict->second_fld_fwmsg->pict_hwcrc;
+		} else {
+			pict_hwcrc = &pdec_pict->first_fld_fwmsg->pict_hwcrc;
+			if (selected & (PVDEC_SIGNATURE_GROUP_20 | PVDEC_SIGNATURE_GROUP_24))
+				pdec_pict->first_fld_fwmsg->pict_hwcrc.first_fld_rcvd = true;
+		}
+
+		for (i = 0; i < 32; i++) {
+			u32 group = selected & (1 << i);
+
+			switch (group) {
+			case PVDEC_SIGNATURE_GROUP_20:
+				pict_hwcrc->crc_vdmc_pix_recon = signatures[j++];
+				break;
+
+			case PVDEC_SIGNATURE_GROUP_24:
+				pict_hwcrc->vdeb_sysmem_wrdata = signatures[j++];
+				break;
+
+			default:
+				break;
+			}
+		}
+
+		/* sanity check */
+		sigcount -= j;
+		VDEC_ASSERT(sigcount == 0);
+
+		/*
+		 * suppress PVDEC_SIGNATURE_GROUP_1 and notify
+		 * only about groups used for verification
+		 */
+		if (selected & (PVDEC_SIGNATURE_GROUP_20 | PVDEC_SIGNATURE_GROUP_24))
+			pr_info("[TID=0x%08X] [SIGNATURES]\n", trans_id);
+
+		*decpict = pdec_pict;
+
+		break;
+	}
 
 	default: {
 		u16 msg_size, i;

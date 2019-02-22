@@ -494,6 +494,36 @@ config VIDEO_IMG_VXD_DEC
 	  Imagination D5520 (Video Decoder) hardware.
 	  The module name when built is vxd-dec.
 
+if VIDEO_IMG_VXD_DEC
+
+config HAS_HEVC
+	bool "enable/disable HEVC Decode capability"
+	default y
+	help
+	  This config allows enabling or disabling of HEVC/H265 video
+	  decoding functionality with IMG VXD Video decoder. If you
+	  do not want HEVC decode capability, select N.
+	  If unsure, select Y
+
+config ERROR_CONCEALMENT
+	bool "enable/disable gray patterened error concealment"
+	default y
+	help
+	  This config enables error concealment with gray pattern.
+	  Disable if you do not want error concealment capability.
+	  If unsure, say Y
+
+config REDUCED_DPB_NO_PIC_REORDERING
+	bool "disable Picture reordering"
+	default n
+	help
+	  This config, if enabled, configures H264 video decoder to
+	  output frames in the decode order with no buffering and
+	  picture reordering inside codec.
+	  If unsure, say N
+
+endif
+
 config VIDEO_QCOM_VENUS
 	tristate "Qualcomm Venus V4L2 encoder/decoder driver"
 	depends on VIDEO_DEV && VIDEO_V4L2

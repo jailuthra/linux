@@ -86,6 +86,8 @@ struct vxd_coreprops {
 	enum mmu_etype mmu_type;
 	u8 mmu_support_stride_per_context;
 	u8 mmu_support_secure;
+	/* Range extensions supported by hw -> used only by hevc */
+	u8 hevc_range_ext[VDEC_MAX_PIXEL_PIPES];
 };
 
 #endif /* _VXD_PROPS_H */

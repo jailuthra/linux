@@ -60,9 +60,6 @@ static inline u32 get_prev_picture_id(u32 cur_pict_id)
 	       cur_pict_id - 1);
 }
 
-/* Page alignment of the device MMU */
-#define DEV_MMU_PAGE_ALIGNMENT  (0x1000)
-
 #define H264_SGM_BUFFER_BYTES_PER_MB  1
 #define H264_SGM_MAX_MBS              3600
 
@@ -184,10 +181,16 @@ static void decoder_set_feature_flags(struct vxd_coreprops *core_props,
 	VDEC_ASSERT(pipe_feat_flags);
 
 	for (pipe_minus_one = 0; pipe_minus_one < core_props->num_pixel_pipes;
-	    pipe_minus_one++)
+	    pipe_minus_one++) {
 		*core_feat_flags |= pipe_feat_flags[pipe_minus_one] |=
 					core_props->h264[pipe_minus_one] ?
 					VDECDD_COREFEATURE_H264 : 0;
+#ifdef HAS_HEVC
+		*core_feat_flags |= pipe_feat_flags[pipe_minus_one] |=
+					core_props->hevc[pipe_minus_one] ?
+					VDECDD_COREFEATURE_HEVC : 0;
+#endif
+	}
 }
 
 /*
@@ -303,8 +306,11 @@ int decoder_initialise(void *user_init_data, u32 int_heap_id,
 	/* Determine which standards are supported. */
 	memset(&dec_context->sup_stds, 0x0,
 	       sizeof(dec_context->sup_stds[VDEC_STD_MAX]));
-	dec_context->sup_stds[VDEC_STD_H264] = true;
 
+	dec_context->sup_stds[VDEC_STD_H264] = true;
+#ifdef HAS_HEVC
+	dec_context->sup_stds[VDEC_STD_HEVC] = true;
+#endif
 	if (!dec_context->inited) {
 		/* Check and store input parameters. */
 		dec_context->user_data = user_init_data;
@@ -946,9 +952,9 @@ int decoder_stream_destroy(void *dec_str_context, u8 abort)
 	 * added to hold the last on front and back-end for stream.
 	 */
 	for (i = 0; i < dec_str_ctx_local->num_dec_res + 2; i++) {
-		ret = resource_empty(&dec_str_ctx_local->dec_res_lst, false,
-				     decoder_stream_decode_resource_destroy,
-				     dec_str_ctx_local);
+		ret = resource_list_empty(&dec_str_ctx_local->dec_res_lst, false,
+					  decoder_stream_decode_resource_destroy,
+					  dec_str_ctx_local);
 		VDEC_ASSERT(ret == IMG_SUCCESS);
 		if (ret != IMG_SUCCESS)
 			return ret;
@@ -956,9 +962,9 @@ int decoder_stream_destroy(void *dec_str_context, u8 abort)
 	VDEC_ASSERT(lst_empty(&dec_str_ctx_local->dec_res_lst));
 
 	/* Remove all stream decode resources. */
-	ret = resource_empty(&dec_str_ctx_local->ref_res_lst, false,
-			     decoder_stream_reference_resource_destroy,
-			     dec_str_ctx_local);
+	ret = resource_list_empty(&dec_str_ctx_local->ref_res_lst, false,
+				  decoder_stream_reference_resource_destroy,
+				  dec_str_ctx_local);
 
 	VDEC_ASSERT(ret == IMG_SUCCESS);
 	if (ret != IMG_SUCCESS)
@@ -1061,7 +1067,7 @@ decoder_stream_decode_resource_create(struct dec_str_ctx *dec_str_context)
 			       MMU_HEAP_STREAM_BUFFERS, mem_heap_id,
 			       mem_attribs | SYS_MEMATTRIB_CPU_READ |
 			       SYS_MEMATTRIB_CPU_WRITE,
-			       sizeof(struct dec_fwmsg),
+			       sizeof(union dec_fw_contexts),
 			       DEV_MMU_PAGE_ALIGNMENT,
 			       &pict_dec_res->fw_ctx_buf);
 
@@ -1383,7 +1389,7 @@ struct dec_decoded_pict *decoder_get_next_decpict_contiguous(struct dec_decoded_
 /*
  * @Function  decoder_next_picture
  * @Description
- * Returns the next unprocessed picture or IMG_NULL if the next picture is not
+ * Returns the next unprocessed picture or NULL if the next picture is not
  * next in bitstream decode order or there are no more decoded pictures in the
  * list.
 
@@ -1502,6 +1508,120 @@ static int decoder_picture_display(struct dec_str_ctx *dec_str_ctx,
 	return IMG_SUCCESS;
 }
 
+#ifdef ERROR_CONCEALMENT
+/*
+ * @Function              decoder_get_pict_processing_info
+ */
+static u8 decoder_get_pict_processing_info(struct dec_core_ctx *dec_corectx,
+					   struct dec_str_ctx *dec_strctx,
+					   struct bspp_pict_hdr_info *pict_hdr_info,
+					   struct dec_decoded_pict *decoded_pict,
+					   struct dec_decpict *dec_pict,
+					   u32 *pict_last_mb)
+{
+	int ret = IMG_SUCCESS;
+	u8  pipe_minus1;
+	struct hwctrl_state last_state;
+	u32 width_in_mb;
+	u32 height_in_mb;
+	u32 i;
+
+	memset(&last_state, 0, sizeof(last_state));
+
+	VDEC_ASSERT(pict_hdr_info);
+	width_in_mb = (pict_hdr_info->coded_frame_size.width +
+			(VDEC_MB_DIMENSION - 1)) / VDEC_MB_DIMENSION;
+	height_in_mb = (pict_hdr_info->coded_frame_size.height +
+			(VDEC_MB_DIMENSION - 1)) / VDEC_MB_DIMENSION;
+
+	VDEC_ASSERT(pict_last_mb);
+	*pict_last_mb = width_in_mb * height_in_mb;
+	VDEC_ASSERT(decoded_pict);
+
+	if (decoded_pict->first_fld_fwmsg->pict_attrs.pict_attrs.dwrfired ||
+	    decoded_pict->second_fld_fwmsg->pict_attrs.pict_attrs.dwrfired ||
+	    decoded_pict->first_fld_fwmsg->pict_attrs.pict_attrs.mmufault ||
+	    decoded_pict->second_fld_fwmsg->pict_attrs.pict_attrs.mmufault) {
+		struct dec_pict_attrs *pict_attrs = &decoded_pict->first_fld_fwmsg->pict_attrs;
+		u8 be_found = false;
+		u32 mbs_dropped = 0;
+		u32 mbs_recovered = 0;
+		u32 no_be_wdt = 0;
+		u32 max_y = 0;
+		u32 row_drop = 0;
+
+		VDEC_ASSERT(dec_corectx);
+		/* Obtain the last available core status - cached before clocks where switched off */
+		ret = hwctrl_getcore_cached_status(dec_corectx->hw_ctx, &last_state);
+		if (ret != IMG_SUCCESS)
+			return false;
+
+		/* Try to determine pipe where the last picture was decoded on (BE) */
+		for (pipe_minus1 = 0; pipe_minus1 < VDEC_MAX_PIXEL_PIPES; pipe_minus1++) {
+			for (i = VDECFW_CHECKPOINT_BE_END; i >= VDECFW_CHECKPOINT_BE_START; i--) {
+				struct vxd_pipestate *pipe_state = &last_state.core_state.fw_state.pipe_state[pipe_minus1];
+
+				if (!pipe_state->is_pipe_present)
+					continue;
+
+				if (pipe_state->acheck_point[i] == decoded_pict->transaction_id) {
+					row_drop += width_in_mb - pipe_state->be_mb.x;
+					if (pipe_state->be_mb.y > max_y)
+						max_y = pipe_state->be_mb.y;
+
+					if (pipe_state->be_mbs_dropped > mbs_dropped)
+						mbs_dropped = pipe_state->be_mbs_dropped;
+
+					if (pipe_state->be_mbs_recovered > mbs_recovered)
+						mbs_recovered = pipe_state->be_mbs_recovered;
+
+					no_be_wdt += pipe_state->be_errored_slices;
+					be_found = true;
+				}
+			}
+			if (be_found)
+				/* No need to check FE as we already have an info from BE */
+				continue;
+
+			/* If not found, we probbaly stuck on FE ? */
+			for (i = VDECFW_CHECKPOINT_FE_END; i >= VDECFW_CHECKPOINT_FE_START; i--) {
+				struct vxd_pipestate *pipe_state = &last_state.core_state.fw_state.pipe_state[pipe_minus1];
+
+				if (!pipe_state->is_pipe_present)
+					continue;
+
+				if (pipe_state->acheck_point[i] == decoded_pict->transaction_id) {
+					/* Mark all MBs as dropped */
+					pict_attrs->mbs_dropped = *pict_last_mb;
+					pict_attrs->mbs_recovered = 0;
+					return true;
+				}
+			}
+		}
+
+		if (be_found) {
+			/* Calculate last macroblock number processed on BE */
+			u32 num_mb_processed = (max_y * width_in_mb) - row_drop;
+
+			/* Sanity check, as HW may signal MbYX position beyond picture for corrupted streams */
+			if (num_mb_processed > (*pict_last_mb))
+				num_mb_processed = (*pict_last_mb); /* trim */
+
+			if (((*pict_last_mb) - num_mb_processed) > mbs_dropped)
+				mbs_dropped = (*pict_last_mb) - num_mb_processed;
+
+			pict_attrs->mbs_dropped = mbs_dropped;
+			pict_attrs->mbs_recovered = num_mb_processed;
+			pict_attrs->no_be_wdt = no_be_wdt;
+			return true;
+		}
+		return false;
+	}
+	/* Picture was decoded without DWR, so we have already the required info */
+	return true;
+}
+#endif
+
 /*
  * @Function  decoder_picture_release
  */
@@ -1511,9 +1631,6 @@ static int decoder_picture_release(struct dec_str_ctx *dec_str_ctx,
 {
 	struct vdecdd_picture *picture;
 	int ret;
-
-	if (displayed || merged)
-		return IMG_SUCCESS;
 
 	VDEC_ASSERT(dec_str_ctx);
 
@@ -1574,7 +1691,7 @@ decoder_stream_flush_process_dpb_h264(struct dec_str_ctx *dec_str_ctx,
 	u32 pict_id;
 
 	/* Determine how many display pictures reside in the DPB */
-	if (ctx_data->dpb_size > H264FW_MAX_DPB_SIZE) {
+	if (ctx_data->dpb_size > H264FW_MAX_DPB_SIZE || ctx_data->dpb_size <= 0) {
 		pr_warn("[USERSID=0x%08X] Incorrect DPB size: %d",
 			dec_str_ctx->config.user_str_id, ctx_data->dpb_size);
 		ctx_data->dpb_size = H264FW_MAX_DPB_SIZE;
@@ -1731,12 +1848,127 @@ decoder_stream_flush_process_dpb_h264(struct dec_str_ctx *dec_str_ctx,
 				ctx_data->dpb[min_cnt_idx].transaction_id = 0;
 			}
 
-			VDEC_ASSERT(num_pics_displayed == num_display_pics);
 		}
 	}
 
+		VDEC_ASSERT(num_pics_displayed == num_display_pics);
+
 	return IMG_SUCCESS;
 }
+
+#ifdef HAS_HEVC
+/*
+ * decoder_StreamFlushProcessDPB_HEVC
+ */
+static int
+decoder_stream_flush_process_dpb_hevc(struct dec_str_ctx *decstr_ctx,
+				      struct dec_decoded_pict *decoded_pict,
+				      u8 discard_refs)
+{
+	int result;
+	struct hevcfw_ctx_data *ctx = (struct hevcfw_ctx_data *)decstr_ctx->last_be_pict_dec_res->fw_ctx_buf.cpu_virt;
+	struct hevcfw_decoded_picture_buffer *dpb;
+	u8 found = true;
+	s8 idx;
+	int min_poc_val;
+	s8 dpb_idx;
+	u8 num_display_pics = 0;
+	u8 num_pics_displayed = 0;
+	struct dec_decoded_pict *display_pict = NULL;
+
+	/*
+	 * Update the fw context for analysing the dpb in order
+	 * to display or release any outstanding picture
+	 */
+	dpb = &ctx->dpb;
+
+	/* Determine how many display pictures reside in the DPB. */
+	for (idx = 0; idx < HEVCFW_MAX_DPB_SIZE; ++idx) {
+		struct hevcfw_picture_in_dpb *dpb_pic = &dpb->pictures[idx];
+
+		if (dpb_pic->valid && dpb_pic->needed_for_output)
+			++num_display_pics;
+	}
+
+	while (found) {
+		struct hevcfw_picture_in_dpb *dpb_pic;
+
+		min_poc_val = 0x7fffffff;
+		dpb_idx = HEVCFW_DPB_IDX_INVALID;
+		found = false;
+
+		/* Loop over the DPB to find the first in order */
+		for (idx = 0; idx < HEVCFW_MAX_DPB_SIZE; ++idx) {
+			dpb_pic = &dpb->pictures[idx];
+			if (dpb_pic->valid && (dpb_pic->needed_for_output || discard_refs)) {
+				if (dpb_pic->picture.pic_order_cnt_val < min_poc_val) {
+					min_poc_val = dpb_pic->picture.pic_order_cnt_val;
+					dpb_idx = idx;
+					found = true;
+				}
+			}
+		}
+
+		if (!found)
+			break;
+
+		dpb_pic = &dpb->pictures[dpb_idx];
+
+		if (dpb_pic->needed_for_output) {
+			u32 str_pic_id = GET_STREAM_PICTURE_ID(dpb_pic->picture.transaction_id);
+
+			VDEC_ASSERT(dpb_pic->picture.transaction_id != 0xffffffff);
+			display_pict = decoder_get_decoded_pict(dpb_pic->picture.transaction_id,
+								&decstr_ctx->str_decd_pict_list);
+
+			if (display_pict && display_pict->pict && display_pict->pict->dec_pict_info) {
+				display_pict->pict->dec_pict_info->buf_type = IMG_BUFFERTYPE_FRAME;
+			} else {
+				VDEC_ASSERT(display_pict);
+				VDEC_ASSERT(display_pict && display_pict->pict);
+				VDEC_ASSERT(display_pict && display_pict->pict && display_pict->pict->dec_pict_info);
+
+				dpb_pic->valid = false;
+				continue;
+			}
+
+			if (display_pict && !display_pict->displayed) {
+				display_pict->displayed = true;
+				++num_pics_displayed;
+				result = decoder_picture_display(decstr_ctx, str_pic_id,
+								 num_pics_displayed == num_display_pics);
+				VDEC_ASSERT(result == IMG_SUCCESS);
+				if (result != IMG_SUCCESS)
+					return result;
+			}
+			dpb_pic->needed_for_output = false;
+		}
+
+		if (discard_refs) {
+			decoded_pict = decoder_get_decoded_pict(dpb_pic->picture.transaction_id,
+								&decstr_ctx->str_decd_pict_list);
+
+			if (decoded_pict) {
+				/* Signal releasing this picture to upper layers. */
+				decoder_picture_release(decstr_ctx,
+							GET_STREAM_PICTURE_ID(decoded_pict->transaction_id),
+							decoded_pict->displayed,
+							decoded_pict->merged);
+				/* Destroy the decoded picture. */
+				result = decoder_decoded_picture_destroy(decstr_ctx, decoded_pict, false);
+				VDEC_ASSERT(result == IMG_SUCCESS);
+				if (result != IMG_SUCCESS)
+					return result;
+			}
+			dpb_pic->valid = false;
+		}
+	}
+
+	VDEC_ASSERT(num_pics_displayed == num_display_pics);
+
+	return IMG_SUCCESS;
+}
+#endif
 
 /*
  * @Function        decoder_stream_flush_process_dpb
@@ -1759,6 +1991,13 @@ decoder_stream_flush_process_dpb(struct dec_str_ctx *dec_str_ctx,
 							      decoded_pict,
 							      discard_refs);
 
+			break;
+#ifdef HAS_HEVC
+		case VDEC_STD_HEVC:
+			decoder_stream_flush_process_dpb_hevc(dec_str_ctx,
+							      decoded_pict,
+							      discard_refs);
+#endif
 			break;
 
 		default:
@@ -2594,7 +2833,11 @@ decoder_get_required_core_features(const struct vdec_str_configdata *str_cfg,
 	case VDEC_STD_H264:
 		features_local = VDECDD_COREFEATURE_H264;
 		break;
-
+#ifdef HAS_HEVC
+	case VDEC_STD_HEVC:
+		features_local = VDECDD_COREFEATURE_HEVC;
+		break;
+#endif
 	default:
 		VDEC_ASSERT(false);
 		break;
@@ -2698,6 +2941,25 @@ decoder_check_support(void *dec_ctx_arg,
 				VDECDD_UNSUPPORTED_SEQUHDR_NUM_OF_VIEWS;
 			}
 			break;
+#ifdef HAS_HEVC
+		case VDEC_STD_HEVC:
+			if (!decoder_is_supported_by_atleast_onepipe(core_props->hevc, core_props->num_pixel_pipes)) {
+				pr_warn("[USERSID=0x%08X] UNSUPPORTED[HW]: VIDEO STANDARD (HEVC)",
+					str_cfg->user_str_id);
+				unsupported->str_cfg |= VDECDD_UNSUPPORTED_STRCONFIG_STD;
+			}
+			if (pict_hdrinfo && pict_hdrinfo->hevc_pict_hdr_info.range_ext_present)
+				if ((pict_hdrinfo->hevc_pict_hdr_info.is_full_range_ext &&
+				     !decoder_is_supported_by_atleast_onepipe(core_props->hevc_range_ext,
+									      core_props->num_pixel_pipes)) ||
+				    (!pict_hdrinfo->hevc_pict_hdr_info.is_full_range_ext &&
+				     core_props->vidstd_props[str_cfg->vid_std].max_chroma_format == PIXEL_FORMAT_420)) {
+					pr_warn("[USERSID=0x%08X] UNSUPPORTED[HW]: HEVC RANGE EXTENSIONS",
+						str_cfg->user_str_id);
+					unsupported->pict_hdr |= VDECDD_UNSUPPORTED_PICTHDR_HEVC_RANGE_EXT;
+			}
+			break;
+#endif
 		default:
 			pr_warn("[USERSID=0x%08X] UNSUPPORTED[HW]: VIDEO STANDARD (UNKNOWN)",
 				str_cfg->user_str_id);
@@ -3145,6 +3407,11 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 	int ret;
 	u32 pict_id;
 	struct vdec_pict_tag_container *fld_tag_container;
+#ifdef ERROR_CONCEALMENT
+	u32 first_field_err_level = 0;
+	u32 second_field_err_level = 0;
+	u32 pict_last_mb = 0;
+#endif
 
 	VDEC_ASSERT(dec_str_ctx);
 	VDEC_ASSERT(str_unit);
@@ -3302,6 +3569,35 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 		picture->dec_pict_info->err_flags |= VDEC_ERROR_BEHW_TIMEOUT;
 	}
 
+#ifdef ERROR_CONCEALMENT
+	/* Estimate error level in percentage */
+	if (decoder_get_pict_processing_info(dec_core_ctx, dec_str_ctx, pict_hdrinfo,
+					     decoded_pict, dec_pict, &pict_last_mb) == true) {
+		if (pict_last_mb) {
+			first_field_err_level = 100 - ((100 * (pict_last_mb -
+							       decoded_pict->first_fld_fwmsg->pict_attrs.mbs_dropped +
+							       decoded_pict->first_fld_fwmsg->pict_attrs.mbs_recovered)) /
+							pict_last_mb);
+
+			second_field_err_level = 100 - ((100 * (pict_last_mb -
+								decoded_pict->second_fld_fwmsg->pict_attrs.mbs_dropped +
+								decoded_pict->second_fld_fwmsg->pict_attrs.mbs_recovered)) /
+							pict_last_mb);
+		}
+
+		/* does not work properly with discontinuous mbs */
+		if (!pict_hdrinfo->discontinuous_mbs)
+			picture->dec_pict_info->err_level = first_field_err_level > second_field_err_level ?
+								first_field_err_level : second_field_err_level;
+
+		VDEC_ASSERT(picture->dec_pict_info->err_level <= 100);
+		if (picture->dec_pict_info->err_level)
+			pr_warn("[USERSID=0x%08X] [TID 0x%08X] Picture error level: %d(%%)",
+				dec_str_ctx->config.user_str_id, decoded_pict->transaction_id,
+				picture->dec_pict_info->err_level);
+	}
+#endif
+
 	if (decoded_pict->first_fld_fwmsg->pict_attrs.pict_attrs.dwrfired ||
 	    decoded_pict->second_fld_fwmsg->pict_attrs.pict_attrs.dwrfired) {
 		pr_warn("[USERSID=0x%08X] VXD Device Reset (Lockup).",
@@ -3354,6 +3650,27 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 		picture->dec_pict_sup_data.h264_pict_supl_data.frame_num =
 				pict_hdrinfo->h264_pict_hdr_info.frame_num;
 	}
+
+#ifdef HAS_HEVC
+	if (dec_str_ctx->config.vid_std == VDEC_STD_HEVC) {
+		/* Attach the supplementary data to the decoded picture. */
+		picture->dec_pict_sup_data.raw_vui_data = pict_hdrinfo->hevc_pict_hdr_info.raw_vui_data;
+
+		pict_hdrinfo->hevc_pict_hdr_info.raw_vui_data = NULL;
+
+		picture->dec_pict_sup_data.raw_sei_list_first_fld =
+				pict_hdrinfo->hevc_pict_hdr_info.raw_sei_datalist_firstfield;
+
+		pict_hdrinfo->hevc_pict_hdr_info.raw_sei_datalist_firstfield = NULL;
+
+		picture->dec_pict_sup_data.raw_sei_list_second_fld =
+				pict_hdrinfo->hevc_pict_hdr_info.raw_sei_datalist_secondfield;
+
+		pict_hdrinfo->hevc_pict_hdr_info.raw_sei_datalist_secondfield = NULL;
+
+		picture->dec_pict_sup_data.hevc_pict_supl_data.pic_order_cnt = buf_control->hevc_data.pic_order_count;
+	}
+#endif
 
 	if (!((buf_control->dec_pict_type == IMG_BUFFERTYPE_PAIR &&
 	       VDECFW_PICMGMT_FIELD_CODED_PICTURE_EXECUTED(buf_control->picmgmt_flags)) ||
@@ -3408,24 +3725,6 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 	VDEC_ASSERT(decoded_pict);
 	if (!decoded_pict)
 		return IMG_ERROR_UNEXPECTED_STATE;
-
-	/*
-	 * check for eos on bitstream and propagate the same to picture
-	 * buffer
-	 */
-	if (str_unit->eos) {
-		u32  ret;
-
-		pr_info("EOS reached\n");
-
-		ret =
-		dec_str_ctx->str_processed_cb((void *)dec_str_ctx->usr_int_data,
-					      VXD_CB_STR_END, (void *)picture);
-
-		VDEC_ASSERT(ret == IMG_SUCCESS);
-		if (ret != IMG_SUCCESS)
-			return ret;
-	}
 
 	ret = dec_str_ctx->str_processed_cb((void *)dec_str_ctx->usr_int_data,
 					    VXD_CB_PICT_DECODED,
@@ -3667,8 +3966,8 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 					 */
 					decoder_picture_release(dec_str_ctx,
 								GET_STREAM_PICTURE_ID(buf_ctrl->release_list[i]),
-								false,
-								false);
+								release_pict->displayed,
+								release_pict->merged);
 					if (release_pict->processed) {
 						/*
 						 * If the decoded picture has been
@@ -3872,7 +4171,19 @@ decoder_picture_decoded(struct dec_str_ctx *dec_str_ctx,
 			dec_pict_num--;
 		}
 	}
-	return IMG_SUCCESS;
+
+	/*
+	 * check for eos on bitstream and propagate the same to picture
+	 * buffer
+	 */
+	if (str_unit->eos) {
+		pr_info("EOS reached\n");
+
+		ret = dec_str_ctx->str_processed_cb((void *)dec_str_ctx->usr_int_data,
+						    VXD_CB_STR_END, NULL);
+
+		VDEC_ASSERT(ret == IMG_SUCCESS);
+	}
 
 	return ret;
 }

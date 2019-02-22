@@ -29,6 +29,8 @@
 
 /* Page size of the device MMU */
 #define DEV_MMU_PAGE_SIZE (0x1000)
+/* Page alignment of the device MMU */
+#define DEV_MMU_PAGE_ALIGNMENT  (0x1000)
 
 #define HOST_MMU_PAGE_SIZE PAGE_SIZE
 

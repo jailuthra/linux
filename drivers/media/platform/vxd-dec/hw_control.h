@@ -31,6 +31,27 @@
 #include "vxd_ext.h"
 #include "vxd_props.h"
 
+/* Size of additional buffers needed for each HEVC picture */
+#ifdef HAS_HEVC
+
+/* Empirically defined */
+#define MEM_TO_REG_BUF_SIZE 0x2000
+
+/*
+ * Max. no. of slices found in stream db: approx. 2200,
+ * set MAX_SLICES to 2368 to get buffer size page aligned
+ */
+#define MAX_SLICES 2368
+#define SLICE_PARAMS_SIZE 64
+#define SLICE_PARAMS_BUF_SIZE (MAX_SLICES * SLICE_PARAMS_SIZE)
+
+/*
+ * Size of buffer for "above params" structure, sufficient for stream of width 8192
+ * 192 * (8192/64) == 0x6000, see "above_param_size" in TRM
+ */
+#define ABOVE_PARAMS_BUF_SIZE 0x6000
+#endif
+
 enum hwctrl_msgid {
 	HWCTRL_MSGID_BATCH = 0,
 	HWCTRL_MSGID_FRAGMENT = 1,

@@ -25,6 +25,7 @@
 #include <linux/types.h>
 #include <stdarg.h>
 
+#include "decoder.h"
 #include "fw_interface.h"
 #ifdef HAS_H264
 #include "h264fw_data.h"
@@ -47,6 +48,13 @@
 #include "vdecfw_share.h"
 #include "vxd_int.h"
 #include "vxd_props.h"
+
+#ifdef HAS_HEVC
+#include "hevcfw_data.h"
+#include "pvdec_entropy_regs.h"
+#include "pvdec_vec_be_regs.h"
+#include "pvdec_vec_be_hevc_regs.h"
+#endif
 
 #define NO_VALUE	0
 
@@ -94,14 +102,36 @@ static int translation_set_buffer(struct vdecdd_ddpict_buf *picbuf,
 	return IMG_SUCCESS;
 }
 
+#ifdef HAS_HEVC
+/*
+ * @Function              translation_hevc_header
+ */
+static int translation_hevc_header(struct vdecdd_picture *picture,
+				   struct dec_decpict *dec_pict,
+				   struct hevcfw_headerdata *header_data)
+{
+	translation_set_buffer(dec_pict->recon_pict, &header_data->primary);
+
+	if (dec_pict->alt_pict)
+		translation_set_buffer(dec_pict->alt_pict, &header_data->alternate);
+
+	VDEC_ASSERT(picture);
+	VDEC_ASSERT(picture->pict_res_int);
+	VDEC_ASSERT(picture->pict_res_int->mb_param_buf);
+	header_data->temporal_outaddr = (u32)GET_HOST_ADDR(&picture->pict_res_int->mb_param_buf->ddbuf_info);
+
+	return IMG_SUCCESS;
+}
+#endif
+
 #ifdef HAS_H264
 static int translation_h264header(struct vdecdd_picture *pspicture,
-				  struct dec_decpict *psdecpict,
+				  struct dec_decpict *dec_pict,
 				  struct h264fw_header_data *psheaderdata,
 				  struct vdec_str_configdata *psstrconfigdata)
 {
 	psheaderdata->two_pass_flag =
-				psdecpict->pict_hdr_info->discontinuous_mbs;
+				dec_pict->pict_hdr_info->discontinuous_mbs;
 	psheaderdata->disable_mvc = psstrconfigdata->disable_mvc;
 
 	/*
@@ -120,12 +150,12 @@ static int translation_h264header(struct vdecdd_picture *pspicture,
 		psheaderdata->mbparams_size_per_plane = 0;
 	}
 	psheaderdata->slicegroupmap_base_address =
-		(unsigned int)GET_HOST_ADDR(&psdecpict->cur_pict_dec_res->h264_sgm_buf);
+		(unsigned int)GET_HOST_ADDR(&dec_pict->cur_pict_dec_res->h264_sgm_buf);
 
-	translation_set_buffer(psdecpict->recon_pict, &psheaderdata->primary);
+	translation_set_buffer(dec_pict->recon_pict, &psheaderdata->primary);
 
-	if (psdecpict->alt_pict)
-		translation_set_buffer(psdecpict->alt_pict,
+	if (dec_pict->alt_pict)
+		translation_set_buffer(dec_pict->alt_pict,
 				       &psheaderdata->alternate);
 
 	/* Signal whether we have PPS for the second field. */
@@ -156,6 +186,13 @@ static int translation_get_codec(enum vdec_vid_std evidstd,
 		result = IMG_SUCCESS;
 		break;
 	#endif /* HAS_H264 */
+#ifdef HAS_HEVC
+	case VDEC_STD_HEVC:
+		ecodec = VDECFW_CODEC_HEVC;
+		result = IMG_SUCCESS;
+		break;
+#endif /* HAS_HEVC */
+
 	default:
 		result = IMG_ERROR_NOT_SUPPORTED;
 	break;
@@ -274,31 +311,31 @@ static unsigned int translation_getctx_loadaddr(struct dec_decpict *psdecpict)
 }
 
 static int translation_setup_std_header
-		(struct vdec_str_configdata *psstr_configdata,
-		 struct dec_decpict *psdecpict,
-		 struct vdecdd_str_unit *psstrunit, unsigned int *psr_hdrsize,
-		 struct vdecdd_picture *pspicture, unsigned int *picture_cmds,
+		(struct vdec_str_configdata *str_configdata,
+		 struct dec_decpict *dec_pict,
+		 struct vdecdd_str_unit *str_unit, unsigned int *psr_hdrsize,
+		 struct vdecdd_picture *picture, unsigned int *picture_cmds,
 		 enum vdecfw_parsermode *parser_mode)
 {
-	switch (psstr_configdata->vid_std) {
+	switch (str_configdata->vid_std) {
 #ifdef HAS_H264
 	case VDEC_STD_H264:
 	{
-		struct h264fw_header_data *psheaderdata =
+		struct h264fw_header_data *header_data =
 			(struct h264fw_header_data *)
-				psdecpict->hdr_info->ddbuf_info->cpu_virt;
-		*parser_mode = psstrunit->pict_hdr_info->parser_mode;
+				dec_pict->hdr_info->ddbuf_info->cpu_virt;
+		*parser_mode = str_unit->pict_hdr_info->parser_mode;
 
-		if (psstrunit->pict_hdr_info->parser_mode !=
+		if (str_unit->pict_hdr_info->parser_mode !=
 						VDECFW_SCP_ONLY) {
 			pr_warn("VDECFW_SCP_ONLY mode supported in PVDEC FW\n");
 		}
 		/* Reset header data. */
-		memset(psheaderdata, 0, sizeof(*(psheaderdata)));
+		memset(header_data, 0, sizeof(*(header_data)));
 
 		/* Prepare active parameter sets. */
-		translation_h264header(pspicture, psdecpict,
-				       psheaderdata, psstr_configdata);
+		translation_h264header(picture, dec_pict,
+				       header_data, str_configdata);
 
 		/* Setup header size in the transaction. */
 		*psr_hdrsize = sizeof(struct h264fw_header_data);
@@ -306,6 +343,24 @@ static int translation_setup_std_header
 	}
 #endif /* HAS_H264 */
 
+#ifdef HAS_HEVC
+	case VDEC_STD_HEVC:
+	{
+		struct hevcfw_headerdata *header_data =
+			(struct hevcfw_headerdata *)dec_pict->hdr_info->ddbuf_info->cpu_virt;
+		*parser_mode = str_unit->pict_hdr_info->parser_mode;
+
+		/* Reset header data. */
+		memset(header_data, 0, sizeof(*header_data));
+
+		/* Prepare active parameter sets. */
+		translation_hevc_header(picture, dec_pict, header_data);
+
+		/* Setup header size in the transaction. */
+		*psr_hdrsize = sizeof(struct hevcfw_headerdata);
+		break;
+	}
+#endif
 	default:
 		VDEC_ASSERT(NULL == "Unknown standard!");
 		*psr_hdrsize = 0;
@@ -330,20 +385,20 @@ static int translation_pvdec_adddma_transfers
 	 * DEVA's bitstream DMA command is made out of chunks with following
 	 * layout ('+' sign is used to mark actual words in command):
 	 *
-	 * + Bitstream HDR, type IMG_UINT32, consists of:
+	 * + Bitstream HDR, type u32, consists of:
 	 *	- command id (CMD_BITSTREAM_SEGMENTS),
 	 *	- number of segments in this chunk,
 	 *	- optional CMD_BITSTREAM_SEGMENTS_MORE_FOLLOW_MASK
 	 *
-	 * + Bitstream total size, type IMG_UINT32,
+	 * + Bitstream total size, type u32,
 	 * represents size of all segments in all chunks
 	 *
 	 * Segments of following type (can repeat up to
 	 * CMD_BITSTREAM_SEGMENTS_MINUS1_MASK + 1 times)
 	 *
-	 *	+ Bitstream segment address, type IMG_UINT32
+	 *	+ Bitstream segment address, type u32
 	 *
-	 *	+ Bitstream segment size, type IMG_UINT32
+	 *	+ Bitstream segment size, type u32
 	 *
 	 * Subsequent chunks are present when
 	 * CMD_BITSTREAM_SEGMENTS_MORE_FOLLOW_MASK flag is set in Bitstream HDR.
@@ -937,55 +992,248 @@ static int translation_pvdec_setup_commands
 	return IMG_SUCCESS;
 }
 
+#ifdef HAS_HEVC
+/*
+ * @Function		translation_pvdec_setup_pvdec_commands
+ */
+static int translation_pvdec_setup_pvdec_commands(struct vdecdd_picture *picture,
+						  struct dec_decpict *dec_pict,
+						  struct vdecdd_str_unit *str_unit,
+						  struct decoder_regsoffsets *regs_offsets,
+						  u32 **ctrl_allocbuf,
+						  u32 ctrl_alloc_size,
+						  u32 *mem_to_reg_host_part,
+						  u32 *pict_cmds)
+{
+	const u32 genc_buf_cnt = 4;
+	const u32 genc_conf_items = 2; /* We have two chunks: for GENC buffers addresses and sizes*/
+	const u32 pipe = 0xf << 16; /* Instruct H/W to write to current pipe */
+	/* We need to configure address and size of each GENC buffer */
+	const u32 genc_words_cnt = genc_buf_cnt * genc_conf_items;
+	struct vdecdd_ddbuf_mapinfo **genc_buffers = picture->pict_res_int->seq_resint->genc_buffers;
+	u32  memto_reg_used; /* in bytes */
+	u32  i;
+	u32 *ctrl_alloc = *ctrl_allocbuf;
+	u32 *mem_to_reg = (u32 *)dec_pict->pvdec_info->ddbuf_info->cpu_virt;
+	u32  reg = 0;
+
+	if (ctrl_alloc_size < genc_words_cnt + genc_conf_items) {
+		pr_err("Buffer for GENC config too small.");
+		return IMG_ERROR_INVALID_PARAMETERS;
+	}
+
+	/* Insert command header for GENC buffers sizes */
+	*ctrl_alloc++ = CMD_REGISTER_BLOCK | (genc_buf_cnt << 16) |
+			(PVDEC_ENTROPY_CR_GENC_BUFFER_SIZE_OFFSET + regs_offsets->entropy_offset);
+	for (i = 0; i < genc_buf_cnt; i++)
+		*ctrl_alloc++ = genc_buffers[i]->ddbuf_info.buf_size;
+
+	/* Insert command header for GENC buffers addresses */
+	*ctrl_alloc++ = CMD_REGISTER_BLOCK | (genc_buf_cnt << 16) |
+			(PVDEC_ENTROPY_CR_GENC_BUFFER_BASE_ADDRESS_OFFSET + regs_offsets->entropy_offset);
+	for (i = 0; i < genc_buf_cnt; i++)
+		*ctrl_alloc++ = genc_buffers[i]->ddbuf_info.dev_virt;
+
+	/* Insert GENC fragment buffer address */
+	*ctrl_alloc++ = CMD_REGISTER_BLOCK | (1 << 16) |
+			(PVDEC_ENTROPY_CR_GENC_FRAGMENT_BASE_ADDRESS_OFFSET + regs_offsets->entropy_offset);
+	*ctrl_alloc++ = picture->pict_res_int->genc_fragment_buf->ddbuf_info.dev_virt;
+
+	/* Return current location in control allocation buffer to caller */
+	*ctrl_allocbuf = ctrl_alloc;
+
+	reg = 0;
+	REGIO_WRITE_FIELD_LITE(reg,
+			       MSVDX_CMDS, PVDEC_DISPLAY_PICTURE_SIZE, PVDEC_DISPLAY_PICTURE_WIDTH_MIN1,
+			       str_unit->pict_hdr_info->coded_frame_size.width - 1);
+	REGIO_WRITE_FIELD_LITE(reg,
+			       MSVDX_CMDS, PVDEC_DISPLAY_PICTURE_SIZE, PVDEC_DISPLAY_PICTURE_HEIGHT_MIN1,
+			       str_unit->pict_hdr_info->coded_frame_size.height - 1);
+
+	/*
+	 * Pvdec operating mode needs to be submitted before any other commands. This will be set in FW.
+	 * Make sure it's the first command in Mem2Reg buffer.
+	 */
+	VDEC_ASSERT((u32 *)dec_pict->pvdec_info->ddbuf_info->cpu_virt == mem_to_reg);
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_PVDEC_OPERATING_MODE_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = 0x0; /* has to be updated in the F/W */
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_MC_CACHE_CONFIGURATION_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = 0x0; /* has to be updated in the F/W */
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_PVDEC_DISPLAY_PICTURE_SIZE_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = reg;
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_PVDEC_CODED_PICTURE_SIZE_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = reg;
+
+	/* scaling configuration */
+	if (pict_cmds[VDECFW_CMD_SCALED_DISPLAY_SIZE]) {
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_PVDEC_SCALED_DISPLAY_SIZE_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_SCALED_DISPLAY_SIZE];
+
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_HORIZONTAL_SCALE_CONTROL_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_HORIZONTAL_SCALE_CONTROL];
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_VERTICAL_SCALE_CONTROL_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_VERTICAL_SCALE_CONTROL];
+
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_SCALE_OUTPUT_SIZE_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_SCALE_OUTPUT_SIZE];
+
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_SCALE_HORIZONTAL_CHROMA_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_SCALE_HORIZONTAL_CHROMA];
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_SCALE_VERTICAL_CHROMA_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_SCALE_VERTICAL_CHROMA];
+
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_HORIZONTAL_LUMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_HORIZONTAL_LUMA_COEFFICIENTS_0];
+		*mem_to_reg++ = pipe | (4 + MSVDX_CMDS_HORIZONTAL_LUMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_HORIZONTAL_LUMA_COEFFICIENTS_1];
+		*mem_to_reg++ = pipe | (8 + MSVDX_CMDS_HORIZONTAL_LUMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_HORIZONTAL_LUMA_COEFFICIENTS_2];
+		*mem_to_reg++ = pipe | (12 + MSVDX_CMDS_HORIZONTAL_LUMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_HORIZONTAL_LUMA_COEFFICIENTS_3];
+
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_VERTICAL_LUMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_VERTICAL_LUMA_COEFFICIENTS_0];
+		*mem_to_reg++ = pipe | (4 + MSVDX_CMDS_VERTICAL_LUMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_VERTICAL_LUMA_COEFFICIENTS_1];
+		*mem_to_reg++ = pipe | (8 + MSVDX_CMDS_VERTICAL_LUMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_VERTICAL_LUMA_COEFFICIENTS_2];
+		*mem_to_reg++ = pipe | (12 + MSVDX_CMDS_VERTICAL_LUMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_VERTICAL_LUMA_COEFFICIENTS_3];
+
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_HORIZONTAL_CHROMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_HORIZONTAL_CHROMA_COEFFICIENTS_0];
+		*mem_to_reg++ = pipe | (4 + MSVDX_CMDS_HORIZONTAL_CHROMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_HORIZONTAL_CHROMA_COEFFICIENTS_1];
+		*mem_to_reg++ = pipe | (8 + MSVDX_CMDS_HORIZONTAL_CHROMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_HORIZONTAL_CHROMA_COEFFICIENTS_2];
+		*mem_to_reg++ = pipe | (12 + MSVDX_CMDS_HORIZONTAL_CHROMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_HORIZONTAL_CHROMA_COEFFICIENTS_3];
+
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_VERTICAL_CHROMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_VERTICAL_CHROMA_COEFFICIENTS_0];
+		*mem_to_reg++ = pipe | (4 + MSVDX_CMDS_VERTICAL_CHROMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_VERTICAL_CHROMA_COEFFICIENTS_1];
+		*mem_to_reg++ = pipe | (8 + MSVDX_CMDS_VERTICAL_CHROMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_VERTICAL_CHROMA_COEFFICIENTS_2];
+		*mem_to_reg++ = pipe | (12 + MSVDX_CMDS_VERTICAL_CHROMA_COEFFICIENTS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_VERTICAL_CHROMA_COEFFICIENTS_3];
+	}
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_EXTENDED_ROW_STRIDE_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = pict_cmds[VDECFW_CMD_EXTENDED_ROW_STRIDE];
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_ALTERNATIVE_OUTPUT_CONTROL_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = pict_cmds[VDECFW_CMD_ALTERNATIVE_OUTPUT_CONTROL];
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_ALTERNATIVE_OUTPUT_PICTURE_ROTATION_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = pict_cmds[VDECFW_CMD_ALTERNATIVE_OUTPUT_PICTURE_ROTATION];
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_CHROMA_ROW_STRIDE_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = pict_cmds[VDECFW_CMD_CHROMA_ROW_STRIDE];
+
+	/* Setup MEM_TO_REG buffer */
+	for (i = 0; i < genc_buf_cnt; i++) {
+		*mem_to_reg++ = pipe | (PVDEC_VEC_BE_CR_GENC_BUFFER_SIZE_OFFSET +
+				regs_offsets->vec_be_regs_offset + i * sizeof(u32));
+		*mem_to_reg++ = genc_buffers[i]->ddbuf_info.buf_size;
+		*mem_to_reg++ = pipe | (PVDEC_VEC_BE_CR_GENC_BUFFER_BASE_ADDRESS_OFFSET +
+				regs_offsets->vec_be_regs_offset + i * sizeof(u32));
+		*mem_to_reg++ = genc_buffers[i]->ddbuf_info.dev_virt;
+	}
+
+	*mem_to_reg++ = pipe | (PVDEC_VEC_BE_CR_GENC_FRAGMENT_BASE_ADDRESS_OFFSET + regs_offsets->vec_be_regs_offset);
+	*mem_to_reg++ = picture->pict_res_int->genc_fragment_buf->ddbuf_info.dev_virt;
+
+	*mem_to_reg++ = pipe | (PVDEC_VEC_BE_CR_ABOVE_PARAM_BASE_ADDRESS_OFFSET + regs_offsets->vec_be_regs_offset);
+
+	*mem_to_reg++ = dec_pict->pvdec_info->ddbuf_info->dev_virt +
+			MEM_TO_REG_BUF_SIZE + SLICE_PARAMS_BUF_SIZE;
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_LUMA_RECONSTRUCTED_PICTURE_BASE_ADDRESSES_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = pict_cmds[VDECFW_CMD_LUMA_RECONSTRUCTED_PICTURE_BASE_ADDRESS];
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_CHROMA_RECONSTRUCTED_PICTURE_BASE_ADDRESSES_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = pict_cmds[VDECFW_CMD_CHROMA_RECONSTRUCTED_PICTURE_BASE_ADDRESS];
+
+	/* alternative picture configuration */
+	if (dec_pict->alt_pict) {
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_VC1_LUMA_RANGE_MAPPING_BASE_ADDRESS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_LUMA_ALTERNATIVE_PICTURE_BASE_ADDRESS];
+
+		*mem_to_reg++ = pipe | (MSVDX_CMDS_VC1_CHROMA_RANGE_MAPPING_BASE_ADDRESS_OFFSET + regs_offsets->vdmc_cmd_offset);
+		*mem_to_reg++ = pict_cmds[VDECFW_CMD_CHROMA_ALTERNATIVE_PICTURE_BASE_ADDRESS];
+	}
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_AUX_LINE_BUFFER_BASE_ADDRESS_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = pict_cmds[VDECFW_CMD_AUX_LINE_BUFFER_BASE_ADDRESS];
+
+	*mem_to_reg++ = pipe | (MSVDX_CMDS_INTRA_BUFFER_BASE_ADDRESS_OFFSET + regs_offsets->vdmc_cmd_offset);
+	*mem_to_reg++ = pict_cmds[VDECFW_CMD_INTRA_BUFFER_BASE_ADDRESS];
+
+	/* Make sure we fit in buffer */
+	memto_reg_used = (uintptr_t)mem_to_reg - (uintptr_t)dec_pict->pvdec_info->ddbuf_info->cpu_virt;
+
+	VDEC_ASSERT(memto_reg_used < MEM_TO_REG_BUF_SIZE);
+
+	*mem_to_reg_host_part = memto_reg_used / sizeof(u32);
+
+	return IMG_SUCCESS;
+}
+#endif
+
 /*
  * Creates DEVA commands for configuring rendec and writes them into control
  * allocation buffer.
  */
 static int translation_pvdecsetup_vdecext
 		(struct vdec_ext_cmd *vdec_ext,
-		 struct dec_decpict *psdecpict, unsigned int *pic_cmds,
-		 struct vdecdd_str_unit *psstrunit, enum vdec_vid_std vid_std,
+		 struct dec_decpict *dec_pict, unsigned int *pic_cmds,
+		 struct vdecdd_str_unit *str_unit, enum vdec_vid_std vid_std,
 		 enum vdecfw_parsermode parser_mode)
 {
 	int result;
-	unsigned int trans_id = psdecpict->transaction_id;
+	unsigned int trans_id = dec_pict->transaction_id;
 
-	VDEC_ASSERT(psdecpict->recon_pict);
+	VDEC_ASSERT(dec_pict->recon_pict);
 
 	vdec_ext->cmd = CMD_VDEC_EXT;
 	vdec_ext->trans_id = trans_id;
 
-	result = translation_get_seqhdr(psstrunit, psdecpict,
+	result = translation_get_seqhdr(str_unit, dec_pict,
 					&vdec_ext->seq_addr);
 	VDEC_ASSERT(result == IMG_SUCCESS);
 	if (result != IMG_SUCCESS)
 		return result;
 
-	result = translation_get_ppshdr(psstrunit, psdecpict,
+	result = translation_get_ppshdr(str_unit, dec_pict,
 					&vdec_ext->pps_addr);
 	VDEC_ASSERT(result == IMG_SUCCESS);
 	if (result != IMG_SUCCESS)
 		return result;
 
-	result = translation_getsecond_ppshdr(psstrunit, &vdec_ext->pps_2addr);
+	result = translation_getsecond_ppshdr(str_unit, &vdec_ext->pps_2addr);
 	if (result != IMG_SUCCESS)
 		return result;
 
-	vdec_ext->hdr_addr = GET_HOST_ADDR(psdecpict->hdr_info->ddbuf_info);
+	vdec_ext->hdr_addr = GET_HOST_ADDR(dec_pict->hdr_info->ddbuf_info);
 
-	vdec_ext->ctx_load_addr = translation_getctx_loadaddr(psdecpict);
+	vdec_ext->ctx_load_addr = translation_getctx_loadaddr(dec_pict);
 	vdec_ext->ctx_save_addr =
-			GET_HOST_ADDR(&psdecpict->cur_pict_dec_res->fw_ctx_buf);
+			GET_HOST_ADDR(&dec_pict->cur_pict_dec_res->fw_ctx_buf);
 	vdec_ext->buf_ctrl_addr =
-			GET_HOST_ADDR(&psdecpict->pict_ref_res->fw_ctrlbuf);
-	if (psdecpict->prev_pict_dec_res) {
+			GET_HOST_ADDR(&dec_pict->pict_ref_res->fw_ctrlbuf);
+	if (dec_pict->prev_pict_dec_res) {
 		/*
 		 * Copy the previous firmware context to the current one in case
 		 * picture management fails in firmware.
 		 */
-		memcpy(psdecpict->cur_pict_dec_res->fw_ctx_buf.cpu_virt,
-		       psdecpict->prev_pict_dec_res->fw_ctx_buf.cpu_virt,
-		       psdecpict->prev_pict_dec_res->fw_ctx_buf.buf_size);
+		memcpy(dec_pict->cur_pict_dec_res->fw_ctx_buf.cpu_virt,
+		       dec_pict->prev_pict_dec_res->fw_ctx_buf.cpu_virt,
+		       dec_pict->prev_pict_dec_res->fw_ctx_buf.buf_size);
 	}
 
 	vdec_ext->last_luma_recon    =
@@ -1029,9 +1277,9 @@ static int translation_pvdecsetup_vdecext
 
 	if (vid_std == VDEC_STD_VC1) {
 		struct vxdio_ddbufinfo *vlc_idx_tables_bufinfo =
-				psdecpict->vlc_idx_tables_bufinfo;
+				dec_pict->vlc_idx_tables_bufinfo;
 		struct vxdio_ddbufinfo *vlc_tables_bufinfo =
-				psdecpict->vlc_tables_bufinfo;
+				dec_pict->vlc_tables_bufinfo;
 
 		vdec_ext->vlc_idx_table_size = vlc_idx_tables_bufinfo->buf_size;
 		vdec_ext->vlc_idx_table_addr = vlc_idx_tables_bufinfo->buf_size;
@@ -1053,7 +1301,22 @@ static int translation_pvdecsetup_vdecext
 				 MSVDX_CMDS, OPERATING_MODE,
 				 CHROMA_INTERLEAVED);
 	vdec_ext->is_discontinuousmbs =
-			psdecpict->pict_hdr_info->discontinuous_mbs;
+			dec_pict->pict_hdr_info->discontinuous_mbs;
+
+#ifdef HAS_HEVC
+	if (dec_pict->pvdec_info) {
+		vdec_ext->mem_to_reg_addr = dec_pict->pvdec_info->ddbuf_info->dev_virt;
+		vdec_ext->slice_params_addr = dec_pict->pvdec_info->ddbuf_info->dev_virt + MEM_TO_REG_BUF_SIZE;
+		vdec_ext->slice_params_size = SLICE_PARAMS_BUF_SIZE;
+	}
+	if (vid_std == VDEC_STD_HEVC) {
+		struct vdecdd_picture *picture = (struct vdecdd_picture *)str_unit->dd_pict_data;
+
+		VDEC_ASSERT(picture);
+		/* 10-bit packed output format indicator */
+		vdec_ext->is_packedformat = picture->op_config.pixel_info.mem_pkg == PIXEL_BIT10_MP ? 1 : 0;
+	}
+#endif
 	return IMG_SUCCESS;
 }
 
@@ -1062,8 +1325,8 @@ static int translation_pvdecsetup_vdecext
  * translation_configure_tiling is not supported as of now.
  */
 int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
-				   struct vdecdd_str_unit *psstrunit,
-				   struct dec_decpict *psdecpict,
+				   struct vdecdd_str_unit *str_unit,
+				   struct dec_decpict *dec_pict,
 				   const struct vxd_coreprops *core_props,
 				   struct decoder_regsoffsets *regs_offset)
 {
@@ -1076,14 +1339,15 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 	struct vdec_ext_cmd *vdec_ext;
 	enum vdecfw_parsermode parser_mode = VDECFW_SCP_ONLY;
 	struct vxdio_ddbufinfo *batch_msgbuf_info =
-					psdecpict->batch_msginfo->ddbuf_info;
-	struct lst_t *decpic_seg_list = &psdecpict->dec_pict_seg_list;
+					dec_pict->batch_msginfo->ddbuf_info;
+	struct lst_t *decpic_seg_list = &dec_pict->dec_pict_seg_list;
 
 	unsigned long ctrl_alloc = (unsigned long)batch_msgbuf_info->cpu_virt;
 	unsigned long ctrl_alloc_end = ctrl_alloc + batch_msgbuf_info->buf_size;
+	u32 memto_reg_host_part = 0;
 
-	struct vdecdd_picture *pspicture =
-		(struct vdecdd_picture *)psstrunit->dd_pict_data;
+	struct vdecdd_picture *picture =
+		(struct vdecdd_picture *)str_unit->dd_pict_data;
 
 	memset(pict_cmds, 0, sizeof(pict_cmds));
 	memset(&buffers, 0, sizeof(buffers));
@@ -1092,32 +1356,51 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 	memset(batch_msgbuf_info->cpu_virt, 0, batch_msgbuf_info->buf_size);
 
 	/* Construct transaction based on new picture. */
-	VDEC_ASSERT(psstrunit->str_unit_type == VDECDD_STRUNIT_PICTURE_START);
+	VDEC_ASSERT(str_unit->str_unit_type == VDECDD_STRUNIT_PICTURE_START);
 
 	/* Obtain picture data. */
-	pspicture = (struct vdecdd_picture *)psstrunit->dd_pict_data;
-	psdecpict->recon_pict = &pspicture->disp_pict_buf;
+	picture = (struct vdecdd_picture *)str_unit->dd_pict_data;
+	dec_pict->recon_pict = &picture->disp_pict_buf;
 
 	result = translation_get_codec(pstr_config_data->vid_std, &codec);
 	if (result != IMG_SUCCESS)
 		return result;
 
-	result = translation_setup_std_header(pstr_config_data, psdecpict,
-					      psstrunit, &hdr_size, pspicture,
+	result = translation_setup_std_header(pstr_config_data, dec_pict,
+					      str_unit, &hdr_size, picture,
 					      pict_cmds, &parser_mode);
 	if (result != IMG_SUCCESS)
 		return result;
 
-	buffers.recon_pict = psdecpict->recon_pict;
-	buffers.alt_pict = psdecpict->alt_pict;
+	buffers.recon_pict = dec_pict->recon_pict;
+	buffers.alt_pict = dec_pict->alt_pict;
 
-	buffers.intra_bufinfo = psdecpict->intra_bufinfo;
-	buffers.auxline_bufinfo = psdecpict->auxline_bufinfo;
+#ifdef HAS_HEVC
+	/* Set pipe offsets to device buffers */
+	if (pstr_config_data->vid_std == VDEC_STD_HEVC) {
+		/* FW in multipipe requires this buffers to be allocated per stream */
+		if (picture->pict_res_int && picture->pict_res_int->seq_resint &&
+		    picture->pict_res_int->seq_resint->intra_buffer &&
+		    picture->pict_res_int->seq_resint->aux_buffer) {
+			buffers.intra_bufinfo = &picture->pict_res_int->seq_resint->intra_buffer->ddbuf_info;
+			buffers.auxline_bufinfo = &picture->pict_res_int->seq_resint->aux_buffer->ddbuf_info;
+		}
+	} else {
+		buffers.intra_bufinfo = dec_pict->intra_bufinfo;
+		buffers.auxline_bufinfo = dec_pict->auxline_bufinfo;
+	}
 
 	buffers.intra_bufsize_per_pipe = buffers.intra_bufinfo->buf_size /
 						core_props->num_pixel_pipes;
 	buffers.auxline_bufsize_per_pipe = buffers.auxline_bufinfo->buf_size /
 						core_props->num_pixel_pipes;
+#endif
+
+#ifdef ERROR_CONCEALMENT
+	if (picture->pict_res_int && picture->pict_res_int->seq_resint)
+		if (picture->pict_res_int->seq_resint->err_pict_buf)
+			buffers.err_pict_bufinfo = &picture->pict_res_int->seq_resint->err_pict_buf->ddbuf_info;
+#endif
 
 	/*
 	 * Prepare Reconstructed Picture Configuration
@@ -1128,16 +1411,16 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 	 * MSVDX_CMDS_ALTERNATIVE_OUTPUT_PICTURE_ROTATION,
 	 * MSVDX_CMDS_CHROMA_ROW_STRIDE is the same for both MSVDX and PVDEC.
 	 */
-	result = vxd_set_reconpictcmds(psstrunit, pstr_config_data,
-				       &pspicture->op_config, core_props,
+	result = vxd_set_reconpictcmds(str_unit, pstr_config_data,
+				       &picture->op_config, core_props,
 				       &buffers, pict_cmds);
 	if (result != IMG_SUCCESS)
 		return result;
 
 	/* Alternative Picture Configuration */
-	if (psdecpict->alt_pict) {
-		psdecpict->twopass = pspicture->op_config.force_oold;
-		buffers.btwopass = psdecpict->twopass;
+	if (dec_pict->alt_pict) {
+		dec_pict->twopass = picture->op_config.force_oold;
+		buffers.btwopass = dec_pict->twopass;
 		/*
 		 * Alternative Picture Configuration
 		 * Note: we are obtaining values of registers prepared basing
@@ -1152,8 +1435,8 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 		 * Configure second buffer for out-of-loop processing
 		 * (e.g. scaling etc.).
 		 */
-		result = vxd_set_altpictcmds(psstrunit, pstr_config_data,
-					     &pspicture->op_config, core_props,
+		result = vxd_set_altpictcmds(str_unit, pstr_config_data,
+					     &picture->op_config, core_props,
 					     &buffers, pict_cmds);
 		if (result != IMG_SUCCESS)
 			return result;
@@ -1168,7 +1451,7 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 						    (ctrl_alloc_end -
 						     (unsigned long)cmd_buf) /
 						    sizeof(unsigned int),
-						    psdecpict, psstrunit->eop);
+						    dec_pict, str_unit->eop);
 	if (result != IMG_SUCCESS)
 		return result;
 
@@ -1190,8 +1473,8 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 	vdec_ext = (struct vdec_ext_cmd *)cmd_buf;
 	cmd_buf += sizeof(struct vdec_ext_cmd) / sizeof(unsigned int);
 
-	result = translation_pvdecsetup_vdecext(vdec_ext, psdecpict, pict_cmds,
-						psstrunit,
+	result = translation_pvdecsetup_vdecext(vdec_ext, dec_pict, pict_cmds,
+						str_unit,
 						pstr_config_data->vid_std,
 						parser_mode);
 	if (result != IMG_SUCCESS)
@@ -1201,20 +1484,20 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 
 	/* Add VLC tables to control allocation, skip when VC1 */
 	if (pstr_config_data->vid_std != VDEC_STD_VC1 &&
-	    psdecpict->vlc_idx_tables_bufinfo &&
-	    psdecpict->vlc_idx_tables_bufinfo->cpu_virt) {
+	    dec_pict->vlc_idx_tables_bufinfo &&
+	    dec_pict->vlc_idx_tables_bufinfo->cpu_virt) {
 		unsigned short *vlc_idx_tables = (unsigned short *)
-				psdecpict->vlc_idx_tables_bufinfo->cpu_virt;
+				dec_pict->vlc_idx_tables_bufinfo->cpu_virt;
 		/*
 		 * Get count of elements in VLC idx table. Each element is made
 		 * of 3 IMG_UINT16, see e.g. mpeg2_idx.c
 		 */
 		unsigned int vlc_idx_count =
-				psdecpict->vlc_idx_tables_bufinfo->buf_size /
+				dec_pict->vlc_idx_tables_bufinfo->buf_size /
 				(3 * sizeof(unsigned short));
 
 		/* Add command to DMA VLC */
-		result = translation_pvdecsetup_vlcdma(psdecpict->vlc_tables_bufinfo,
+		result = translation_pvdecsetup_vlcdma(dec_pict->vlc_tables_bufinfo,
 						       &cmd_buf,
 						       (ctrl_alloc_end -
 							(unsigned long)cmd_buf) /
@@ -1251,13 +1534,35 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 	/* Setup commands for HEVC */
 	vdec_ext->mem_to_reg_size = 0;
 
+#ifdef HAS_HEVC
+	if (pstr_config_data->vid_std == VDEC_STD_HEVC) {
+		result = translation_pvdec_setup_pvdec_commands(picture, dec_pict, str_unit,
+								regs_offset, &cmd_buf,
+								(ctrl_alloc_end - (uintptr_t)cmd_buf) / sizeof(u32),
+								&memto_reg_host_part, pict_cmds);
+		if (result != IMG_SUCCESS) {
+			pr_err("Failed to setup VDMC & VDEB firmware commands.");
+			return result;
+		}
+
+		/* Set size of MemToReg buffer in VDEC extension command */
+		VDEC_ASSERT(MEM_TO_REG_BUF_SIZE < (MEM2REG_SIZE_BUF_TOTAL_MASK >> MEM2REG_SIZE_BUF_TOTAL_SHIFT));
+		VDEC_ASSERT(memto_reg_host_part < (MEM2REG_SIZE_HOST_PART_MASK >> MEM2REG_SIZE_HOST_PART_SHIFT));
+
+		vdec_ext->mem_to_reg_size = (MEM_TO_REG_BUF_SIZE << MEM2REG_SIZE_BUF_TOTAL_SHIFT) |
+						(memto_reg_host_part << MEM2REG_SIZE_HOST_PART_SHIFT);
+
+		dec_pict->genc_id = picture->pict_res_int->seq_resint->genc_buf_id;
+		dec_pict->genc_bufs = picture->pict_res_int->seq_resint->genc_buffers;
+	}
+#endif
 	/* Finally mark end of commands */
 	*(cmd_buf++) = CMD_COMPLETION;
 
 	/* Transfer control allocation command to device memory */
-	psdecpict->ctrl_alloc_bytes = ((unsigned long)cmd_buf - ctrl_alloc);
-	psdecpict->ctrl_alloc_offset = psdecpict->ctrl_alloc_bytes;
-	psdecpict->operating_op = pict_cmds[VDECFW_CMD_OPERATING_MODE];
+	dec_pict->ctrl_alloc_bytes = ((unsigned long)cmd_buf - ctrl_alloc);
+	dec_pict->ctrl_alloc_offset = dec_pict->ctrl_alloc_bytes;
+	dec_pict->operating_op = pict_cmds[VDECFW_CMD_OPERATING_MODE];
 
 	/*
 	 * NOTE : Nothing related to tiling will be used.
@@ -1268,7 +1573,7 @@ int translation_ctrl_alloc_prepare(struct vdec_str_configdata *pstr_config_data,
 	return result;
 };
 
-int translation_fragment_prepare(struct dec_decpict *psdecpict,
+int translation_fragment_prepare(struct dec_decpict *dec_pict,
 				 struct lst_t *decpic_seg_list, int eop,
 				 struct dec_pict_fragment *pict_fragement)
 {
@@ -1278,14 +1583,14 @@ int translation_fragment_prepare(struct dec_decpict *psdecpict,
 	unsigned long ctrl_alloc;
 	unsigned long ctrl_alloc_end;
 
-	if (!psdecpict || !psdecpict->batch_msginfo ||
+	if (!dec_pict || !dec_pict->batch_msginfo ||
 	    !decpic_seg_list || !pict_fragement)
 		return IMG_ERROR_INVALID_PARAMETERS;
 
-	batchmsg_bufinfo = psdecpict->batch_msginfo->ddbuf_info;
+	batchmsg_bufinfo = dec_pict->batch_msginfo->ddbuf_info;
 
 	ctrl_alloc = (unsigned long)batchmsg_bufinfo->cpu_virt +
-						psdecpict->ctrl_alloc_offset;
+						dec_pict->ctrl_alloc_offset;
 	ctrl_alloc_end = (unsigned long)batchmsg_bufinfo->cpu_virt +
 						batchmsg_bufinfo->buf_size;
 
@@ -1298,7 +1603,7 @@ int translation_fragment_prepare(struct dec_decpict *psdecpict,
 						    (ctrl_alloc_end -
 						     (unsigned long)cmd_buf) /
 						    sizeof(unsigned int),
-						    psdecpict, eop);
+						    dec_pict, eop);
 
 	if (result != IMG_SUCCESS)
 		return result;
@@ -1307,11 +1612,11 @@ int translation_fragment_prepare(struct dec_decpict *psdecpict,
 	*(cmd_buf++) = CMD_COMPLETION;
 
 	/* Transfer control allocation command to device memory */
-	pict_fragement->ctrl_alloc_offset = psdecpict->ctrl_alloc_offset;
+	pict_fragement->ctrl_alloc_offset = dec_pict->ctrl_alloc_offset;
 	pict_fragement->ctrl_alloc_bytes =
 		((unsigned long)cmd_buf - ctrl_alloc);
 
-	psdecpict->ctrl_alloc_offset += pict_fragement->ctrl_alloc_bytes;
+	dec_pict->ctrl_alloc_offset += pict_fragement->ctrl_alloc_bytes;
 
 	return result;
 };

@@ -38,8 +38,9 @@
 
 #include "core.h"
 #include "h264fw_data.h"
+#include "hevcfw_data.h"
 #include "img_dec_common.h"
-#include "vxd_dec.h"
+#include "vxd_pvdec_priv.h"
 
 #define IMG_VXD_DEC_MODULE_NAME "vxd-dec"
 
@@ -64,10 +65,37 @@ static struct vxd_dec_fmt vxd_dec_formats[] = {
 		.idc = PIXEL_FORMAT_420,
 	},
 	{
+		.fourcc = V4L2_PIX_FMT_YUYV,
+		.num_planes = 1,
+		.type = IMG_DEC_FMT_TYPE_CAPTURE,
+		.std = VDEC_STD_UNDEFINED,
+		.pixfmt = IMG_PIXFMT_422PL12YUV8,
+		.interleave = PIXEL_UV_ORDER,
+		.idc = PIXEL_FORMAT_422,
+	},
+	{
+		.fourcc = V4L2_PIX_FMT_TI1210,
+		.num_planes = 1,
+		.type = IMG_DEC_FMT_TYPE_CAPTURE,
+		.std = VDEC_STD_UNDEFINED,
+		.pixfmt = IMG_PIXFMT_420PL12YUV10_MSB,
+		.interleave = PIXEL_UV_ORDER,
+		.idc = PIXEL_FORMAT_420,
+	},
+	{
 		.fourcc = V4L2_PIX_FMT_H264,
 		.num_planes = 1,
 		.type = IMG_DEC_FMT_TYPE_OUTPUT,
 		.std = VDEC_STD_H264,
+		.pixfmt = IMG_PIXFMT_UNDEFINED,
+		.interleave = PIXEL_INVALID_CI,
+		.idc = PIXEL_FORMAT_INVALID,
+	},
+	{
+		.fourcc = V4L2_PIX_FMT_HEVC,
+		.num_planes = 1,
+		.type = IMG_DEC_FMT_TYPE_OUTPUT,
+		.std = VDEC_STD_HEVC,
 		.pixfmt = IMG_PIXFMT_UNDEFINED,
 		.interleave = PIXEL_INVALID_CI,
 		.idc = PIXEL_FORMAT_INVALID,
@@ -119,6 +147,9 @@ static void return_worker(struct work_struct *work)
 	struct vxd_return *res;
 	struct device *dev;
 	struct vxd_buffer *buf = NULL;
+	struct timespec time;
+	int loop;
+	struct v4l2_event event = {};
 
 	res = container_of(work, struct vxd_return, work);
 	ctx = res->ctx;
@@ -144,6 +175,24 @@ static void return_worker(struct work_struct *work)
 		break;
 	case VXD_CB_PICT_DECODED:
 		v4l2_m2m_job_finish(ctx->dev->m2m_dev, ctx->fh.m2m_ctx);
+		getnstimeofday(&time);
+		for (loop = 0; loop < ARRAY_SIZE(ctx->dev->time_drv); loop++) {
+			if (ctx->dev->time_drv[loop].id == res->buf_map_id) {
+				ctx->dev->time_drv[loop].end_time =
+						timespec_to_ns(&time);
+				dev_info(dev,
+					 "picture buf decode time is %llu us for buf_map_id 0x%x\n",
+					 div_s64(ctx->dev->time_drv[loop].end_time -
+						 ctx->dev->time_drv[loop].start_time,
+						 1000),
+					 res->buf_map_id);
+				break;
+			}
+		}
+
+		if (loop == ARRAY_SIZE(ctx->dev->time_drv))
+			dev_err(dev, "picture buf decode for buf_map_id x%0x is not measured\n",
+				res->buf_map_id);
 		break;
 	case VXD_CB_PICT_DISPLAY:
 		buf = find_buffer(res->buf_map_id, &ctx->cap_buffers);
@@ -181,17 +230,8 @@ static void return_worker(struct work_struct *work)
 	case VXD_CB_PICT_END:
 		break;
 	case VXD_CB_STR_END:
-		mutex_lock(&ctx->mutex);
-		buf = find_buffer(res->buf_map_id, &ctx->cap_buffers);
-		if (!buf) {
-			dev_err(dev,
-				"Could not locate buf_map_id=0x%x in CAPTURE buffers list\n",
-				res->buf_map_id);
-			mutex_unlock(&ctx->mutex);
-			break;
-		}
-		buf->buffer.vb.flags |= V4L2_BUF_FLAG_LAST;
-		mutex_unlock(&ctx->mutex);
+		event.type = V4L2_EVENT_EOS;
+		v4l2_event_queue_fh(&ctx->fh, &event);
 		break;
 	case VXD_CB_ERROR_FATAL:
 		break;
@@ -437,6 +477,7 @@ static void vxd_dec_stop_streaming(struct vb2_queue *vq)
 {
 	struct vxd_dec_ctx *ctx = vb2_get_drv_priv(vq);
 	struct list_head *list;
+	struct list_head *temp;
 	struct vxd_buffer *buf = NULL;
 
 	if (V4L2_TYPE_IS_OUTPUT(vq->type))
@@ -460,6 +501,12 @@ static void vxd_dec_stop_streaming(struct vb2_queue *vq)
 			core_stream_unmap_buf_sg(buf->buf_map_id);
 		}
 	} else {
+		list_for_each_safe(list, temp, &ctx->reuse_queue) {
+			buf = list_entry(list, struct vxd_buffer, list);
+			list_move_tail(&buf->list, &ctx->cap_buffers);
+			v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, &buf->buffer.vb);
+		}
+
 		list_for_each(list, &ctx->cap_buffers) {
 			buf = list_entry(list, struct vxd_buffer, list);
 			core_stream_unmap_buf_sg(buf->buf_map_id);
@@ -773,7 +820,8 @@ static int vxd_dec_try_fmt(struct file *file, void *priv,
 	return ret;
 }
 
-static int vxd_dec_alloc_bspp_resource(struct vxd_dec_ctx *ctx)
+static int vxd_dec_alloc_bspp_resource(struct vxd_dec_ctx *ctx,
+				       enum vdec_vid_std vid_std)
 {
 	struct vxd_dev *vxd_dev = ctx->dev;
 	struct device *dev = vxd_dev->v4l2_dev.dev;
@@ -786,7 +834,10 @@ static int vxd_dec_alloc_bspp_resource(struct vxd_dec_ctx *ctx)
 	attributes = SYS_MEMATTRIB_UNCACHED | SYS_MEMATTRIB_WRITECOMBINE |
 		     SYS_MEMATTRIB_INTERNAL | SYS_MEMATTRIB_CPU_WRITE;
 	heap_id = vxd_g_internal_heap_id();
-	size = sizeof(struct h264fw_sequence_ps);
+
+	size = vid_std == VDEC_STD_HEVC ?
+	sizeof(struct hevcfw_sequence_ps) : sizeof(struct h264fw_sequence_ps);
+
 	for (i = 0 ; i < MAX_SEQUENCES ; i++) {
 		ret = img_mem_alloc(vxd_dev->dev, ctx->mem_ctx, heap_id,
 				    size, attributes,
@@ -828,7 +879,9 @@ static int vxd_dec_alloc_bspp_resource(struct vxd_dec_ctx *ctx)
 		}
 	}
 
-	size = sizeof(struct h264fw_picture_ps);
+	size = vid_std == VDEC_STD_HEVC ?
+	sizeof(struct hevcfw_picture_ps) : sizeof(struct h264fw_picture_ps);
+
 	for (i = 0 ; i < MAX_PPSS ; i++) {
 		ret = img_mem_alloc(vxd_dev->dev, ctx->mem_ctx, heap_id,
 				    size, attributes,
@@ -943,7 +996,7 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 				}
 			}
 
-			vxd_dec_alloc_bspp_resource(ctx);
+			vxd_dec_alloc_bspp_resource(ctx, strcfgdata.vid_std);
 			ret = bspp_stream_create(&strcfgdata,
 						 &ctx->bspp_context,
 						 ctx->fw_sequ,
@@ -960,7 +1013,7 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 		}
 	} else {
 		q_data->fmt = find_format(f, IMG_DEC_FMT_TYPE_CAPTURE);
-		q_data->size_image[0] = pix_mp->width * pix_mp->height;
+		q_data->size_image[0] = pix_mp->plane_fmt[0].sizeimage;
 
 		ctx->str_opcfg.pixel_info.pixfmt = q_data->fmt->pixfmt;
 		ctx->str_opcfg.pixel_info.chroma_interleave =
@@ -970,7 +1023,8 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 		ctx->str_opcfg.pixel_info.chroma_fmt_idc = q_data->fmt->idc;
 		ctx->str_opcfg.pixel_info.bitdepth_y = 8;
 		ctx->str_opcfg.pixel_info.bitdepth_c = 8;
-		ctx->str_opcfg.pixel_info.num_planes = pix_mp->num_planes;
+		ctx->str_opcfg.pixel_info.num_planes = 2; /*IMG Decoders support only multi-planar formats */
+
 		ctx->str_opcfg.force_oold = false;
 
 		ctx->pict_bufcfg.coded_width = pix_mp->width;
@@ -994,9 +1048,17 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 		}
 		ctx->pict_bufcfg.stride_alignment = HW_ALIGN;
 		ctx->pict_bufcfg.byte_interleave = false;
-		ctx->pict_bufcfg.buf_size = ((ctx->pict_bufcfg.stride[0] *
-					    ctx->pict_bufcfg.coded_height) *
-					    3) / 2;
+
+		if (q_data->fmt->pixfmt == IMG_PIXFMT_420PL12YUV8 ||
+		    q_data->fmt->pixfmt == IMG_PIXFMT_420PL12YUV10_MSB)
+			ctx->pict_bufcfg.buf_size = ((ctx->pict_bufcfg.stride[0] *
+						    ctx->pict_bufcfg.coded_height) *
+						    3) / 2;
+		else if (q_data->fmt->pixfmt == IMG_PIXFMT_422PL12YUV8)
+			ctx->pict_bufcfg.buf_size = ctx->pict_bufcfg.stride[0] *
+						    ctx->pict_bufcfg.coded_height *
+						    2;
+
 		ctx->pict_bufcfg.packed = true;
 		ctx->pict_bufcfg.chroma_offset[0] = 0;
 		ctx->pict_bufcfg.chroma_offset[1] = 0;
@@ -1005,6 +1067,16 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 	}
 
 	return ret;
+}
+
+static int vxd_dec_subscribe_event(struct v4l2_fh *fh,
+				   const struct v4l2_event_subscription *sub)
+{
+	if (sub->type != V4L2_EVENT_EOS)
+		return -EINVAL;
+
+	v4l2_event_subscribe(fh, sub, 0, NULL);
+	return 0;
 }
 
 static const struct v4l2_ioctl_ops vxd_dec_ioctl_ops = {
@@ -1029,7 +1101,7 @@ static const struct v4l2_ioctl_ops vxd_dec_ioctl_ops = {
 	.vidioc_streamon = v4l2_m2m_ioctl_streamon,
 	.vidioc_streamoff = v4l2_m2m_ioctl_streamoff,
 	.vidioc_log_status = v4l2_ctrl_log_status,
-	.vidioc_subscribe_event = v4l2_ctrl_subscribe_event,
+	.vidioc_subscribe_event = vxd_dec_subscribe_event,
 	.vidioc_unsubscribe_event = v4l2_event_unsubscribe,
 };
 
@@ -1065,6 +1137,8 @@ static void device_run(void *priv)
 	u32 data_size;
 	int ret;
 	bool last = false;
+	struct timespec time;
+	static int cnt;
 
 	src_vb = v4l2_m2m_src_buf_remove(ctx->fh.m2m_ctx);
 	if (!src_vb)
@@ -1097,6 +1171,14 @@ static void device_run(void *priv)
 					   preparsed_data, last);
 	if (ret)
 		dev_err(dev, "bspp_stream_preparse_buffers failed %d\n", ret);
+
+	getnstimeofday(&time);
+	vxd_dev->time_drv[cnt].start_time = timespec_to_ns(&time);
+	vxd_dev->time_drv[cnt].id = dst_vxdb->buf_map_id;
+	cnt++;
+
+	if (cnt >= ARRAY_SIZE(vxd_dev->time_drv))
+		cnt = 0;
 
 	core_stream_fill_pictbuf(dst_vxdb->buf_map_id);
 
