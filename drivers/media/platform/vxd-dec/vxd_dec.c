@@ -467,6 +467,7 @@ static void vxd_dec_stop_streaming(struct vb2_queue *vq)
 {
 	struct vxd_dec_ctx *ctx = vb2_get_drv_priv(vq);
 	struct list_head *list;
+	struct list_head *temp;
 	struct vxd_buffer *buf = NULL;
 
 	if (V4L2_TYPE_IS_OUTPUT(vq->type))
@@ -490,6 +491,12 @@ static void vxd_dec_stop_streaming(struct vb2_queue *vq)
 			core_stream_unmap_buf_sg(buf->buf_map_id);
 		}
 	} else {
+		list_for_each_safe(list, temp, &ctx->reuse_queue) {
+			buf = list_entry(list, struct vxd_buffer, list);
+			list_move_tail(&buf->list, &ctx->cap_buffers);
+			v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, &buf->buffer.vb);
+		}
+
 		list_for_each(list, &ctx->cap_buffers) {
 			buf = list_entry(list, struct vxd_buffer, list);
 			core_stream_unmap_buf_sg(buf->buf_map_id);
