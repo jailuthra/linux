@@ -65,6 +65,15 @@ static struct vxd_dec_fmt vxd_dec_formats[] = {
 		.idc = PIXEL_FORMAT_420,
 	},
 	{
+		.fourcc = V4L2_PIX_FMT_YUYV,
+		.num_planes = 1,
+		.type = IMG_DEC_FMT_TYPE_CAPTURE,
+		.std = VDEC_STD_UNDEFINED,
+		.pixfmt = IMG_PIXFMT_422PL12YUV8,
+		.interleave = PIXEL_UV_ORDER,
+		.idc = PIXEL_FORMAT_422,
+	},
+	{
 		.fourcc = V4L2_PIX_FMT_TI1210,
 		.num_planes = 1,
 		.type = IMG_DEC_FMT_TYPE_CAPTURE,
@@ -1013,7 +1022,8 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 		ctx->str_opcfg.pixel_info.chroma_fmt_idc = q_data->fmt->idc;
 		ctx->str_opcfg.pixel_info.bitdepth_y = 8;
 		ctx->str_opcfg.pixel_info.bitdepth_c = 8;
-		ctx->str_opcfg.pixel_info.num_planes = pix_mp->num_planes;
+		ctx->str_opcfg.pixel_info.num_planes = 2; /*IMG Decoders support only multi-planar formats */
+
 		ctx->str_opcfg.force_oold = false;
 
 		ctx->pict_bufcfg.coded_width = pix_mp->width;
@@ -1037,9 +1047,17 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 		}
 		ctx->pict_bufcfg.stride_alignment = HW_ALIGN;
 		ctx->pict_bufcfg.byte_interleave = false;
-		ctx->pict_bufcfg.buf_size = ((ctx->pict_bufcfg.stride[0] *
-					    ctx->pict_bufcfg.coded_height) *
-					    3) / 2;
+
+		if (q_data->fmt->pixfmt == IMG_PIXFMT_420PL12YUV8 ||
+		    q_data->fmt->pixfmt == IMG_PIXFMT_420PL12YUV10_MSB)
+			ctx->pict_bufcfg.buf_size = ((ctx->pict_bufcfg.stride[0] *
+						    ctx->pict_bufcfg.coded_height) *
+						    3) / 2;
+		else if (q_data->fmt->pixfmt == IMG_PIXFMT_422PL12YUV8)
+			ctx->pict_bufcfg.buf_size = ctx->pict_bufcfg.stride[0] *
+						    ctx->pict_bufcfg.coded_height *
+						    2;
+
 		ctx->pict_bufcfg.packed = true;
 		ctx->pict_bufcfg.chroma_offset[0] = 0;
 		ctx->pict_bufcfg.chroma_offset[1] = 0;
