@@ -83,6 +83,15 @@ static struct vxd_dec_fmt vxd_dec_formats[] = {
 		.idc = PIXEL_FORMAT_420,
 	},
 	{
+		.fourcc = V4L2_PIX_FMT_TI42210,
+		.num_planes = 1,
+		.type = IMG_DEC_FMT_TYPE_CAPTURE,
+		.std = VDEC_STD_UNDEFINED,
+		.pixfmt = IMG_PIXFMT_422PL12YUV10_MSB,
+		.interleave = PIXEL_UV_ORDER,
+		.idc = PIXEL_FORMAT_422,
+	},
+	{
 		.fourcc = V4L2_PIX_FMT_H264,
 		.num_planes = 1,
 		.type = IMG_DEC_FMT_TYPE_OUTPUT,
@@ -1019,11 +1028,21 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 		ctx->str_opcfg.pixel_info.chroma_interleave =
 			q_data->fmt->interleave;
 		ctx->str_opcfg.pixel_info.chroma_fmt = true;
-		ctx->str_opcfg.pixel_info.mem_pkg = PIXEL_BIT8_MP;
 		ctx->str_opcfg.pixel_info.chroma_fmt_idc = q_data->fmt->idc;
-		ctx->str_opcfg.pixel_info.bitdepth_y = 8;
-		ctx->str_opcfg.pixel_info.bitdepth_c = 8;
-		ctx->str_opcfg.pixel_info.num_planes = 2; /*IMG Decoders support only multi-planar formats */
+
+		if (q_data->fmt->pixfmt == IMG_PIXFMT_420PL12YUV10_MSB ||
+		    q_data->fmt->pixfmt == IMG_PIXFMT_422PL12YUV10_MSB) {
+			ctx->str_opcfg.pixel_info.mem_pkg = PIXEL_BIT10_MSB_MP;
+			ctx->str_opcfg.pixel_info.bitdepth_y = 10;
+			ctx->str_opcfg.pixel_info.bitdepth_c = 10;
+		} else {
+			ctx->str_opcfg.pixel_info.mem_pkg = PIXEL_BIT8_MP;
+			ctx->str_opcfg.pixel_info.bitdepth_y = 8;
+			ctx->str_opcfg.pixel_info.bitdepth_c = 8;
+		}
+
+		/*IMG Decoders support only multi-planar formats */
+		ctx->str_opcfg.pixel_info.num_planes = 2;
 
 		ctx->str_opcfg.force_oold = false;
 
@@ -1054,7 +1073,8 @@ static int vxd_dec_s_fmt(struct file *file, void *priv,
 			ctx->pict_bufcfg.buf_size = ((ctx->pict_bufcfg.stride[0] *
 						    ctx->pict_bufcfg.coded_height) *
 						    3) / 2;
-		else if (q_data->fmt->pixfmt == IMG_PIXFMT_422PL12YUV8)
+		else if (q_data->fmt->pixfmt == IMG_PIXFMT_422PL12YUV8 ||
+			 q_data->fmt->pixfmt == IMG_PIXFMT_422PL12YUV10_MSB)
 			ctx->pict_bufcfg.buf_size = ctx->pict_bufcfg.stride[0] *
 						    ctx->pict_bufcfg.coded_height *
 						    2;
