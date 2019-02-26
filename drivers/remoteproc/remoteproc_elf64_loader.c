@@ -168,7 +168,7 @@ int rproc_elf64_load_segments(struct rproc *rproc, const struct firmware *fw)
 		}
 
 		/* grab the kernel address for this device address */
-		ptr = rproc_da_to_va(rproc, da, memsz);
+		ptr = rproc_da_to_va(rproc, da, memsz, RPROC_FLAGS_NONE);
 		if (!ptr) {
 			dev_err(dev, "bad phdr da 0x%x mem 0x%x\n", da, memsz);
 			ret = -EINVAL;
@@ -320,6 +320,6 @@ rproc_elf64_find_loaded_rsc_table(struct rproc *rproc,
 	if (!shdr)
 		return NULL;
 
-	return rproc_da_to_va(rproc, shdr->sh_addr, shdr->sh_size);
+	return rproc_da_to_va(rproc, shdr->sh_addr, shdr->sh_size, RPROC_FLAGS_NONE);
 }
 EXPORT_SYMBOL(rproc_elf64_find_loaded_rsc_table);
