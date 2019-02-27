@@ -7,6 +7,9 @@
 /plugin/;
 
 &reserved_memory {
+	#address-cells = <2>;
+	#size-cells = <2>;
+
 	/*
 	 * Reserve for Jailhouse hypervisor firmware and inmates.
 	 * Must be in sync with jailhouse cell configurations.
