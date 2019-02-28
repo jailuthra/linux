@@ -77,6 +77,10 @@ static const struct dispc7_features dispc7_am6_feats = {
 	.vid_name = { "vid", "vidl1" },
 	.vid_lite = { false, true, },
 	.vid_order = { 1, 0 },
+
+	.errata = {
+		.i2000 = true,
+	},
 };
 
 static const struct dispc7_features dispc7_j721e_feats = {
@@ -2183,7 +2187,7 @@ static int dispc7_modeset_init(struct dispc_device *dispc)
 	struct tidss_device *tidss = dispc->tidss;
 	struct device *dev = tidss->dev;
 	u32 fourccs[ARRAY_SIZE(dispc7_color_formats)];
-	unsigned int i;
+	unsigned int i, num_fourccs;
 
 	struct pipe {
 		u32 hw_videoport;
@@ -2196,8 +2200,14 @@ static int dispc7_modeset_init(struct dispc_device *dispc)
 	u32 plane_idx = 0;
 	u32 crtc_mask;
 
-	for (i = 0; i < ARRAY_SIZE(fourccs); ++i)
-		fourccs[i] = dispc7_color_formats[i].fourcc;
+	num_fourccs = 0;
+	for (i = 0; i < ARRAY_SIZE(fourccs); ++i) {
+		if (dispc->feat->errata.i2000 &&
+		    dispc7_fourcc_is_yuv(dispc7_color_formats[i].fourcc))
+			continue;
+
+		fourccs[num_fourccs++] = dispc7_color_formats[i].fourcc;
+	}
 
 	/* first find all the connected panels & bridges */
 	/* exclude the VPs that are not managed.         */
@@ -2271,7 +2281,7 @@ static int dispc7_modeset_init(struct dispc_device *dispc)
 
 		tplane = tidss_plane_create(tidss, hw_plane_id,
 					    DRM_PLANE_TYPE_PRIMARY, crtc_mask,
-					    fourccs, ARRAY_SIZE(fourccs));
+					    fourccs, num_fourccs);
 		if (IS_ERR(tplane)) {
 			dev_err(tidss->dev, "plane create failed\n");
 			return PTR_ERR(tplane);
