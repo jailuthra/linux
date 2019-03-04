@@ -2502,7 +2502,8 @@ static int dispc7_j721e_setup_commons(struct dispc_device *dispc)
 	r = dispc_j721e_get_managed_common_cfg(dispc, &common_cfg_id);
 	if (r) {
 		dev_err(dev, "%s: could not find configuration device\n", __func__);
-		return -EINVAL;
+		dispc->has_cfg_common = false;
+		return 0;
 	}
 
 	if (!dispc->feat->common_cfg[common_cfg_id]) {
