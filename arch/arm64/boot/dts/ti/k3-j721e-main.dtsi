@@ -37,7 +37,7 @@
 		#interrupt-cells = <3>;
 		ti,sci = <&dmsc>;
 		ti,sci-dst-id = <13>;
-		ti,sci-rm-range-girq = <0>, <2>, <4>;
+		ti,sci-rm-range-girq = <0>, <2>;
 	};
 
 	secure_proxy_main: mailbox@32c00000 {
