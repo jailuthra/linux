@@ -36,7 +36,7 @@
 		interrupt-parent = <&gic500>;
 		#interrupt-cells = <3>;
 		ti,sci = <&dmsc>;
-		ti,sci-dst-id = <13>;
+		ti,sci-dst-id = <14>;
 		ti,sci-rm-range-girq = <0>, <2>;
 	};
 
@@ -60,8 +60,8 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-		power-domains = <&k3_pds 236>;
-		clocks = <&k3_clks 236 1>;
+		power-domains = <&k3_pds 239>;
+		clocks = <&k3_clks 239 0>;
 		clock-names = "fck";
 		#interrupt-cells = <1>;
 		interrupt-map-mask = <0 0 7>;
@@ -118,8 +118,8 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-		power-domains = <&k3_pds 237>;
-		clocks = <&k3_clks 237 1>;
+		power-domains = <&k3_pds 240>;
+		clocks = <&k3_clks 240 0>;
 		clock-names = "fck";
 		#interrupt-cells = <1>;
 		interrupt-map-mask = <0 0 7>;
@@ -185,7 +185,7 @@
 		reg-io-width = <4>;
 		interrupts = <GIC_SPI 193 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
-		power-domains = <&k3_pds 275>;
+		power-domains = <&k3_pds 278>;
 	};
 
 	main_uart2: serial@2820000 {
@@ -195,7 +195,7 @@
 		reg-io-width = <4>;
 		interrupts = <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
-		power-domains = <&k3_pds 276>;
+		power-domains = <&k3_pds 279>;
 	};
 
 	main_uart3: serial@2830000 {
@@ -205,7 +205,7 @@
 		reg-io-width = <4>;
 		interrupts = <GIC_SPI 195 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
-		power-domains = <&k3_pds 277>;
+		power-domains = <&k3_pds 280>;
 	};
 
 	main_uart4: serial@2840000 {
@@ -215,7 +215,7 @@
 		reg-io-width = <4>;
 		interrupts = <GIC_SPI 196 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
-		power-domains = <&k3_pds 278>;
+		power-domains = <&k3_pds 281>;
 	};
 
 	main_uart5: serial@2850000 {
@@ -225,7 +225,7 @@
 		reg-io-width = <4>;
 		interrupts = <GIC_SPI 197 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
-		power-domains = <&k3_pds 279>;
+		power-domains = <&k3_pds 282>;
 	};
 
 	main_uart6: serial@2860000 {
@@ -235,7 +235,7 @@
 		reg-io-width = <4>;
 		interrupts = <GIC_SPI 198 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
-		power-domains = <&k3_pds 280>;
+		power-domains = <&k3_pds 283>;
 	};
 
 	main_uart7: serial@2870000 {
@@ -245,7 +245,7 @@
 		reg-io-width = <4>;
 		interrupts = <GIC_SPI 199 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
-		power-domains = <&k3_pds 281>;
+		power-domains = <&k3_pds 284>;
 	};
 
 	main_uart8: serial@2880000 {
@@ -255,7 +255,7 @@
 		reg-io-width = <4>;
 		interrupts = <GIC_SPI 248 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
-		power-domains = <&k3_pds 282>;
+		power-domains = <&k3_pds 285>;
 	};
 
 	main_uart9: serial@2890000 {
@@ -265,18 +265,18 @@
 		reg-io-width = <4>;
 		interrupts = <GIC_SPI 249 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
-		power-domains = <&k3_pds 283>;
+		power-domains = <&k3_pds 286>;
 	};
 
 	main_sdhci0: sdhci@4f80000 {
 		compatible = "arasan,sdhci-8.9a";
 		reg = <0x00 0x04f80000 0x00 0x1000>;
 		interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
-		power-domains = <&k3_pds 90>;
+		power-domains = <&k3_pds 91>;
 		clock-names = "clk_xin", "clk_ahb";
-		clocks = <&k3_clks 90 1>, <&k3_clks 90 0>;
-		assigned-clocks = <&k3_clks 90 1>;
-		assigned-clock-parents = <&k3_clks 90 2>;
+		clocks = <&k3_clks 91 1>, <&k3_clks 91 0>;
+		assigned-clocks = <&k3_clks 91 1>;
+		assigned-clock-parents = <&k3_clks 91 2>;
 		voltage-ranges = <3300 3300>;
 		non-removable;
 	};
@@ -285,11 +285,11 @@
 		compatible = "arasan,sdhci-8.9a";
 		reg = <0x00 0x04fb0000 0x00 0x1000>;
 		interrupts = <GIC_SPI 4 IRQ_TYPE_LEVEL_HIGH>;
-		power-domains = <&k3_pds 91>;
+		power-domains = <&k3_pds 92>;
 		clock-names = "clk_xin", "clk_ahb";
-		clocks = <&k3_clks 91 1>, <&k3_clks 91 6>;
-		assigned-clocks = <&k3_clks 91 1>;
-		assigned-clock-parents = <&k3_clks 91 3>;
+		clocks = <&k3_clks 92 0>, <&k3_clks 92 5>;
+		assigned-clocks = <&k3_clks 92 0>;
+		assigned-clock-parents = <&k3_clks 92 1>;
 		voltage-ranges = <3300 3300>;
 		non-removable;
 	};
@@ -307,7 +307,7 @@
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
 		interrupt-parent = <&main_navss_intr>;
-		interrupts = <211 0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <214 0 IRQ_TYPE_LEVEL_HIGH>;
 
 		mbox_mcu_r5fss0_core0: mbox-mcu-r5fss0-core0 {
 			ti,mbox-rx = <0 0 0>;
@@ -332,7 +332,7 @@
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
 		interrupt-parent = <&main_navss_intr>;
-		interrupts = <212 0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <215 0 IRQ_TYPE_LEVEL_HIGH>;
 
 		mbox_main_r5fss0_core0: mbox-main-r5fss0-core0 {
 			ti,mbox-rx = <0 0 0>;
@@ -357,7 +357,7 @@
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
 		interrupt-parent = <&main_navss_intr>;
-		interrupts = <213 0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <216 0 IRQ_TYPE_LEVEL_HIGH>;
 
 		mbox_main_r5fss1_core0: mbox-main-r5fss1-core0 {
 			ti,mbox-rx = <0 0 0>;
@@ -382,7 +382,7 @@
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
 		interrupt-parent = <&main_navss_intr>;
-		interrupts = <214 0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <217 0 IRQ_TYPE_LEVEL_HIGH>;
 
 		mbox_c66_0: mbox-c66-0 {
 			ti,mbox-rx = <0 0 0>;
@@ -407,7 +407,7 @@
 		ti,mbox-num-users = <4>;
 		ti,mbox-num-fifos = <16>;
 		interrupt-parent = <&main_navss_intr>;
-		interrupts = <215 0 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <218 0 IRQ_TYPE_LEVEL_HIGH>;
 
 		mbox_c71_0: mbox-c71-0 {
 			ti,mbox-rx = <0 0 0>;
@@ -490,7 +490,7 @@
 		#size-cells = <1>;
 		ranges = <0x5c00000 0x00 0x5c00000 0x20000>,
 			 <0x5d00000 0x00 0x5d00000 0x20000>;
-		power-domains = <&k3_pds 240>;
+		power-domains = <&k3_pds 243>;
 
 		main_r5fss0_core0: r5f@5c00000 {
 			compatible = "ti,j721e-r5f";
@@ -498,9 +498,9 @@
 			      <0x5c10000 0x00008000>;
 			reg-names = "atcm", "btcm";
 			ti,sci = <&dmsc>;
-			ti,sci-dev-id = <242>;
+			ti,sci-dev-id = <245>;
 			ti,sci-proc-ids = <0x06 0xFF>;
-			resets = <&k3_reset 242 1>;
+			resets = <&k3_reset 245 1>;
 			atcm-enable = <1>;
 			btcm-enable = <1>;
 			loczrama = <1>;
@@ -513,9 +513,9 @@
 			      <0x5d10000 0x00008000>;
 			reg-names = "atcm", "btcm";
 			ti,sci = <&dmsc>;
-			ti,sci-dev-id = <243>;
+			ti,sci-dev-id = <246>;
 			ti,sci-proc-ids = <0x07 0xFF>;
-			resets = <&k3_reset 243 1>;
+			resets = <&k3_reset 246 1>;
 			atcm-enable = <1>;
 			btcm-enable = <1>;
 			loczrama = <1>;
@@ -530,7 +530,7 @@
 		#size-cells = <1>;
 		ranges = <0x5e00000 0x00 0x5e00000 0x20000>,
 			 <0x5f00000 0x00 0x5f00000 0x20000>;
-		power-domains = <&k3_pds 241>;
+		power-domains = <&k3_pds 244>;
 
 		main_r5fss1_core0: r5f@5e00000 {
 			compatible = "ti,j721e-r5f";
@@ -538,9 +538,9 @@
 			      <0x5e10000 0x00008000>;
 			reg-names = "atcm", "btcm";
 			ti,sci = <&dmsc>;
-			ti,sci-dev-id = <244>;
+			ti,sci-dev-id = <247>;
 			ti,sci-proc-ids = <0x08 0xFF>;
-			resets = <&k3_reset 244 1>;
+			resets = <&k3_reset 247 1>;
 			atcm-enable = <1>;
 			btcm-enable = <1>;
 			loczrama = <1>;
@@ -553,9 +553,9 @@
 			      <0x5f10000 0x00008000>;
 			reg-names = "atcm", "btcm";
 			ti,sci = <&dmsc>;
-			ti,sci-dev-id = <245>;
+			ti,sci-dev-id = <248>;
 			ti,sci-proc-ids = <0x09 0xFF>;
-			resets = <&k3_reset 245 1>;
+			resets = <&k3_reset 248 1>;
 			atcm-enable = <1>;
 			btcm-enable = <1>;
 			loczrama = <1>;
@@ -570,10 +570,10 @@
 		      <0x4d 0x80f00000 0x00 0x00008000>;
 		reg-names = "l2sram", "l1pram", "l1dram";
 		ti,sci = <&dmsc>;
-		ti,sci-dev-id = <139>;
+		ti,sci-dev-id = <142>;
 		ti,sci-proc-ids = <0x03 0xFF>;
-		resets = <&k3_reset 139 1>;
-		/*power-domains = <&k3_pds 139>;*/
+		resets = <&k3_reset 142 1>;
+		/*power-domains = <&k3_pds 142>;*/
 		mboxes = <&mailbox0_cluster3 &mbox_c66_0>;
 	};
 
@@ -584,10 +584,10 @@
 		      <0x4d 0x81f00000 0x00 0x00008000>;
 		reg-names = "l2sram", "l1pram", "l1dram";
 		ti,sci = <&dmsc>;
-		ti,sci-dev-id = <140>;
+		ti,sci-dev-id = <143>;
 		ti,sci-proc-ids = <0x04 0xFF>;
-		resets = <&k3_reset 140 1>;
-		/*power-domains = <&k3_pds 140>;*/
+		resets = <&k3_reset 143 1>;
+		/*power-domains = <&k3_pds 143>;*/
 		mboxes = <&mailbox0_cluster3 &mbox_c66_1>;
 	};
 
@@ -597,10 +597,10 @@
 		      <0x00 0x64e00000 0x00 0x0000c000>;
 		reg-names = "l2sram", "l1dram";
 		ti,sci = <&dmsc>;
-		ti,sci-dev-id = <14>;
+		ti,sci-dev-id = <15>;
 		ti,sci-proc-ids = <0x30 0xFF>;
-		resets = <&k3_reset 14 1>;
-		/*power-domains = <&k3_pds 14>;*/
+		resets = <&k3_reset 15 1>;
+		/*power-domains = <&k3_pds 15>;*/
 		mboxes = <&mailbox0_cluster4 &mbox_c71_0>;
 	};
 
@@ -635,11 +635,11 @@
 			"vp1", "vp2", "vp3", "vp4",
 			"wb";
 
-		clocks =	<&k3_clks 148 9>,
-				<&k3_clks 148 15>,
-				<&k3_clks 148 19>,
-				<&k3_clks 148 18>,
-				<&k3_clks 148 17>;
+		clocks =	<&k3_clks 152 9>,
+				<&k3_clks 152 15>,
+				<&k3_clks 152 19>,
+				<&k3_clks 152 18>,
+				<&k3_clks 152 17>;
 		clock-names = "fck", "vp1", "vp2", "vp3", "vp4";
 
 		interrupts = <GIC_SPI 602 IRQ_TYPE_EDGE_RISING>,
@@ -675,8 +675,6 @@
 		reg-names = "gpu_regs";
 		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
 		power-domains = <&k3_pds 124>;
-		clocks = <&k3_clks 123 0>;
-		clock-names = "ctrl";
 		status = "disabled";
 	};
 };
