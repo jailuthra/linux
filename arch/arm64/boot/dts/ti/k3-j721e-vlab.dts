@@ -6,6 +6,7 @@
 /dts-v1/;
 
 #include "k3-j721e.dtsi"
+#include <dt-bindings/pci/pci.h>
 
 / {
 	compatible =  "ti,j721e-vlab", "ti,j721e";
@@ -56,4 +57,14 @@
 &main_sdhci2 {
 	/* Unused */
 	status = "disabled";
+};
+
+&pcie0 {
+	pci-mode = <PCI_MODE_RC>;
+	status = "okay";
+};
+
+&pcie1 {
+	pci-mode = <PCI_MODE_EP>;
+	status = "okay";
 };
