@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2016-2019 Texas Instruments Incorporated - http://www.ti.com/
+ */
+
+/dts-v1/;
+
+#include "k3-j721e.dtsi"
+
+/ {
+	compatible =  "ti,j721e-vlab", "ti,j721e";
+	model = "Texas Instruments J721E VLAB";
+
+	chosen {
+		stdout-path = "serial2:115200n8";
+		bootargs = "earlycon=ns16550a,mmio32,0x02800000";
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		/* 2G RAM */
+		reg = <0x00000000 0x80000000 0x00000000 0x80000000>;
+
+	};
+
+	reserved_memory: reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		secure_ddr: optee@9e800000 {
+			reg = <0x00 0x9e800000 0x00 0x01800000>;
+			alignment = <0x1000>;
+			no-map;
+		};
+	};
+};
+
+&wkup_uart0 {
+	/* Wakeup UART is used by System firmware */
+	status = "disabled";
+};
+
+&main_sdhci0 {
+	/* eMMC */
+	voltage-ranges = <1800 1800>;
+	non-removable;
+};
+
+&main_sdhci1 {
+	/* eMMC */
+	voltage-ranges = <1800 1800>;
+	non-removable;
+};
+
+&main_sdhci2 {
+	/* Unused */
+	status = "disabled";
+};
