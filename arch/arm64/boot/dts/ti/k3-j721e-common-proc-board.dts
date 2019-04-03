@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2019 Texas Instruments Incorporated - http://www.ti.com/
+ */
+
+/dts-v1/;
+
+#include "k3-j721e-som-p0.dtsi"
+
+/ {
+	chosen {
+		stdout-path = "serial2:115200n8";
+		bootargs = "earlycon=ns16550a,mmio32,0x02800000";
+	};
+};
+
+&wkup_uart0 {
+	/* Wakeup UART is used by System firmware */
+	status = "disabled";
+};
+
+&main_sdhci0 {
+	/* eMMC */
+	voltage-ranges = <1800 1800>;
+	non-removable;
+};
+
+&main_sdhci1 {
+	/* SD/MMC */
+	voltage-ranges = <1800 1800 3300 3300>;
+};
+
+&main_sdhci2 {
+	/* Unused */
+	status = "disabled";
+};
