@@ -13,7 +13,7 @@
 
 	chosen {
 		stdout-path = "serial2:115200n8";
-		bootargs = "earlycon=ns16550a,mmio32,0x02800000";
+		bootargs = "console=ttyS2,115200n8 earlycon=ns16550a,mmio32,0x02800000 rdinit=/bin/sh";
 	};
 
 	memory@80000000 {
@@ -39,6 +39,10 @@
 &wkup_uart0 {
 	/* Wakeup UART is used by System firmware */
 	status = "disabled";
+};
+
+&main_uart0 {
+	clock-frequency = <3686400>;
 };
 
 /* The Main 1-9 UARTs do NOT show up in Zebu/QT - Enable them only for testing */
