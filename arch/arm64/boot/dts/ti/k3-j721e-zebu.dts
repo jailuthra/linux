@@ -41,6 +41,10 @@
 	status = "disabled";
 };
 
+&main_uart0 {
+	clock-frequency = <3686400>;
+};
+
 /* The Main 1-9 UARTs do NOT show up in Zebu/QT - Enable them only for testing */
 &main_uart1 {
 	status = "disabled";
