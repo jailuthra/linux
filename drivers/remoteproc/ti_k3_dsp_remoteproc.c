@@ -680,6 +680,7 @@ static int k3_dsp_rproc_probe(struct platform_device *pdev)
 			kproc->ipc_only = 1;
 		} else {
 			dev_err(dev, "configured DSP for remoteproc mode\n");
+			rproc->auto_boot = false;
 		}
 	}
 
