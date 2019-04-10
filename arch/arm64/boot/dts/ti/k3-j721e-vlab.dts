@@ -168,15 +168,13 @@
 };
 
 &main_sdhci0 {
-	/* eMMC */
-	voltage-ranges = <1800 1800>;
-	non-removable;
+	/* SD card */
+	ti,driver-strength-ohm = <50>;
 };
 
 &main_sdhci1 {
-	/* eMMC */
-	voltage-ranges = <1800 1800>;
-	non-removable;
+	/* Unused  */
+	status = "disabled";
 };
 
 &main_sdhci2 {
