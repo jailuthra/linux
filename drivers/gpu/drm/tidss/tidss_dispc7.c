@@ -37,6 +37,10 @@ static const struct dispc7_features dispc7_am6_feats = {
 	.min_pclk = 1000,
 	.max_pclk = 200000000,
 
+	.num_commons = 1,
+	.common_name = { "common" },
+	.common_cfg = { true },
+
 	.scaling = {
 		.in_width_max_5tap_rgb = 1280,
 		.in_width_max_3tap_rgb = 2560,
@@ -82,6 +86,10 @@ static const struct dispc7_features dispc7_am6_feats = {
 static const struct dispc7_features dispc7_j721e_feats = {
 	.min_pclk = 1000,
 	.max_pclk = 200000000,
+
+	.num_commons = 4,
+	.common_name = { "common_m", "common_s0", "common_s1", "common_s2" },
+	.common_cfg = { true, false, false, false },
 
 	/* XXX: Scaling features are copied from AM6 and should be checked */
 	.scaling = {
@@ -237,6 +245,10 @@ struct dispc_device {
 	void __iomem *base_vid[DISPC7_MAX_PLANES];
 	void __iomem *base_ovr[DISPC7_MAX_PORTS];
 	void __iomem *base_vp[DISPC7_MAX_PORTS];
+
+	int irq;
+
+	bool has_cfg_common;
 
 	struct regmap *syscon;
 
@@ -681,7 +693,8 @@ static void dispc7_vp_prepare(struct dispc_device *dispc, u32 hw_videoport,
 	if (dispc->feat->vp_bus_type[hw_videoport] == DISPC7_VP_OLDI) {
 		dispc7_oldi_tx_power(dispc, true);
 
-		dispc7_enable_oldi(dispc, hw_videoport, fmt);
+		if (dispc->has_cfg_common)
+			dispc7_enable_oldi(dispc, hw_videoport, fmt);
 	}
 }
 
@@ -1788,11 +1801,15 @@ static void dispc7_mflag_setup(struct dispc_device *dispc)
 {
 	unsigned int i;
 
+	if (!dispc->has_cfg_common)
+		goto no_cfg;
+
 	/* MFLAG_CTRL = ENABLED */
 	CFG_REG_FLD_MOD(dispc, DISPC_GLOBAL_MFLAG_ATTRIBUTE, 2, 1, 0);
 	/* MFLAG_START = MFLAGNORMALSTARTMODE */
 	CFG_REG_FLD_MOD(dispc, DISPC_GLOBAL_MFLAG_ATTRIBUTE, 0, 6, 6);
 
+no_cfg:
 	for (i = 0; i < dispc->feat->num_planes; i++)
 		dispc7_vid_mflag_setup(dispc, i);
 }
@@ -2070,6 +2087,9 @@ static int dispc7_runtime_resume(struct dispc_device *dispc)
 
 	clk_prepare_enable(dispc->fclk);
 
+	if (!dispc->has_cfg_common)
+		goto no_cfg;
+
 	if (CFG_REG_GET(dispc, DSS_SYSSTATUS, 0, 0) == 0)
 		dev_warn(dispc->dev, "DSS FUNC RESET not done!\n");
 
@@ -2089,6 +2109,7 @@ static int dispc7_runtime_resume(struct dispc_device *dispc)
 	dev_dbg(dispc->dev, "DISPC IDLE %d\n",
 		CFG_REG_GET(dispc, DSS_SYSSTATUS, 9, 9));
 
+no_cfg:
 	dispc7_initial_config(dispc);
 
 	dispc7_restore_gamma_tables(dispc);
@@ -2246,7 +2267,7 @@ static int dispc7_modeset_init(struct dispc_device *dispc)
 
 static int dispc7_get_irq(struct dispc_device *dispc)
 {
-	return platform_get_irq(to_platform_device(dispc->tidss->dev), 0);
+	return dispc->irq;
 }
 
 static void dispc7_remove(struct dispc_device *dispc)
@@ -2323,13 +2344,201 @@ static int dispc7_iomap_resource(struct platform_device *pdev, const char *name,
 	return 0;
 }
 
+static int dispc_j721e_get_managed_common_intr(struct dispc_device *dispc,
+		u32 *intr)
+{
+	int ret;
+	struct tidss_device *tidss = dispc->tidss;
+	struct device *dev = tidss->dev;
+	struct device_node *dss_commons_node;
+	struct device_node *intr_node;
+	u32 value;
+
+	dss_commons_node = of_get_child_by_name(dev->of_node, "dss_commons");
+	if (!dss_commons_node) {
+		*intr = 0;
+		return 0;
+	}
+
+	intr_node = of_get_child_by_name(dss_commons_node, "interrupt-common");
+	if (!intr_node) {
+		ret = -ENOENT;
+		goto out;
+	}
+
+	ret = of_property_read_u32(intr_node, "reg", &value);
+	if (ret)
+		goto out2;
+
+	*intr = value;
+
+out2:
+	of_node_put(intr_node);
+out:
+	of_node_put(dss_commons_node);
+	return ret;
+}
+
+static int dispc_j721e_get_managed_common_cfg(struct dispc_device *dispc,
+		u32 *cfg)
+{
+	int ret;
+	struct tidss_device *tidss = dispc->tidss;
+	struct device *dev = tidss->dev;
+	struct device_node *dss_commons_node;
+	struct device_node *cfg_node;
+	const char *status;
+	u32 value;
+
+	dss_commons_node = of_get_child_by_name(dev->of_node, "dss_commons");
+	if (!dss_commons_node) {
+		*cfg = 0;
+		return 0;
+	}
+
+	cfg_node = of_get_child_by_name(dss_commons_node, "config-common");
+	if (!cfg_node) {
+		ret = -ENOENT;
+		goto out;
+	}
+
+	ret = of_property_read_string(cfg_node, "status", &status);
+	if(!ret && !strncmp(status, "disabled", strlen("disabled"))) {
+		ret = -ENOENT;
+		goto out;
+	}
+
+	ret = of_property_read_u32(cfg_node, "reg", &value);
+	if (ret)
+		goto out2;
+
+	*cfg = value;
+
+out2:
+	of_node_put(cfg_node);
+out:
+	of_node_put(dss_commons_node);
+	return ret;
+}
+
+/*
+ * The logic for J721E is simple:
+ * 1. Must find an interrupt common, the driver cannot work
+ *    without one.
+ *
+ *    If the dss device-tree node does not have a subnode
+ *    "dss_commons", assume tidss is the only module handling
+ *    DSS and therefore use intr_common = COMMON_M.
+ *
+ *    If "dss_commons" subnode is present, then it must have
+ *    a child node "interrupt-common", or else fail. And then,
+ *    interrupt-common must have a "reg" property that
+ *    indicates which common area to use for interrupts. Must
+ *    be 0 to feat->num_commons
+ *
+ * 2. Optionally, find a configuration region, or make certain
+ *    assumptions and proceed
+ *
+ *    If the dss device-tree node does not have a
+ *    subnode called "dss_commons", assume tidss is the only
+ *    module handling DSS and therefore use config_common =
+ *    COMMON_M.
+ *
+ *    If "dss_commons" is present, search for a child
+ *    "config-common". If no such child is present, tidss
+ *    assumes that DSS is early-configured and does not
+ *    search for a config-common.
+ *
+ *    If "config-common" child is present, then it must have a
+ *    "reg" property that indicates which common area to use for
+ *    configuration. Must be COMMON_M
+ */
+static int dispc7_j721e_setup_commons(struct dispc_device *dispc)
+{
+	int r;
+	struct tidss_device *tidss = dispc->tidss;
+	struct device *dev = tidss->dev;
+	struct platform_device *pdev = to_platform_device(dev);
+	u32 common_intr_id, common_cfg_id;
+
+	r = dispc_j721e_get_managed_common_intr(dispc, &common_intr_id);
+	if (r || common_intr_id >= dispc->feat->num_commons)
+		return -EINVAL;
+
+	r = dispc7_iomap_resource(pdev, dispc->feat->common_name[common_intr_id],
+			&dispc->base_common_intr);
+	if (r)
+		return r;
+
+	dispc->irq = platform_get_irq(pdev, common_intr_id);
+	if (dispc->irq < 0)
+		return dispc->irq;
+
+	r = dispc_j721e_get_managed_common_cfg(dispc, &common_cfg_id);
+	if (r) {
+		dev_dbg(dev, "%s: continuing without configuration common\n", __func__);
+		dispc->has_cfg_common = false;
+		return 0;
+	}
+
+	if (common_cfg_id >= dispc->feat->num_commons ||
+			!dispc->feat->common_cfg[common_cfg_id])
+		return -EINVAL;
+
+	if (common_intr_id == common_cfg_id)
+		dispc->base_common_cfg = dispc->base_common_intr;
+	else {
+		r = dispc7_iomap_resource(pdev, dispc->feat->common_name[common_cfg_id],
+				&dispc->base_common_cfg);
+		if (r)
+			return r;
+	}
+
+	dispc->has_cfg_common = true;
+
+	return 0;
+}
+
+static int dispc7_am6_setup_commons(struct dispc_device *dispc)
+{
+	int r;
+	struct tidss_device *tidss = dispc->tidss;
+	struct platform_device *pdev = to_platform_device(tidss->dev);
+
+	r = dispc7_iomap_resource(pdev, "common", &dispc->base_common_cfg);
+	if (r)
+		return r;
+
+	dispc->base_common_intr = dispc->base_common_cfg;
+
+	dispc->irq = platform_get_irq(pdev, 0);
+	if (dispc->irq < 0)
+		return dispc->irq;
+
+	dispc->has_cfg_common = true;
+
+	return 0;
+}
+
+static int dispc7_setup_commons(struct dispc_device *dispc)
+{
+	switch (dispc->feat->subrev) {
+	case DSS7_AM6:
+		return dispc7_am6_setup_commons(dispc);
+	case DSS7_J721E:
+		return dispc7_j721e_setup_commons(dispc);
+	default:
+		WARN_ON(1);
+		return -EINVAL;
+	}
+}
+
 int dispc7_init(struct tidss_device *tidss)
 {
 	struct device *dev = tidss->dev;
 	struct platform_device *pdev = to_platform_device(dev);
 	struct dispc_device *dispc;
 	const struct dispc7_features *feat;
-	const char *common_name;
 	unsigned int i;
 	int r = 0;
 
@@ -2348,22 +2557,20 @@ int dispc7_init(struct tidss_device *tidss)
 	switch (feat->subrev) {
 	case DSS7_AM6:
 		dispc7_common_regmap = tidss_am6_common_regs;
-		common_name = "common";
 		break;
 	case DSS7_J721E:
 		dispc7_common_regmap = tidss_j721e_common_regs;
-		common_name = "common_m";
 		break;
 	default:
 		WARN_ON(1);
 		return -EINVAL;
 	}
 
-	r = dispc7_iomap_resource(pdev, common_name, &dispc->base_common_cfg);
-	if (r)
+	r = dispc7_setup_commons(dispc);
+	if (r) {
+		dev_err(dev, "%s: could not setup common regions\n", __func__);
 		return r;
-
-	dispc->base_common_intr = dispc->base_common_cfg;
+	}
 
 	for (i = 0; i < dispc->feat->num_planes; i++) {
 		r = dispc7_iomap_resource(pdev, dispc->feat->vid_name[i],
