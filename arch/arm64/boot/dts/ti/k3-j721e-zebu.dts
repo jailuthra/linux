@@ -83,6 +83,10 @@
 	status = "disabled";
 };
 
+&main_uart7 {
+	status = "disabled";
+};
+
 &main_uart8 {
 	status = "disabled";
 };
