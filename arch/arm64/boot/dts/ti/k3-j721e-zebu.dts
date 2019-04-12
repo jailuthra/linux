@@ -36,12 +36,25 @@
 	};
 };
 
+&main_pmx0 {
+	main_uart0_pins_default: main_uart0_pins_default {
+		pinctrl-single,pins = <
+			J721E_IOPAD(0x01e8, PIN_INPUT, 0)  /* UART0_RXD */
+			J721E_IOPAD(0x01ec, PIN_OUTPUT, 0) /* UART0_TXD */
+			J721E_IOPAD(0x01f0, PIN_INPUT, 0)  /* UART0_CTSn */
+			J721E_IOPAD(0x01f4, PIN_OUTPUT, 0) /* UART0_RTSn */
+		>;
+	};
+};
+
 &wkup_uart0 {
 	/* Wakeup UART is used by System firmware */
 	status = "disabled";
 };
 
 &main_uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&main_uart0_pins_default>;
 	clock-frequency = <3686400>;
 };
 
@@ -67,6 +80,10 @@
 };
 
 &main_uart6 {
+	status = "disabled";
+};
+
+&main_uart7 {
 	status = "disabled";
 };
 
