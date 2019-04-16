@@ -8,6 +8,7 @@
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/pm_runtime.h>
 #include <linux/property.h>
 #include <linux/regmap.h>
@@ -198,6 +199,20 @@ static const struct sdhci_pltfm_data sdhci_am654_pdata = {
 	.quirks2 = SDHCI_QUIRK2_PRESET_VALUE_BROKEN,
 };
 
+struct sdhci_ops sdhci_j721e_ops = {
+	.get_max_clock = sdhci_pltfm_clk_get_max_clock,
+	.get_timeout_clock = sdhci_pltfm_clk_get_max_clock,
+	.set_uhs_signaling = sdhci_set_uhs_signaling,
+	.set_bus_width = sdhci_set_bus_width,
+	.set_power = sdhci_am654_set_power,
+	.set_clock = sdhci_am654_set_clock,
+	.reset = sdhci_reset,
+};
+
+static const struct sdhci_pltfm_data sdhci_j721e_pdata = {
+	.ops = &sdhci_j721e_ops,
+};
+
 static int sdhci_am654_init(struct sdhci_host *host)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(host);
@@ -285,10 +300,23 @@ static int sdhci_am654_get_of_property(struct platform_device *pdev,
 	return 0;
 }
 
+static const struct of_device_id sdhci_am654_of_match[] = {
+	{
+		.compatible = "ti,am654-sdhci-5.1",
+		.data = &sdhci_am654_pdata,
+	},
+	{
+		.compatible = "ti,j721e-sdhci-5.1",
+		.data = &sdhci_j721e_pdata,
+	},
+	{ /* sentinel */ }
+};
+
 static int sdhci_am654_probe(struct platform_device *pdev)
 {
 	struct sdhci_pltfm_host *pltfm_host;
 	struct sdhci_am654_data *sdhci_am654;
+	const struct of_device_id *match;
 	struct sdhci_host *host;
 	struct resource *res;
 	struct clk *clk_xin;
@@ -296,7 +324,8 @@ static int sdhci_am654_probe(struct platform_device *pdev)
 	void __iomem *base;
 	int ret;
 
-	host = sdhci_pltfm_init(pdev, &sdhci_am654_pdata, sizeof(*sdhci_am654));
+	match = of_match_node(sdhci_am654_of_match, pdev->dev.of_node);
+	host = sdhci_pltfm_init(pdev, match->data, sizeof(*sdhci_am654));
 	if (IS_ERR(host))
 		return PTR_ERR(host);
 
@@ -381,11 +410,6 @@ static int sdhci_am654_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
-static const struct of_device_id sdhci_am654_of_match[] = {
-	{ .compatible = "ti,am654-sdhci-5.1" },
-	{ /* sentinel */ }
-};
 
 static struct platform_driver sdhci_am654_driver = {
 	.driver = {

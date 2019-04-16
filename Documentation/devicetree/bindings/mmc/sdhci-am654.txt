@@ -8,7 +8,9 @@ Only deviations are documented here.
   [3] Documentation/devicetree/bindings/interrupt-controller/interrupts.txt
 
 Required Properties:
-	- compatible: should be "ti,am654-sdhci-5.1"
+	- compatible: should be one of:
+			"ti,am654-sdhci-5.1": SDHCI on AM654 device.
+			"ti,j721e-sdhci-5.1": SDHCI on J721E device
 	- reg: Must be two entries.
 		- The first should be the sdhci register space
 		- The second should the subsystem/phy register space
