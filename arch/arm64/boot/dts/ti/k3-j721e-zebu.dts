@@ -110,3 +110,24 @@
 	/* Unused */
 	status = "disabled";
 };
+
+/* Disable both main and mcu NAVSS support to not slow down boot */
+&main_udmass_inta {
+	status = "disabled";
+};
+
+&ringacc {
+	status = "disabled";
+};
+
+&main_udmap {
+	status = "disabled";
+};
+
+&mcu_ringacc {
+	status = "disabled";
+};
+
+&mcu_udmap {
+	status = "disabled";
+};
