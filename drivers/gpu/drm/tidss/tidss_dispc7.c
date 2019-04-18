@@ -223,6 +223,19 @@ static const u16 tidss_j721e_common_regs[DSS7_COMMON_REG_TABLE_LEN] = {
 	[DISPC_DBG_STATUS_OFF] =		0xac,
 	[DISPC_CLKGATING_DISABLE_OFF] =		0xb0,
 	[DISPC_SECURE_DISABLE_OFF] =		0x90,
+
+	[FBDC_REVISION_1_OFF] =			0xb8,
+	[FBDC_REVISION_2_OFF] =			0xbc,
+	[FBDC_REVISION_3_OFF] =			0xc0,
+	[FBDC_REVISION_4_OFF] =			0xc4,
+	[FBDC_REVISION_5_OFF] =			0xc8,
+	[FBDC_REVISION_6_OFF] =			0xcc,
+	[FBDC_COMMON_CONTROL_OFF] =		0xd0,
+	[FBDC_CONSTANT_COLOR_0_OFF] =		0xd4,
+	[FBDC_CONSTANT_COLOR_1_OFF] =		0xd8,
+	[DISPC_CONNECTIONS_OFF] =		0xe4,
+	[DISPC_MSS_VP1_OFF] =			0xe8,
+	[DISPC_MSS_VP3_OFF] =			0xec,
 };
 
 static const u16 *dispc7_common_regmap;
