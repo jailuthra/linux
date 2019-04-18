@@ -207,8 +207,14 @@ static int tidss_probe(struct platform_device *pdev)
 		goto err_disable_pm;
 	}
 
-#ifndef CONFIG_PM_SLEEP
-	/* no PM, so force enable DISPC */
+#ifndef CONFIG_PM
+	/* The explicit calls to dispc runtime functions within are
+         * for a case when we are running in an environment that does
+         * not support power management and the IP is always
+         * powered. This is the case with some simulation
+         * environments. In such a case we still need to initialize
+         * dispc registers, before starting the normal operation.
+	 */
 	tidss->dispc_ops->runtime_resume(tidss->dispc);
 #endif
 
@@ -257,7 +263,7 @@ err_modeset_cleanup:
 	drm_mode_config_cleanup(ddev);
 
 err_runtime_suspend:
-#ifndef CONFIG_PM_SLEEP
+#ifndef CONFIG_PM
 	/* no PM, so force disable DISPC */
 	tidss->dispc_ops->runtime_suspend(tidss->dispc);
 #endif
@@ -290,7 +296,7 @@ static int tidss_remove(struct platform_device *pdev)
 
 	drm_mode_config_cleanup(ddev);
 
-#ifndef CONFIG_PM_SLEEP
+#ifndef CONFIG_PM
 	/* no PM, so force disable DISPC */
 	tidss->dispc_ops->runtime_suspend(tidss->dispc);
 #endif
