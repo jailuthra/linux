@@ -1875,6 +1875,10 @@ static void dispc7_initial_config(struct dispc_device *dispc)
 	dispc7_mflag_setup(dispc);
 	dispc7_plane_init(dispc);
 	dispc7_vp_init(dispc);
+
+	/* HACK: Route J721E VP1 (of 0-3 numbering) always to DPI_0 */
+	if (dispc->has_cfg_common && dispc->feat->subrev == DSS7_J721E)
+		CFG_REG_FLD_MOD(dispc, DISPC_CONNECTIONS, 2, 3, 0);
 }
 
 static int dispc7_get_num_planes(struct dispc_device *dispc)
