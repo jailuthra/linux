@@ -24,3 +24,75 @@
 &smmu0 {
 	status = "disabled";
 };
+
+&dss {
+	power-domains = <&k3_pds 152 0>;
+
+	dss_planes: dss_planes {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/*vid1*/
+		plane@0 {
+			reg = <0>;
+			managed = <1>;
+		};
+
+		/*vidl1*/
+		plane@1 {
+			reg = <1>;
+			managed = <0>;
+		};
+
+		/*vid2*/
+		plane@2 {
+			reg = <2>;
+			managed = <1>;
+		};
+
+		/*vidl2*/
+		plane@3 {
+			reg = <3>;
+			managed = <1>;
+		};
+	};
+
+	dss_vps: dss_vps {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		vp@0 {
+			reg = <0>;
+			managed = <0>;
+		};
+
+		vp@1 {
+			reg = <1>;
+			managed = <1>;
+		};
+
+		vp@2 {
+			reg = <2>;
+			managed = <0>;
+		};
+
+		vp@3 {
+			reg = <3>;
+			managed = <0>;
+		};
+	};
+
+	dss_commons: dss_commons {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		interrupt-common {
+			reg = <0>;
+		};
+
+		config-common {
+			status = "okay";
+			reg = <0>;
+		};
+	};
+};
