@@ -76,6 +76,11 @@ struct udma_rflow {
 
 struct udma_match_data {
 	bool enable_memcpy_support;
+	bool have_acc32;
+	bool have_burst;
+	u32 statictr_z_mask;
+	u32 rchan_oes_offset;
+
 	u8 tpl_levels;
 	u32 level_start_idx[];
 };
@@ -209,6 +214,8 @@ struct udma_chan {
 	u32 src_thread;
 	u32 dst_thread;
 	u32 static_tr_type;
+	bool enable_acc32;
+	bool enable_burst;
 	enum udma_tp_level channel_tpl; /* Channel Throughput Level */
 
 	/* dmapool for packet mode descriptors */
@@ -722,9 +729,22 @@ static inline int udma_reset_chan(struct udma_chan *uc, bool hard)
 
 	/* Hard reset: re-initialize the channel to reset */
 	if (hard) {
+		struct udma_chan uc_backup = *uc;
 		int ret;
 
 		uc->ud->ddev.device_free_chan_resources(&uc->vc.chan);
+		/* restore the channel configuration */
+		uc->dir = uc_backup.dir;
+		uc->remote_thread_id = uc_backup.remote_thread_id;
+		uc->pkt_mode = uc_backup.pkt_mode;
+		uc->static_tr_type = uc_backup.static_tr_type;
+		uc->enable_acc32 = uc_backup.enable_acc32;
+		uc->enable_burst = uc_backup.enable_burst;
+		uc->channel_tpl = uc_backup.channel_tpl;
+		uc->psd_size = uc_backup.psd_size;
+		uc->metadata_size = uc_backup.metadata_size;
+		uc->hdesc_size = uc_backup.hdesc_size;
+
 		ret = uc->ud->ddev.device_alloc_chan_resources(&uc->vc.chan);
 		if (ret)
 			return ret;
@@ -762,6 +782,7 @@ static inline bool udma_chan_needs_reconfiguration(struct udma_chan *uc)
 
 static int udma_start(struct udma_chan *uc)
 {
+	const struct udma_match_data *match_data = uc->ud->match_data;
 	struct virt_dma_desc *vd = vchan_next_desc(&uc->vc);
 
 	if (!vd) {
@@ -789,13 +810,21 @@ static int udma_start(struct udma_chan *uc)
 	case DMA_DEV_TO_MEM:
 		/* Config remote TR */
 		if (uc->static_tr_type) {
+			u32 val = PDMA_STATIC_TR_Y(uc->desc->static_tr.elcnt) |
+				  PDMA_STATIC_TR_X(uc->desc->static_tr.elsize);
+
+			if (uc->enable_acc32 && match_data->have_acc32)
+				val |= PDMA_STATIC_TR_XY_ACC32;
+			if (uc->enable_burst && match_data->have_burst)
+				val |= PDMA_STATIC_TR_XY_BURST;
+
 			udma_rchanrt_write(uc->rchan,
-				UDMA_RCHAN_RT_PEER_STATIC_TR_XY_REG,
-				PDMA_STATIC_TR_Y(uc->desc->static_tr.elcnt) |
-				PDMA_STATIC_TR_X(uc->desc->static_tr.elsize));
+				UDMA_RCHAN_RT_PEER_STATIC_TR_XY_REG, val);
+
 			udma_rchanrt_write(uc->rchan,
 				UDMA_RCHAN_RT_PEER_STATIC_TR_Z_REG,
-				PDMA_STATIC_TR_Z(uc->desc->static_tr.bstcnt));
+				PDMA_STATIC_TR_Z(uc->desc->static_tr.bstcnt,
+						 match_data->statictr_z_mask));
 
 			/* save the current staticTR configuration */
 			memcpy(&uc->static_tr, &uc->desc->static_tr,
@@ -813,10 +842,16 @@ static int udma_start(struct udma_chan *uc)
 	case DMA_MEM_TO_DEV:
 		/* Config remote TR */
 		if (uc->static_tr_type) {
+			u32 val = PDMA_STATIC_TR_Y(uc->desc->static_tr.elcnt) |
+				  PDMA_STATIC_TR_X(uc->desc->static_tr.elsize);
+
+			if (uc->enable_acc32 && match_data->have_acc32)
+				val |= PDMA_STATIC_TR_XY_ACC32;
+			if (uc->enable_burst && match_data->have_burst)
+				val |= PDMA_STATIC_TR_XY_BURST;
+
 			udma_tchanrt_write(uc->tchan,
-				UDMA_TCHAN_RT_PEER_STATIC_TR_XY_REG,
-				PDMA_STATIC_TR_Y(uc->desc->static_tr.elcnt) |
-				PDMA_STATIC_TR_X(uc->desc->static_tr.elsize));
+				UDMA_TCHAN_RT_PEER_STATIC_TR_XY_REG, val);
 
 			/* save the current staticTR configuration */
 			memcpy(&uc->static_tr, &uc->desc->static_tr,
@@ -1438,6 +1473,7 @@ static int udma_alloc_chan_resources(struct dma_chan *chan)
 	struct udma_dev *ud = to_udma_dev(chan->device);
 	struct udma_tisci_rm *tisci_rm = &ud->tisci_rm;
 	const struct ti_sci_rm_udmap_ops *tisci_ops = tisci_rm->tisci_udmap_ops;
+	const struct udma_match_data *match_data = uc->ud->match_data;
 	struct udma_tchan *tchan;
 	struct udma_rchan *rchan;
 	int ret;
@@ -1730,7 +1766,8 @@ static int udma_alloc_chan_resources(struct dma_chan *chan)
 			uc->irq_ra_tisci = k3_ringacc_get_tisci_dev_id(
 								rchan->r_ring);
 			uc->irq_ra_idx = rx_ring;
-			uc->irq_udma_idx = 0x2000 + rchan->id;
+			uc->irq_udma_idx = match_data->rchan_oes_offset +
+					   rchan->id;
 		}
 	}
 
@@ -1746,8 +1783,11 @@ static int udma_alloc_chan_resources(struct dma_chan *chan)
 
 	/* PSI-L pairing */
 	ret = navss_psil_pair(ud, uc->src_thread, uc->dst_thread);
-	if (ret)
+	if (ret) {
+		dev_err(ud->dev, "PSI-L pairing failed: 0x%04x -> 0x%04x\n",
+			uc->src_thread, uc->dst_thread);
 		goto err_chan_free;
+	}
 
 	uc->psil_paired = true;
 
@@ -1825,6 +1865,15 @@ err_res_free:
 	udma_free_tx_resources(uc);
 	udma_free_rx_resources(uc);
 	uc->remote_thread_id = -1;
+	uc->dir = DMA_MEM_TO_MEM;
+	uc->pkt_mode = false;
+	uc->static_tr_type = 0;
+	uc->enable_acc32 = 0;
+	uc->enable_burst = 0;
+	uc->channel_tpl = 0;
+	uc->psd_size = 0;
+	uc->metadata_size = 0;
+	uc->hdesc_size = 0;
 
 	if (uc->use_dma_pool) {
 		dma_pool_destroy(uc->hdesc_pool);
@@ -2010,7 +2059,8 @@ static inline int udma_configure_statictr(struct udma_chan *uc,
 		else
 			d->static_tr.bstcnt = d->residue / div;
 
-		if (uc->dir == DMA_DEV_TO_MEM && d->static_tr.bstcnt > 0xfff)
+		if (uc->dir == DMA_DEV_TO_MEM &&
+		    d->static_tr.bstcnt > uc->ud->match_data->statictr_z_mask)
 			return -EINVAL;
 	} else {
 		d->static_tr.bstcnt = 0;
@@ -2909,6 +2959,14 @@ static void udma_free_chan_resources(struct dma_chan *chan)
 
 	uc->remote_thread_id = -1;
 	uc->dir = DMA_MEM_TO_MEM;
+	uc->pkt_mode = false;
+	uc->static_tr_type = 0;
+	uc->enable_acc32 = 0;
+	uc->enable_burst = 0;
+	uc->channel_tpl = 0;
+	uc->psd_size = 0;
+	uc->metadata_size = 0;
+	uc->hdesc_size = 0;
 
 	if (uc->use_dma_pool) {
 		dma_pool_destroy(uc->hdesc_pool);
@@ -2965,6 +3023,13 @@ static bool udma_dma_filter_fn(struct dma_chan *chan, void *param)
 	if (!of_property_read_u32(chconf_node, "statictr-type", &val))
 		uc->static_tr_type = val;
 
+	if (uc->static_tr_type == PSIL_STATIC_TR_XY) {
+		uc->enable_acc32 = of_property_read_bool(chconf_node,
+							 "enable-acc32");
+		uc->enable_burst = of_property_read_bool(chconf_node,
+							 "enable-burst");
+	}
+
 	if (!of_property_read_u32(chconf_node, "ti,channel-tpl", &val))
 		uc->channel_tpl = val;
 
@@ -3017,6 +3082,10 @@ static struct dma_chan *udma_of_xlate(struct of_phandle_args *dma_spec,
 
 static struct udma_match_data am654_main_data = {
 	.enable_memcpy_support = true,
+	.have_acc32 = false,
+	.have_burst = false,
+	.statictr_z_mask = GENMASK(11, 0),
+	.rchan_oes_offset = 0x2000,
 	.tpl_levels = 2,
 	.level_start_idx = {
 		[0] = 8, /* Normal channels */
@@ -3026,6 +3095,37 @@ static struct udma_match_data am654_main_data = {
 
 static struct udma_match_data am654_mcu_data = {
 	.enable_memcpy_support = false, /* MEM_TO_MEM is slow via MCU UDMA */
+	.have_acc32 = false,
+	.have_burst = false,
+	.statictr_z_mask = GENMASK(11, 0),
+	.rchan_oes_offset = 0x2000,
+	.tpl_levels = 2,
+	.level_start_idx = {
+		[0] = 2, /* Normal channels */
+		[1] = 0, /* High Throughput channels */
+	},
+};
+
+static struct udma_match_data j721e_main_data = {
+	.enable_memcpy_support = true,
+	.have_acc32 = true,
+	.have_burst = true,
+	.statictr_z_mask = GENMASK(23, 0),
+	.rchan_oes_offset = 0x400,
+	.tpl_levels = 3,
+	.level_start_idx = {
+		[0] = 16, /* Normal channels */
+		[1] = 4, /* High Throughput channels */
+		[2] = 0, /* Ultra High Throughput channels */
+	},
+};
+
+static struct udma_match_data j721e_mcu_data = {
+	.enable_memcpy_support = false, /* MEM_TO_MEM is slow via MCU UDMA */
+	.have_acc32 = true,
+	.have_burst = true,
+	.statictr_z_mask = GENMASK(23, 0),
+	.rchan_oes_offset = 0x400,
 	.tpl_levels = 2,
 	.level_start_idx = {
 		[0] = 2, /* Normal channels */
@@ -3040,6 +3140,12 @@ static const struct of_device_id udma_of_match[] = {
 	}, {
 		.compatible = "ti,am654-navss-mcu-udmap",
 		.data = &am654_mcu_data,
+	}, {
+		.compatible = "ti,j721e-navss-main-udmap",
+		.data = &j721e_main_data,
+	}, {
+		.compatible = "ti,j721e-navss-mcu-udmap",
+		.data = &j721e_mcu_data,
 	},
 	{},
 };
