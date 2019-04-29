@@ -118,7 +118,7 @@
 		dma-ranges;
 		ranges;
 
-		ti,sci-dev-id = <229>;
+		ti,sci-dev-id = <232>;
 
 		mcu_ringacc: ringacc@2b800000 {
 			compatible = "ti,am654-navss-ringacc";
