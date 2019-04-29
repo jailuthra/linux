@@ -131,3 +131,7 @@
 &mcu_udmap {
 	status = "disabled";
 };
+
+&fss {
+	status = "disabled";
+};
