@@ -182,3 +182,6 @@ EXPORT_SYMBOL(__pv_offset);
 EXPORT_SYMBOL(__arm_smccc_smc);
 EXPORT_SYMBOL(__arm_smccc_hvc);
 #endif
+
+extern char __hyp_stub_vectors[];
+EXPORT_SYMBOL(__hyp_stub_vectors);
