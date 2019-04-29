@@ -135,3 +135,7 @@
 &fss {
 	status = "disabled";
 };
+
+&ufs_wrapper {
+	status = "disabled";
+};
