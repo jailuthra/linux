@@ -78,6 +78,7 @@ int rpmsg_kdrv_register_driver(struct rpmsg_kdrv_driver *drv)
 
 	return ret;
 }
+EXPORT_SYMBOL(rpmsg_kdrv_register_driver);
 
 static void rpmsg_kdrv_driver_handle_data(struct rpmsg_device *rpdev, void *data, int len, void *private, u32 src)
 {
@@ -462,6 +463,7 @@ dev_hdr_fail:
 	devm_kfree(&rpdev->dev, ctx);
 	return ret;
 }
+EXPORT_SYMBOL(rpmsg_kdrv_send_request_with_response);
 
 /*
  * rpmsg_kdrv_send_message

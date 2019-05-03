@@ -24,6 +24,7 @@ config DRM_TIDSS_DSS6
 config DRM_TIDSS_DSS7
 	bool "DSS7 support"
 	default y
+	select RPMSG_KDRV_DISPLAY
 	help
 	  Support for DSS7 IP on AM6 SoC
 
