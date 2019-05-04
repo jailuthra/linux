@@ -1254,4 +1254,14 @@
 			dma-coherent;
 		};
 	};
+
+	main_intr: interrupt-controller0 {
+		compatible = "ti,sci-intr";
+		interrupt-controller;
+		interrupt-parent = <&gic500>;
+		#interrupt-cells = <3>;
+		ti,sci = <&dmsc>;
+		ti,sci-dst-id = <14>;
+		ti,sci-rm-range-girq = <0x1>;
+	};
 };
