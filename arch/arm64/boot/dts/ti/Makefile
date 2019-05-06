@@ -20,6 +20,7 @@ dtb-$(CONFIG_ARCH_K3_AM6_SOC) += k3-am654-base-board.dtb \
 	k3-am654-idk.dtbo
 
 dtb-$(CONFIG_ARCH_K3_J721E_SOC) += k3-j721e-common-proc-board.dtb \
+				   k3-j721e-common-proc-board-jailhouse.dtbo \
 				   k3-j721e-vlab.dtb \
 				   k3-j721e-zebu.dtb \
 				   k3-j721e-vlab-jailhouse.dtbo \
