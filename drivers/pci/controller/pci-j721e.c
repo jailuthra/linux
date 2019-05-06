@@ -22,13 +22,11 @@
 #define STATUS_REG_SYS_0	0x500
 #define INTx_EN(num)		(1 << (num))
 
-#define J721E_DEFMAP			0x200
-#define J721E_BDF_MODE			BIT(19)
 #define J721E_TRANS_CTRL(a)		((a) * 0xc)
 #define J721E_TRANS_REQ_ID(a)		(((a) * 0xc) + 0x4)
 #define J721E_TRANS_VIRT_ID(a)		(((a) * 0xc) + 0x8)
 
-#define J721E_REQID_MASK			0xfff
+#define J721E_REQID_MASK			0xffff
 #define J721E_REQID_SHIFT		16
 
 #define J721E_EN				BIT(0)
@@ -107,7 +105,7 @@ static void j721e_pcie_quirk(struct pci_dev *pci_dev)
 	bus = pci_dev->bus;
 	index = pcie->vmap_lp_index;
 
-	if (pcie->enable_smmu)
+	if (!pcie->enable_smmu)
 		return;
 
 	if (index >= 32)
@@ -231,7 +229,6 @@ static int j721e_pcie_probe(struct platform_device *pdev)
 	struct resource *res;
 	void __iomem *base;
 	u32 mode;
-	u32 reg;
 	int ret;
 
 	pcie = devm_kzalloc(dev, sizeof(*pcie), GFP_KERNEL);
@@ -281,13 +278,6 @@ static int j721e_pcie_probe(struct platform_device *pdev)
 			goto err_get_sync;
 		pcie->vmap_lp_base = base;
 
-		if (of_property_read_bool(node, "iommu-map")) {
-			pcie->enable_smmu = true;
-			reg = j721e_pcie_vmap_readl(pcie, J721E_DEFMAP);
-			reg |= J721E_BDF_MODE;
-			j721e_pcie_vmap_writel(pcie, J721E_DEFMAP, reg);
-		}
-
 		ret = j721e_pcie_config_legacy_irq(pcie);
 		if (ret < 0)
 			goto err_get_sync;
@@ -297,6 +287,9 @@ static int j721e_pcie_probe(struct platform_device *pdev)
 			dev_WARN(dev, "pcie-rc node is absent\n");
 			goto err_get_sync;
 		}
+
+		if (of_property_read_bool(child_node, "iommu-map"))
+			pcie->enable_smmu = true;
 
 		platform_dev = of_platform_device_create(child_node, NULL, dev);
 		if (!platform_dev) {
