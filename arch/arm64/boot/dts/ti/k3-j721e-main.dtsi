@@ -85,6 +85,7 @@
 			device-id = /bits/ 16 <0x0200>;
 			msi-map = <0x0 &gic_its 0x0 0x10000>;
 			iommu-map = <0x0 &smmu0 0x0 0x1000>;
+			dma-coherent;
 			ranges = <0x01000000 0x0 0x10001000  0x00 0x10001000  0x0 0x0010000>,
 				 <0x02000000 0x0 0x10011000  0x00 0x10011000  0x0 0x7fef000>;
 		};
@@ -96,6 +97,7 @@
 			reg-names = "reg", "mem";
 			cdns,max-outbound-regions = <16>;
 			max-functions = /bits/ 8 <2>;
+			dma-coherent;
 		};
 
 		pcie0_intc: legacy-interrupt-controller {
@@ -143,6 +145,7 @@
 			reg-names = "reg", "cfg", "mem";
 			msi-map = <0x0 &gic_its 0x10000 0x10000>;
 			iommu-map = <0x0 &smmu0 0x04000 0x1000>;
+			dma-coherent;
 			ranges = <0x01000000 0x0 0x18001000  0x00 0x18001000  0x0 0x0010000>,
 				 <0x02000000 0x0 0x18011000  0x00 0x18011000  0x0 0x7fef000>;
 		};
@@ -154,6 +157,7 @@
 			reg-names = "reg", "mem";
 			cdns,max-outbound-regions = <16>;
 			max-functions = /bits/ 8 <2>;
+			dma-coherent;
 		};
 
 		pcie1_intc: legacy-interrupt-controller {
