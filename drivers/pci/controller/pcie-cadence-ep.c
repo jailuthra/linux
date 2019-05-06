@@ -22,6 +22,7 @@
 /**
  * struct cdns_pcie_ep - private data for this PCIe endpoint controller driver
  * @pcie: Cadence PCIe controller
+ * @dev: pointer to PCIe EP device
  * @max_regions: maximum number of regions supported by hardware
  * @ob_region_map: bitmask of mapped outbound regions
  * @ob_addr: base addresses in the AXI bus where the outbound regions start
@@ -38,6 +39,7 @@
  */
 struct cdns_pcie_ep {
 	struct cdns_pcie		pcie;
+	struct device			*dev;
 	u32				max_regions;
 	unsigned long			ob_region_map;
 	phys_addr_t			*ob_addr;
@@ -603,6 +605,7 @@ static int cdns_pcie_ep_start(struct pci_epc *epc)
 	struct cdns_pcie_ep *ep = epc_get_drvdata(epc);
 	struct cdns_pcie *pcie = &ep->pcie;
 	struct pci_epf *epf;
+	int ret = 0;
 	u32 cfg;
 
 	/*
@@ -614,7 +617,11 @@ static int cdns_pcie_ep_start(struct pci_epc *epc)
 		cfg |= BIT(epf->func_no);
 	cdns_pcie_writel(pcie, CDNS_PCIE_LM_EP_FUNC_CFG, cfg);
 
-	return 0;
+	ret = cdns_pcie_start_link(pcie, true);
+	if (ret)
+		dev_err(ep->dev, "Failed to start link\n");
+
+	return ret;
 }
 
 static const struct pci_epc_features cdns_pcie_epc_features = {
@@ -688,6 +695,8 @@ static int cdns_pcie_ep_probe(struct platform_device *pdev)
 	ep = devm_kzalloc(dev, sizeof(*ep), GFP_KERNEL);
 	if (!ep)
 		return -ENOMEM;
+
+	ep->dev = dev;
 
 	pcie = &ep->pcie;
 	pcie->is_rc = false;
