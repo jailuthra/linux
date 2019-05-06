@@ -16,6 +16,20 @@
 #include <linux/pci.h>
 #include <linux/pm_runtime.h>
 
+#include "pcie-cadence.h"
+
+#define J721E_PCIE_USER_CMD_STATUS	0x4
+#define LINK_TRAINING_ENABLE		BIT(0)
+
+#define J721E_PCIE_USER_LINKSTATUS	0x14
+#define LINK_STATUS			GENMASK(1, 0)
+enum link_status {
+	NO_RECIEVERS_DETECTED,
+	LINK_TRAINING_IN_PROGRESS,
+	LINK_UP_DL_IN_PROGRESS,
+	LINK_UP_DL_COMPLETED,
+};
+
 #define EOI_REG			0x10
 
 #define ENABLE_REG_SYS_0	0x100
@@ -39,9 +53,12 @@ enum j721e_atype {
 	TRANS_ADDR,
 };
 
+#define to_j721e_pcie(x) container_of((x), struct j721e_pcie, plat_data)
+
 struct j721e_pcie {
 	struct device		*dev;
 	struct device_node	*node;
+	struct cdns_pcie_plat_data plat_data;
 	void __iomem		*intd_cfg_base;
 	void __iomem		*user_cfg_base;
 	void __iomem		*vmap_lp_base;
@@ -212,6 +229,34 @@ static int j721e_pcie_config_legacy_irq(struct j721e_pcie *pcie)
 	return 0;
 }
 
+int j721e_pcie_start_link(struct cdns_pcie_plat_data *data, bool start)
+{
+	struct j721e_pcie *pcie = to_j721e_pcie(data);
+	u32 reg;
+
+	reg = j721e_pcie_user_readl(pcie, J721E_PCIE_USER_CMD_STATUS);
+	if (start)
+		reg |= LINK_TRAINING_ENABLE;
+	else
+		reg &= ~LINK_TRAINING_ENABLE;
+	j721e_pcie_user_writel(pcie, J721E_PCIE_USER_CMD_STATUS, reg);
+
+	return 0;
+}
+
+bool j721e_pcie_is_link_up(struct cdns_pcie_plat_data *data)
+{
+	struct j721e_pcie *pcie = to_j721e_pcie(data);
+	u32 reg;
+
+	reg = j721e_pcie_user_readl(pcie, J721E_PCIE_USER_LINKSTATUS);
+	reg &= LINK_STATUS;
+	if (reg == J721E_PCIE_USER_LINKSTATUS)
+		return true;
+
+	return false;
+}
+
 static const struct of_device_id of_j721e_pcie_match[] = {
 	{
 		.compatible = "ti,k3-j721e-pcie",
@@ -223,6 +268,7 @@ static int j721e_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node;
+	struct cdns_pcie_plat_data *plat_data;
 	struct platform_device *platform_dev;
 	struct device_node *child_node;
 	struct j721e_pcie *pcie;
@@ -237,6 +283,7 @@ static int j721e_pcie_probe(struct platform_device *pdev)
 
 	pcie->dev = dev;
 	pcie->node = node;
+	plat_data = &pcie->plat_data;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "intd_cfg");
 	base = devm_ioremap_resource(dev, res);
@@ -249,6 +296,9 @@ static int j721e_pcie_probe(struct platform_device *pdev)
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 	pcie->user_cfg_base = base;
+
+	plat_data->start_link = j721e_pcie_start_link;
+	plat_data->is_link_up = j721e_pcie_is_link_up;
 
 	ret = of_property_read_u32(node, "pci-mode", &mode);
 	if (ret < 0) {
@@ -291,7 +341,8 @@ static int j721e_pcie_probe(struct platform_device *pdev)
 		if (of_property_read_bool(child_node, "iommu-map"))
 			pcie->enable_smmu = true;
 
-		platform_dev = of_platform_device_create(child_node, NULL, dev);
+		platform_dev = of_platform_device_create_pdata(child_node, NULL,
+							       plat_data, dev);
 		if (!platform_dev) {
 			ret = -ENODEV;
 			dev_err(dev, "Failed to create Cadence RC device\n");
@@ -311,7 +362,8 @@ static int j721e_pcie_probe(struct platform_device *pdev)
 			goto err_get_sync;
 		}
 
-		platform_dev = of_platform_device_create(child_node, NULL, dev);
+		platform_dev = of_platform_device_create_pdata(child_node, NULL,
+							       plat_data, dev);
 		if (!platform_dev) {
 			ret = -ENODEV;
 			dev_err(dev, "Failed to create Cadence EP device\n");
