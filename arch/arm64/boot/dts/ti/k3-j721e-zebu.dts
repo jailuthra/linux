@@ -139,3 +139,43 @@
 &ufs_wrapper {
 	status = "disabled";
 };
+
+&wkup_gpio0 {
+	status = "disabled";
+};
+
+&wkup_gpio1 {
+	status = "disabled";
+};
+
+&main_gpio0 {
+	status = "disabled";
+};
+
+&main_gpio1 {
+	status = "disabled";
+};
+
+&main_gpio2 {
+	status = "disabled";
+};
+
+&main_gpio3 {
+	status = "disabled";
+};
+
+&main_gpio4 {
+	status = "disabled";
+};
+
+&main_gpio5 {
+	status = "disabled";
+};
+
+&main_gpio6 {
+	status = "disabled";
+};
+
+&main_gpio7 {
+	status = "disabled";
+};
