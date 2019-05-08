@@ -6,6 +6,7 @@
 #include <linux/delay.h>
 #include <linux/kernel.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/pci-epc.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
@@ -21,6 +22,7 @@
 /**
  * struct cdns_pcie_ep - private data for this PCIe endpoint controller driver
  * @pcie: Cadence PCIe controller
+ * @dev: pointer to PCIe EP device
  * @max_regions: maximum number of regions supported by hardware
  * @ob_region_map: bitmask of mapped outbound regions
  * @ob_addr: base addresses in the AXI bus where the outbound regions start
@@ -37,6 +39,7 @@
  */
 struct cdns_pcie_ep {
 	struct cdns_pcie		pcie;
+	struct device			*dev;
 	u32				max_regions;
 	unsigned long			ob_region_map;
 	phys_addr_t			*ob_addr;
@@ -602,6 +605,7 @@ static int cdns_pcie_ep_start(struct pci_epc *epc)
 	struct cdns_pcie_ep *ep = epc_get_drvdata(epc);
 	struct cdns_pcie *pcie = &ep->pcie;
 	struct pci_epf *epf;
+	int ret = 0;
 	u32 cfg;
 
 	/*
@@ -613,13 +617,18 @@ static int cdns_pcie_ep_start(struct pci_epc *epc)
 		cfg |= BIT(epf->func_no);
 	cdns_pcie_writel(pcie, CDNS_PCIE_LM_EP_FUNC_CFG, cfg);
 
-	return 0;
+	ret = cdns_pcie_start_link(pcie, true);
+	if (ret)
+		dev_err(ep->dev, "Failed to start link\n");
+
+	return ret;
 }
 
 static const struct pci_epc_features cdns_pcie_epc_features = {
 	.linkup_notifier = false,
 	.msi_capable = true,
 	.msix_capable = true,
+	.align = 256,
 };
 
 static const struct pci_epc_features cdns_pcie_epc_vf_features = {
@@ -653,9 +662,17 @@ static const struct pci_epc_ops cdns_pcie_epc_ops = {
 	.get_features	= cdns_pcie_ep_get_features,
 };
 
-static const struct of_device_id cdns_pcie_ep_of_match[] = {
-	{ .compatible = "cdns,cdns-pcie-ep" },
+static struct cdns_pcie_ep_data cdns_ti_pcie_ep_data = {
+	.read = cdns_pcie_read32,
+	.write = cdns_pcie_write32,
+};
 
+static const struct of_device_id cdns_pcie_ep_of_match[] = {
+	{ .compatible = "cdns,cdns-pcie-ep",
+	},
+	{ .compatible = "cdns,ti,cdns-pcie-ep",
+	  .data = &cdns_ti_pcie_ep_data,
+	},
 	{ },
 };
 
@@ -663,6 +680,8 @@ static int cdns_pcie_ep_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
+	const struct cdns_pcie_ep_data *data;
+	const struct of_device_id *match;
 	struct cdns_pcie_ep *ep;
 	struct cdns_pcie *pcie;
 	struct pci_epc *epc;
@@ -670,12 +689,26 @@ static int cdns_pcie_ep_probe(struct platform_device *pdev)
 	int ret;
 	int phy_count;
 
+	match = of_match_device(of_match_ptr(cdns_pcie_ep_of_match), dev);
+	if (!match)
+		return -EINVAL;
+
 	ep = devm_kzalloc(dev, sizeof(*ep), GFP_KERNEL);
 	if (!ep)
 		return -ENOMEM;
 
+	ep->dev = dev;
+
 	pcie = &ep->pcie;
 	pcie->is_rc = false;
+
+	data = (struct cdns_pcie_ep_data *)match->data;
+	if (data) {
+		if (data->read)
+			pcie->read = data->read;
+		if (data->write)
+			pcie->write = data->write;
+	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "reg");
 	pcie->reg_base = devm_ioremap_resource(dev, res);
