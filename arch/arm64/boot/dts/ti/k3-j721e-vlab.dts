@@ -241,6 +241,10 @@
 	status = "disabled";
 };
 
+&hbmc {
+	status = "disabled";
+};
+
 #include "k3-dss-640x480-port0-dpi.dtsi"
 #include "k3-dss-640x480-port1-dpi.dtsi"
 
