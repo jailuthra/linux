@@ -1,0 +1,6 @@
+# Release Defconfigs
+classification: SDK_Release_Defconfigs type: ti_sdk_presil_arm64_release defconfig: defconfig config_file: None extra_configs: arm64_prune.cfg presil_prune.cfg v8_baseport.cfg presil_baseport.cfg v8_ipc.cfg presil_ipc.cfg audio_display.cfg connectivity.cfg presil_audio_display.cfg multimedia.cfg presil_connectivity.cfg k3_soc.cfg systemd.cfg
+classification: SDK_Release_Defconfigs type: ti_sdk_presil_mini_arm64_release defconfig: defconfig config_file: None extra_configs: arm64_prune.cfg presil_prune.cfg v8_baseport.cfg presil_baseport.cfg v8_ipc.cfg presil_ipc.cfg connectivity.cfg presil_connectivity.cfg k3_soc.cfg presil_mini_prune.cfg
+# Debug Defconfigs
+classification: SDK_Debug_Defconfigs type: ti_sdk_presil_arm64_debug defconfig: defconfig config_file: None extra_configs: arm64_prune.cfg presil_prune.cfg v8_baseport.cfg presil_baseport.cfg v8_ipc.cfg presil_ipc.cfg audio_display.cfg connectivity.cfg presil_audio_display.cfg multimedia.cfg presil_connectivity.cfg k3_soc.cfg systemd.cfg debug_options.cfg
+classification: SDK_Debug_Defconfigs type: ti_sdk_presil_mini_arm64_debug defconfig: defconfig config_file: None extra_configs: arm64_prune.cfg presil_prune.cfg v8_baseport.cfg presil_baseport.cfg v8_ipc.cfg presil_ipc.cfg connectivity.cfg presil_connectivity.cfg k3_soc.cfg presil_mini_prune.cfg debug_options.cfg
