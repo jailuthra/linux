@@ -34,9 +34,3 @@
 		};
 	};
 };
-
-&main_uart0 {
-	/* Wakeup UART is used by System firmware */
-	u-boot,dm-spl;
-	status = "okay";
-};
