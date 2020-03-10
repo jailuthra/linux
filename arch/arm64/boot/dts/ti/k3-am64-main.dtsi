@@ -5,20 +5,6 @@
  * Copyright (C) 2019 Texas Instruments Incorporated - http://www.ti.com/
  */
 
-/ {
-	clk1: dummy1 {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <25000000>;
-	};
-
-	clk2: dummy2 {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <25000000>;
-	};
-};
-
 &cbass_main {
 	gic500: interrupt-controller@1800000 {
 		compatible = "arm,gic-v3";
@@ -44,5 +30,66 @@
 		interrupts = <GIC_SPI 178 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
 		current-speed = <115200>;
+	};
+
+	dmsc: dmsc {
+		compatible = "ti,k2g-sci";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ti,host-id = <12>;
+		ranges;
+
+		mbox-names = "rx", "tx";
+
+		mboxes= <&secure_proxy_main 12>,
+			<&secure_proxy_main 13>;
+
+		k3_pds: power-controller {
+			compatible = "ti,sci-pm-domain";
+			#power-domain-cells = <2>;
+		};
+
+		k3_clks: clocks {
+			compatible = "ti,k2g-sci-clk";
+			#clock-cells = <2>;
+		};
+
+		k3_reset: reset-controller {
+			compatible = "ti,sci-reset";
+			#reset-cells = <2>;
+		};
+	};
+
+	main_dmass {
+		compatible = "simple-mfd";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		dma-coherent;
+		dma-ranges;
+		ranges;
+
+		secure_proxy_main: mailbox@4d000000 {
+			compatible = "ti,am654-secure-proxy";
+			#mbox-cells = <1>;
+			reg-names = "target_data", "rt", "scfg";
+			reg = <0x00 0x4d000000 0x00 0x80000>,
+			      <0x00 0x4a600000 0x00 0x80000>,
+			      <0x00 0x4a400000 0x00 0x80000>;
+			interrupt-names = "rx_012";
+			interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		inta_main_udmass: interrupt-controller@48000000 {
+			compatible = "ti,sci-inta";
+			reg = <0x0 0x48000000 0x0 0x100000>;
+			interrupt-controller;
+			interrupt-parent = <&gic500>;
+			msi-controller;
+			ti,sci = <&dmsc>;
+			ti,sci-dev-id = <28>;
+			ti,sci-rm-range-vint = <0xf>;
+			ti,sci-rm-range-global-event = <0xd>;
+			interrupt-ranges = <4 68 36>;
+		};
 	};
 };
