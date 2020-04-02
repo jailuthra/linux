@@ -85,4 +85,10 @@
 			interrupt-ranges = <4 68 36>;
 		};
 	};
+
+	hwspinlock: spinlock@2a000000 {
+		compatible = "ti,am654-hwspinlock";
+		reg = <0x00 0x2a000000 0x00 0x1000>;
+		#hwlock-cells = <1>;
+	};
 };
