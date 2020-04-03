@@ -22,6 +22,25 @@
 		reg = <0x00000000 0x80000000 0x00000000 0x20000000>;
 
 	};
+
+	mbox_test {
+		compatible = "ti,omap-mbox-test";
+		mboxes = <&mailbox0_cluster2 &mbox_loop2_0>,
+			 <&mailbox0_cluster2 &mbox_loop2_1>,
+			 <&mailbox0_cluster3 &mbox_loop3_0>,
+			 <&mailbox0_cluster3 &mbox_loop3_1>,
+			 <&mailbox0_cluster4 &mbox_loop4_0>,
+			 <&mailbox0_cluster4 &mbox_loop4_1>,
+			 <&mailbox0_cluster5 &mbox_loop5_0>,
+			 <&mailbox0_cluster5 &mbox_loop5_1>,
+			 <&mailbox0_cluster6 &mbox_loop6>,
+			 <&mailbox0_cluster7 &mbox_loop7>;
+		mbox-names = "mbox-loop2-0", "mbox-loop2-1",
+			     "mbox-loop3-0", "mbox-loop3-1",
+			     "mbox-loop4-0", "mbox-loop4-1",
+			     "mbox-loop5-0", "mbox-loop5-1",
+			     "mbox-loop6", "mbox-loop7";
+	};
 };
 &main_uart0 {
 	clock-frequency = <3686400>;
