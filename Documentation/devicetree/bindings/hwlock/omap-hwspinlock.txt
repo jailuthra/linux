@@ -6,7 +6,7 @@ Required properties:
 			  "ti,omap4-hwspinlock" for
 				OMAP44xx, OMAP54xx, AM33xx, AM43xx, DRA7xx SoCs
 			  "ti,am654-hwspinlock" for
-				K3 AM65x and J721E SoCs
+				K3 AM65x, J721E and AM64x SoCs
 - reg:			Contains the hwspinlock module register address space
 			(base address and length)
 - ti,hwmods:		Name of the hwmod associated with the hwspinlock device
@@ -37,5 +37,14 @@ hwspinlock: spinlock@4a0f6000 {
 			reg = <0x00 0x30e00000 0x00 0x1000>;
 			#hwlock-cells = <1>;
 		};
+	};
+};
+
+3. AM64x SoCs
+&cbass_main {
+	hwspinlock: spinlock@2a000000 {
+		compatible = "ti,am654-hwspinlock";
+		reg = <0x00 0x2a000000 0x00 0x1000>;
+		#hwlock-cells = <1>;
 	};
 };
