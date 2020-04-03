@@ -34,13 +34,8 @@
 
 	dmsc: dmsc {
 		compatible = "ti,k2g-sci";
-		#address-cells = <1>;
-		#size-cells = <1>;
 		ti,host-id = <12>;
-		ranges;
-
 		mbox-names = "rx", "tx";
-
 		mboxes= <&secure_proxy_main 12>,
 			<&secure_proxy_main 13>;
 
