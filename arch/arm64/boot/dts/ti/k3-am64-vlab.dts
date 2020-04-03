@@ -8,7 +8,7 @@
 #include "k3-am64x.dtsi"
 
 / {
-	compatible =  "ti,am64-vlab", "ti,am64x";
+	compatible =  "ti,am64-vlab", "ti,am64";
 	model = "Texas Instruments AM64 VLAB";
 
 	chosen {
