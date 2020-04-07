@@ -82,8 +82,6 @@
 			msi-controller;
 			ti,sci = <&dmsc>;
 			ti,sci-dev-id = <28>;
-			ti,sci-rm-range-vint = <0xf>;
-			ti,sci-rm-range-global-event = <0xd>;
 			interrupt-ranges = <4 68 36>;
 		};
 	};
