@@ -196,20 +196,14 @@ static struct ti_sci_inta_vint_desc *ti_sci_inta_alloc_parent_irq(struct irq_dom
 		goto free_vint_desc;
 	}
 
-	if (parent_fwspec.param_count == 2) {
-		/* Parent is Interrupt Router */
-		parent_fwspec.param[0] = inta->pdev->id;
-		parent_fwspec.param[1] = vint_desc->vint_id;
-	} else if (parent_fwspec.param_count == 3) {
+	if (of_device_is_compatible(parent_node, "arm,gic-v3")) {
 		/* Parent is GIC */
 		parent_fwspec.param[0] = 0;
 		parent_fwspec.param[1] = p_hwirq - 32;
 		parent_fwspec.param[2] = IRQ_TYPE_LEVEL_HIGH;
 	} else {
-		/* Invalid parent */
-		dev_err(&inta->pdev->dev, "Unknown IRQ parent to INTA\n");
-		ret = -EINVAL;
-		goto free_vint_desc;
+		/* Parent is Interrupt Router */
+		parent_fwspec.param[0] = p_hwirq;
 	}
 
 	parent_virq = irq_create_fwspec_mapping(&parent_fwspec);
