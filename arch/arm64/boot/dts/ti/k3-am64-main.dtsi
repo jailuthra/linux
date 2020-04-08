@@ -34,13 +34,8 @@
 
 	dmsc: dmsc {
 		compatible = "ti,k2g-sci";
-		#address-cells = <1>;
-		#size-cells = <1>;
 		ti,host-id = <12>;
-		ranges;
-
 		mbox-names = "rx", "tx";
-
 		mboxes= <&secure_proxy_main 12>,
 			<&secure_proxy_main 13>;
 
@@ -87,8 +82,6 @@
 			msi-controller;
 			ti,sci = <&dmsc>;
 			ti,sci-dev-id = <28>;
-			ti,sci-rm-range-vint = <0xf>;
-			ti,sci-rm-range-global-event = <0xd>;
 			interrupt-ranges = <4 68 36>;
 		};
 	};
