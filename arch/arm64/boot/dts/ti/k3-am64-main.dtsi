@@ -82,7 +82,7 @@
 			msi-controller;
 			ti,sci = <&dmsc>;
 			ti,sci-dev-id = <28>;
-			interrupt-ranges = <4 68 36>;
+			ti,interrupt-ranges = <4 68 36>;
 		};
 	};
 
