@@ -23,6 +23,7 @@
 #define MMAL_PARAMETERS_H
 
 #include <linux/math.h>
+#include <uapi/linux/bcm2835-isp.h>
 
 /** Common parameter ID group, used with many types of component. */
 #define MMAL_PARAMETER_GROUP_COMMON		(0 << 16)
@@ -279,8 +280,14 @@ enum mmal_parameter_camera_type {
 	MMAL_PARAMETER_DPC,
 		/**< Tales a @ref MMAP_PARAMETER_GAMMA_T */
 	MMAL_PARAMETER_GAMMA,
+
+	/* 0x60 */
 		/**< Takes a @ref MMAL_PARAMETER_CDN_T */
 	MMAL_PARAMETER_CDN,
+		/**< Takes a @ref MMAL_PARAMETER_BOOLEAN_T */
+	MMAL_PARAMETER_JPEG_IJG_SCALING,
+		/**< Takes a @ref MMAL_PARAMETER_ISP_SETTINGS_T */
+	MMAL_PARAMETER_ISP_SETTINGS,
 };
 
 enum mmal_parameter_camera_config_timestamp_mode {
@@ -819,20 +826,110 @@ enum mmal_parameter_ls_gain_format_type {
 	MMAL_PARAMETER_LS_GAIN_FORMAT_TYPE_DUMMY  = 0x7FFFFFFF
 };
 
-struct mmal_parameter_lens_shading_v2 {
-	u32 enabled;
-	u32 grid_cell_size;
-	u32 grid_width;
-	u32 grid_stride;
-	u32 grid_height;
-	u32 mem_handle_table;
-	u32 ref_transform;
-	u32 corner_sampled;
-	enum mmal_parameter_ls_gain_format_type gain_format;
-};
-
 struct mmal_parameter_crop {
 	struct vchiq_mmal_rect rect;
+};
+
+struct mmal_parameter_isp_parameters {
+	struct {
+		/* Black level */
+		u32 update;
+		u32 enable;
+		u16 black_level_r;
+		u16 black_level_g;
+		u16 black_level_b;
+		u8 padding[2];
+	} black_level;
+
+	struct {
+		/* GEQ */
+		u32 update;
+		u32 enable;
+		u32 offset;
+		struct bcm2835_isp_rational slope;
+		u8 padding[4];
+	} green_eq;
+
+	struct {
+		/* Gamma */
+		u32 update;
+		u32 enable;
+		u16 X[BCM2835_NUM_GAMMA_PTS];
+		u16 Y[BCM2835_NUM_GAMMA_PTS];
+	} gamma;
+
+	struct {
+		/* Denoise */
+		u32 update;
+		u32 enable;
+		u32 constant;
+		struct bcm2835_isp_rational slope;
+		struct bcm2835_isp_rational strength;
+		u8 padding[4];
+	} denoise;
+
+	struct {
+		/* Sharpen */
+		u32 update;
+		u32 enable;
+		struct bcm2835_isp_rational threshold;
+		struct bcm2835_isp_rational strength;
+		struct bcm2835_isp_rational limit;
+	} sharpen;
+
+	struct {
+		/* Defective Pixel Correction */
+		u32 update;
+		u32 enable;
+		u32 strength;
+		u8 padding[4];
+	} dpc;
+
+	struct {
+		/* Colour denoise */
+		u32 update;
+		u32 enable;
+		u32 mode;
+		u8 padding[4];
+	} colour_denoise;
+
+	struct {
+		/* CCM */
+		u32 update;
+		u32 enable;
+		struct bcm2835_isp_ccm ccm;
+		u8 padding[4];
+	} ccm;
+
+	struct {
+		/* Lens shading */
+		u32 update;
+		u32 enabled;
+		u32 grid_cell_size;
+		u32 grid_width;
+		u32 grid_stride;
+		u32 grid_height;
+		u32 mem_handle_table;
+		u32 ref_transform;
+		u32 corner_sampled;
+		enum mmal_parameter_ls_gain_format_type gain_format;
+		u8 padding[4];
+	} lens_shading;
+
+	struct {
+		/* AWB Gains */
+		u32 update;
+		struct bcm2835_isp_rational r_gain;
+		struct bcm2835_isp_rational b_gain;
+		u8 padding[4];
+	} awb_gains;
+
+	struct {
+		/* Digital Gain */
+		u32 update;
+		struct bcm2835_isp_rational value;
+		u8 padding[4];
+	} digital_gain;
 };
 
 #endif
