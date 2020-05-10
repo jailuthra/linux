@@ -34,6 +34,12 @@
 		};
 	};
 
+	clk_200mhz: dummy_clock_200mhz {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <200000000>;
+	};
+
 	mbox_test {
 		compatible = "ti,omap-mbox-test";
 		mboxes = <&mailbox0_cluster2 &mbox_loop2_0>,
@@ -139,4 +145,18 @@
 		ti,mbox-rx = <15 0 2>;
 		ti,mbox-tx = <15 0 2>;
 	};
+};
+
+&sdhci0 {
+	clocks = <&clk_200mhz>;
+	clock-names = "clk_xin";
+	ti,driver-strength-ohm = <50>;
+	disable-wp;
+};
+
+&sdhci1 {
+	clocks = <&clk_200mhz>;
+	clock-names = "clk_xin";
+	ti,driver-strength-ohm = <50>;
+	disable-wp;
 };
