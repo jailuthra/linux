@@ -78,6 +78,7 @@ struct am65_cpsw_rx_chn {
 
 struct am65_cpsw_pdata {
 	u32	quirks;
+	unsigned nu_switch_ale:1;
 };
 
 struct am65_cpsw_common {

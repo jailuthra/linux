@@ -2098,15 +2098,23 @@ static const struct soc_device_attribute am65_cpsw_socinfo[] = {
 
 static const struct am65_cpsw_pdata am65x_sr1_0 = {
 	.quirks = AM65_CPSW_QUIRK_I2027_NO_TX_CSUM,
+	.nu_switch_ale = true,
 };
 
 static const struct am65_cpsw_pdata j721e_pdata = {
 	.quirks = 0,
+	.nu_switch_ale = true,
+};
+
+static const struct am65_cpsw_pdata j721e_cpswxg_pdata = {
+	.quirks = 0,
+	.nu_switch_ale = false,
 };
 
 static const struct of_device_id am65_cpsw_nuss_of_mtable[] = {
 	{ .compatible = "ti,am654-cpsw-nuss", .data = &am65x_sr1_0},
 	{ .compatible = "ti,j721e-cpsw-nuss", .data = &j721e_pdata},
+	{ .compatible = "ti,j721e-main-cpsw-nuss", .data = &j721e_cpswxg_pdata},
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, am65_cpsw_nuss_of_mtable);
@@ -2236,7 +2244,10 @@ static int am65_cpsw_nuss_probe(struct platform_device *pdev)
 	ale_params.ale_entries = 0;
 	ale_params.ale_ports = common->port_num + 1;
 	ale_params.ale_regs = common->cpsw_base + AM65_CPSW_NU_ALE_BASE;
-	ale_params.nu_switch_ale = true;
+	if (common->pdata.nu_switch_ale)
+		ale_params.nu_switch_ale = true;
+	else
+		ale_params.k3_cpswxg_switch_ale = true;
 
 	common->ale = cpsw_ale_create(&ale_params);
 	if (!common->ale) {
