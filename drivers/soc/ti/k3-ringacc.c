@@ -11,6 +11,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/sys_soc.h>
+#include <linux/dma/ti-cppi5.h>
 #include <linux/soc/ti/k3-ringacc.h>
 #include <linux/soc/ti/ti_sci_protocol.h>
 #include <linux/soc/ti/ti_sci_inta_msi.h>
@@ -21,6 +22,7 @@ static LIST_HEAD(k3_ringacc_list);
 static DEFINE_MUTEX(k3_ringacc_list_lock);
 
 #define K3_RINGACC_CFG_RING_SIZE_ELCNT_MASK		GENMASK(19, 0)
+#define KSLC_RING_CFG_RING_SIZE_ELCNT_MASK		GENMASK(15, 0)
 
 /**
  * struct k3_ring_rt_regs - The RA realtime Control/Status Registers region
@@ -43,7 +45,13 @@ struct k3_ring_rt_regs {
 	u32	hwindx;
 };
 
-#define K3_RINGACC_RT_REGS_STEP	0x1000
+#define K3_RINGACC_RT_REGS_STEP			0x1000
+#define KSLC_RING_RT_REGS_STEP			0x2000
+#define KSLC_RING_RT_REGS_REVERSE_OFS		0x1000
+#define K3_RINGACC_RT_OCC_MASK			GENMASK(20, 0)
+#define KSLC_RING_RT_OCC_TDOWN_COMPLETE		BIT(31)
+#define KSLC_RING_RT_DB_TDOWN_ACK		BIT(31)
+
 
 /**
  * struct k3_ring_fifo_regs - The Ring Accelerator Queues Registers region
@@ -122,6 +130,7 @@ struct k3_ring_state {
 	u32 occ;
 	u32 windex;
 	u32 rindex;
+	u32 tdown_complete:1;
 };
 
 /**
@@ -155,6 +164,7 @@ struct k3_ring {
 	u32		flags;
 #define K3_RING_FLAG_BUSY	BIT(1)
 #define K3_RING_FLAG_SHARED	BIT(2)
+#define K3_RING_FLAG_REVERSE	BIT(3)
 	struct k3_ring_state state;
 	u32		ring_id;
 	struct k3_ringacc	*parent;
@@ -185,6 +195,7 @@ struct k3_ringacc_ops {
  * @tisci_ring_ops: ti-sci rings ops
  * @tisci_dev_id: ti-sci device id
  * @ops: SoC specific ringacc operation
+ * @dual_ring: indicate KSLC dual ring support
  */
 struct k3_ringacc {
 	struct device *dev;
@@ -207,6 +218,7 @@ struct k3_ringacc {
 	u32 tisci_dev_id;
 
 	const struct k3_ringacc_ops *ops;
+	bool dual_ring;
 };
 
 /**
@@ -217,6 +229,21 @@ struct k3_ringacc {
 struct k3_ringacc_soc_data {
 	unsigned dma_ring_reset_quirk:1;
 };
+
+static int k3_ringacc_ring_read_occ(struct k3_ring *ring)
+{
+	return readl(&ring->rt->occ) & K3_RINGACC_RT_OCC_MASK;
+}
+
+static void k3_ringacc_ring_update_occ(struct k3_ring *ring)
+{
+	u32 val;
+
+	val = readl(&ring->rt->occ);
+
+	ring->state.occ = val & K3_RINGACC_RT_OCC_MASK;
+	ring->state.tdown_complete = !!(val & KSLC_RING_RT_OCC_TDOWN_COMPLETE);
+}
 
 static long k3_ringacc_ring_get_fifo_pos(struct k3_ring *ring)
 {
@@ -231,10 +258,23 @@ static void *k3_ringacc_get_elm_addr(struct k3_ring *ring, u32 idx)
 
 static int k3_ringacc_ring_push_mem(struct k3_ring *ring, void *elem);
 static int k3_ringacc_ring_pop_mem(struct k3_ring *ring, void *elem);
+static int kslc_ring_fwd_pop_mem(struct k3_ring *ring, void *elem);
+static int kslc_ring_reverse_pop_mem(struct k3_ring *ring, void *elem);
 
 static struct k3_ring_ops k3_ring_mode_ring_ops = {
 		.push_tail = k3_ringacc_ring_push_mem,
 		.pop_head = k3_ringacc_ring_pop_mem,
+};
+
+static struct k3_ring_ops kslc_fwd_ring_ops = {
+		.push_tail = k3_ringacc_ring_push_mem,
+		.pop_head = kslc_ring_fwd_pop_mem,
+};
+
+static struct k3_ring_ops kslc_reverse_ring_ops = {
+		/* TODO: remove push - only HW should feed it */
+		.push_tail = k3_ringacc_ring_push_mem,
+		.pop_head = kslc_ring_reverse_pop_mem,
 };
 
 static int k3_ringacc_ring_push_io(struct k3_ring *ring, void *elem);
@@ -345,6 +385,42 @@ error:
 }
 EXPORT_SYMBOL_GPL(k3_ringacc_request_ring);
 
+static int kslc_ring_request_rings_pair(struct k3_ringacc *ringacc,
+					int fwd_id, int compl_id,
+					struct k3_ring **fwd_ring,
+					struct k3_ring **compl_ring)
+{
+	int ret = 0;
+
+	/* KSLC: fwd_id == compl_id, so we ignore compl_id */
+	if (fwd_id < 0)
+		return -EINVAL;
+
+	if (!try_module_get(ringacc->dev->driver->owner))
+		return -ENODEV;
+
+	mutex_lock(&ringacc->req_lock);
+
+	if (test_bit(fwd_id, ringacc->rings_inuse)) {
+		ret = -EBUSY;
+		goto error;
+	}
+
+	*fwd_ring = &ringacc->rings[fwd_id];
+	*compl_ring = &ringacc->rings[fwd_id + ringacc->num_rings];
+	set_bit(fwd_id, ringacc->rings_inuse);
+	ringacc->rings[fwd_id].use_count++;
+	dev_dbg(ringacc->dev, "Giving ring#%d\n", fwd_id);
+
+	mutex_unlock(&ringacc->req_lock);
+	return 0;
+
+error:
+	mutex_unlock(&ringacc->req_lock);
+	module_put(ringacc->dev->driver->owner);
+	return ret;
+}
+
 int k3_ringacc_request_rings_pair(struct k3_ringacc *ringacc,
 				  int fwd_id, int compl_id,
 				  struct k3_ring **fwd_ring,
@@ -354,6 +430,10 @@ int k3_ringacc_request_rings_pair(struct k3_ringacc *ringacc,
 
 	if (!fwd_ring || !compl_ring)
 		return -EINVAL;
+
+	if (ringacc->dual_ring)
+		return kslc_ring_request_rings_pair(ringacc, fwd_id, compl_id,
+						    fwd_ring, compl_ring);
 
 	*fwd_ring = k3_ringacc_request_ring(ringacc, fwd_id, 0);
 	if (!(*fwd_ring))
@@ -432,7 +512,7 @@ void k3_ringacc_ring_reset_dma(struct k3_ring *ring, u32 occ)
 		goto reset;
 
 	if (!occ)
-		occ = readl(&ring->rt->occ);
+		occ = k3_ringacc_ring_read_occ(ring);
 
 	if (occ) {
 		u32 db_ring_cnt, db_ring_cnt_cur;
@@ -511,6 +591,13 @@ int k3_ringacc_ring_free(struct k3_ring *ring)
 		return -EINVAL;
 
 	ringacc = ring->parent;
+
+	/*
+	 * KSLC: rings shared memory and configuration, only forward ring is
+	 * configured and reverse ring considered as slave.
+	 */
+	if (ringacc->dual_ring && (ring->flags & K3_RING_FLAG_REVERSE))
+		return 0;
 
 	dev_dbg(ring->parent->dev, "flags: 0x%08x\n", ring->flags);
 
@@ -609,6 +696,79 @@ static int k3_ringacc_ring_cfg_sci(struct k3_ring *ring)
 	return ret;
 }
 
+static int kslc_ring_cfg(struct k3_ring *ring, struct k3_ring_cfg *cfg)
+{
+	struct k3_ringacc *ringacc;
+	struct k3_ring *reverse_ring;
+	int ret = 0;
+
+	if (cfg->elm_size != K3_RINGACC_RING_ELSIZE_8 ||
+	    cfg->mode != K3_RINGACC_RING_MODE_RING ||
+	    cfg->size & ~KSLC_RING_CFG_RING_SIZE_ELCNT_MASK)
+		return -EINVAL;
+
+	ringacc = ring->parent;
+
+	/*
+	 * KSLC: rings shared memory and configuration, only forward ring is
+	 * configured and reverse ring considered as slave.
+	 */
+	if (ringacc->dual_ring && (ring->flags & K3_RING_FLAG_REVERSE))
+		return 0;
+
+	if (!test_bit(ring->ring_id, ringacc->rings_inuse))
+		return -EINVAL;
+
+	ring->size = cfg->size;
+	ring->elm_size = cfg->elm_size;
+	ring->mode = cfg->mode;
+	memset(&ring->state, 0, sizeof(ring->state));
+
+	ring->ops = &kslc_fwd_ring_ops;
+
+	ring->ring_mem_virt = dma_alloc_coherent(ringacc->dev,
+					ring->size * (4 << ring->elm_size),
+					&ring->ring_mem_dma, GFP_KERNEL);
+	if (!ring->ring_mem_virt) {
+		dev_err(ringacc->dev, "Failed to alloc ring mem\n");
+		ret = -ENOMEM;
+		goto err_free_ops;
+	}
+
+	ret = k3_ringacc_ring_cfg_sci(ring);
+	if (ret)
+		goto err_free_mem;
+
+	ring->flags |= K3_RING_FLAG_BUSY;
+
+	k3_ringacc_ring_dump(ring);
+
+	/* KSLC: configure reverse ring */
+	reverse_ring = &ringacc->rings[ring->ring_id + ringacc->num_rings];
+	reverse_ring->size = cfg->size;
+	reverse_ring->elm_size = cfg->elm_size;
+	reverse_ring->mode = cfg->mode;
+	memset(&reverse_ring->state, 0, sizeof(reverse_ring->state));
+	reverse_ring->ops = &kslc_reverse_ring_ops;
+
+	reverse_ring->ring_mem_virt = ring->ring_mem_virt;
+	reverse_ring->ring_mem_dma = ring->ring_mem_dma;
+	reverse_ring->flags |= K3_RING_FLAG_BUSY;
+	k3_ringacc_ring_dump(reverse_ring);
+
+	return 0;
+
+err_free_mem:
+	dma_free_coherent(ringacc->dev,
+			  ring->size * (4 << ring->elm_size),
+			  ring->ring_mem_virt,
+			  ring->ring_mem_dma);
+err_free_ops:
+	ring->ops = NULL;
+	ring->proxy = NULL;
+	return ret;
+}
+
 int k3_ringacc_ring_cfg(struct k3_ring *ring, struct k3_ring_cfg *cfg)
 {
 	struct k3_ringacc *ringacc = ring->parent;
@@ -616,6 +776,10 @@ int k3_ringacc_ring_cfg(struct k3_ring *ring, struct k3_ring_cfg *cfg)
 
 	if (!ring || !cfg)
 		return -EINVAL;
+
+	if (ringacc->dual_ring)
+		return kslc_ring_cfg(ring, cfg);
+
 	if (cfg->elm_size > K3_RINGACC_RING_ELSIZE_256 ||
 	    cfg->mode >= K3_RINGACC_RING_MODE_INVALID ||
 	    cfg->size & ~K3_RINGACC_CFG_RING_SIZE_ELCNT_MASK ||
@@ -717,7 +881,7 @@ u32 k3_ringacc_ring_get_free(struct k3_ring *ring)
 		return -EINVAL;
 
 	if (!ring->state.free)
-		ring->state.free = ring->size - readl(&ring->rt->occ);
+		ring->state.free = ring->size - k3_ringacc_ring_read_occ(ring);
 
 	return ring->state.free;
 }
@@ -728,7 +892,7 @@ u32 k3_ringacc_ring_get_occ(struct k3_ring *ring)
 	if (!ring || !(ring->flags & K3_RING_FLAG_BUSY))
 		return -EINVAL;
 
-	return readl(&ring->rt->occ);
+	return k3_ringacc_ring_read_occ(ring);
 }
 EXPORT_SYMBOL_GPL(k3_ringacc_ring_get_occ);
 
@@ -904,6 +1068,59 @@ static int k3_ringacc_ring_pop_tail_io(struct k3_ring *ring, void *elem)
 					 K3_RINGACC_ACCESS_MODE_POP_HEAD);
 }
 
+static int kslc_ring_fwd_pop_mem(struct k3_ring *ring, void *elem)
+{
+	void *elem_ptr;
+	u32 elem_idx;
+
+	/*
+	 * KSLC: forward ring is always tied DMA channel and HW does not
+	 * maintain any state data required for POP operation and its unknown
+	 * how much elements were consumed by HW. So, to actually
+	 * do POP, the read pointer has to be recalculated every time.
+	 */
+	ring->state.occ = k3_ringacc_ring_read_occ(ring);
+	if (ring->state.windex >= ring->state.occ)
+		elem_idx = ring->state.windex - ring->state.occ;
+	else
+		elem_idx = ring->size - (ring->state.occ - ring->state.windex);
+
+	elem_ptr = k3_ringacc_get_elm_addr(ring, elem_idx);
+	memcpy(elem, elem_ptr, (4 << ring->elm_size));
+
+	ring->state.occ--;
+	writel(-1, &ring->rt->db);
+
+	dev_dbg(ring->parent->dev, "%s: occ%d Windex%d Rindex%d pos_ptr%px\n",
+		__func__, ring->state.occ, ring->state.windex, elem_idx,
+		elem_ptr);
+	return 0;
+}
+
+static int kslc_ring_reverse_pop_mem(struct k3_ring *ring, void *elem)
+{
+	void *elem_ptr;
+
+	elem_ptr = k3_ringacc_get_elm_addr(ring, ring->state.rindex);
+
+	if (ring->state.occ) {
+		memcpy(elem, elem_ptr, (4 << ring->elm_size));
+		ring->state.rindex = (ring->state.rindex + 1) % ring->size;
+		ring->state.occ--;
+		writel((s8)-1, &ring->rt->db);
+	} else if (ring->state.tdown_complete) {
+		dma_addr_t *value = elem;
+
+		*value = CPPI5_TDCM_MARKER;
+		writel(KSLC_RING_RT_DB_TDOWN_ACK, &ring->rt->db);
+		ring->state.tdown_complete = false;
+	}
+
+	dev_dbg(ring->parent->dev, "%s: occ%d index%d pos_ptr%px\n",
+		__func__, ring->state.occ, ring->state.rindex, elem_ptr);
+	return 0;
+}
+
 static int k3_ringacc_ring_push_mem(struct k3_ring *ring, void *elem)
 {
 	void *elem_ptr;
@@ -987,12 +1204,12 @@ int k3_ringacc_ring_pop(struct k3_ring *ring, void *elem)
 		return -EINVAL;
 
 	if (!ring->state.occ)
-		ring->state.occ = k3_ringacc_ring_get_occ(ring);
+		k3_ringacc_ring_update_occ(ring);
 
 	dev_dbg(ring->parent->dev, "ring_pop: occ%d index%d\n", ring->state.occ,
 		ring->state.rindex);
 
-	if (!ring->state.occ)
+	if (!ring->state.occ && !ring->state.tdown_complete)
 		return -ENODATA;
 
 	if (ring->ops && ring->ops->pop_head)
@@ -1010,7 +1227,7 @@ int k3_ringacc_ring_pop_tail(struct k3_ring *ring, void *elem)
 		return -EINVAL;
 
 	if (!ring->state.occ)
-		ring->state.occ = k3_ringacc_ring_get_occ(ring);
+		k3_ringacc_ring_update_occ(ring);
 
 	dev_dbg(ring->parent->dev, "ring_pop_tail: occ%d index%d\n",
 		ring->state.occ, ring->state.rindex);
@@ -1067,6 +1284,10 @@ static int k3_ringacc_probe_dt(struct k3_ringacc *ringacc)
 		return ret;
 	}
 
+	/* KSLC RING is a subdevice of the DMA */
+	if (ringacc->dual_ring)
+		node = dev->parent->of_node;
+
 	ringacc->tisci = ti_sci_get_by_phandle(node, "ti,sci");
 	if (IS_ERR(ringacc->tisci)) {
 		ret = PTR_ERR(ringacc->tisci);
@@ -1082,6 +1303,9 @@ static int k3_ringacc_probe_dt(struct k3_ringacc *ringacc)
 		dev_err(dev, "ti,sci-dev-id read fail %d\n", ret);
 		return ret;
 	}
+
+	if (ringacc->dual_ring)
+		return 0;
 
 	pdev->id = ringacc->tisci_dev_id;
 
@@ -1199,6 +1423,64 @@ static int k3_ringacc_init(struct platform_device *pdev,
 	return 0;
 }
 
+static int kslc_ring_init(struct platform_device *pdev,
+			  struct k3_ringacc *ringacc)
+{
+	void __iomem *base_rt;
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+	int ret, i;
+
+	ringacc->dual_ring = true;
+
+	ret = k3_ringacc_probe_dt(ringacc);
+	if (ret)
+		return ret;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "rt");
+	base_rt = devm_ioremap_resource(dev, res);
+	if (IS_ERR(base_rt))
+		return PTR_ERR(base_rt);
+
+	ringacc->rings = devm_kzalloc(dev,
+				      sizeof(*ringacc->rings) *
+				      ringacc->num_rings * 2,
+				      GFP_KERNEL);
+	ringacc->rings_inuse = devm_kcalloc(dev,
+					    BITS_TO_LONGS(ringacc->num_rings),
+					    sizeof(unsigned long), GFP_KERNEL);
+
+	if (!ringacc->rings || !ringacc->rings_inuse)
+		return -ENOMEM;
+
+	for (i = 0; i < ringacc->num_rings; i++) {
+		struct k3_ring *ring = &ringacc->rings[i];
+
+		ring->rt = base_rt + KSLC_RING_RT_REGS_STEP * i;
+		ring->parent = ringacc;
+		ring->ring_id = i;
+		ring->proxy_id = K3_RINGACC_PROXY_NOT_USED;
+
+		ring = &ringacc->rings[ringacc->num_rings + i];
+		ring->rt = base_rt + KSLC_RING_RT_REGS_STEP * i +
+			   KSLC_RING_RT_REGS_REVERSE_OFS;
+		ring->parent = ringacc;
+		ring->ring_id = i;
+		ring->proxy_id = K3_RINGACC_PROXY_NOT_USED;
+		ring->flags = K3_RING_FLAG_REVERSE;
+	}
+
+	ringacc->tisci_ring_ops = &ringacc->tisci->ops.rm_ring_ops;
+
+	dev_info(dev, "KSLC Ring probed rings:%u, sci-dev-id:%u\n",
+		 ringacc->num_rings,
+		 ringacc->tisci_dev_id);
+	dev_info(dev, "dma-ring-reset-quirk: %s\n",
+		 ringacc->dma_ring_reset_quirk ? "enabled" : "disabled");
+
+	return 0;
+}
+
 struct ringacc_match_data {
 	struct k3_ringacc_ops ops;
 };
@@ -1209,9 +1491,16 @@ static struct ringacc_match_data k3_ringacc_data = {
 	},
 };
 
+static struct ringacc_match_data kslc_ring_data = {
+	.ops = {
+		.init = kslc_ring_init,
+	},
+};
+
 /* Match table for of_platform binding */
 static const struct of_device_id k3_ringacc_of_match[] = {
 	{ .compatible = "ti,am654-navss-ringacc", .data = &k3_ringacc_data, },
+	{ .compatible = "ti,am64-dmss-rings", .data = &kslc_ring_data, },
 	{},
 };
 MODULE_DEVICE_TABLE(of, k3_ringacc_of_match);
