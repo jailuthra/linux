@@ -37,7 +37,8 @@ Documentation/devicetree/bindings/arm/keystone/ti,sci.txt
 
 TISCI Interrupt Aggregator Node:
 -------------------------------
-- compatible:		Must be "ti,sci-inta".
+- compatible:		Must be "ti,sci-inta" for K3
+			"ti,sci-am64-inta" for am64
 - reg:			Should contain registers location and length.
 - interrupt-controller:	Identifies the node as an interrupt controller
 - msi-controller:	Identifies the node as an MSI controller.
@@ -50,6 +51,7 @@ TISCI Interrupt Aggregator Node:
 			- First entry specifies the base for vint
 			- Second entry specifies the base for parent irqs
 			- Third entry specifies the limit
+- ti,dev-ids-for-unmapped: Source of unmapped events (bcdma and pktdma)
 
 
 Example:
