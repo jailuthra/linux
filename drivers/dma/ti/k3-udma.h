@@ -49,6 +49,8 @@
 #define BCDMA_CAP2_TCHAN_CNT(val)	(((val) >> 9) & 0x1ff)
 #define BCDMA_CAP2_RCHAN_CNT(val)	(((val) >> 18) & 0x1ff)
 
+#define PKTDMA_CAP4_TFLOW_CNT(val)	((val) & 0x3fff)
+
 /* UDMA_CHAN_RT_CTL_REG */
 #define UDMA_CHAN_RT_CTL_EN		BIT(31)
 #define UDMA_CHAN_RT_CTL_TDOWN		BIT(30)
@@ -96,6 +98,7 @@ enum udma_rm_range {
 	RM_RANGE_TCHAN,
 	RM_RANGE_RCHAN,
 	RM_RANGE_RFLOW,
+	RM_RANGE_TFLOW,
 	RM_RANGE_LAST,
 };
 
@@ -141,5 +144,6 @@ void xudma_tchanrt_write(struct udma_tchan *tchan, int reg, u32 val);
 u32 xudma_rchanrt_read(struct udma_rchan *rchan, int reg);
 void xudma_rchanrt_write(struct udma_rchan *rchan, int reg, u32 val);
 bool xudma_rflow_is_gp(struct udma_dev *ud, int id);
+int xudma_get_rflow_ring_offset(struct udma_dev *ud);
 
 #endif /* K3_UDMA_H_ */
