@@ -67,6 +67,8 @@
 		dma-ranges;
 		ranges;
 
+		ti,sci-dev-id = <25>;
+
 		secure_proxy_main: mailbox@4d000000 {
 			compatible = "ti,am654-secure-proxy";
 			#mbox-cells = <1>;
@@ -88,6 +90,36 @@
 			ti,sci-dev-id = <28>;
 			ti,dev-ids-for-unmapped = <26>, <30>;
 			ti,interrupt-ranges = <4 68 36>;
+		};
+
+		main_bcdma: dma-controller@485c0100 {
+			compatible = "ti,am64-dmss-bcdma";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+
+			reg =	<0x0 0x485c0100 0x0 0x100>,
+				<0x0 0x4c000000 0x0 0x20000>,
+				<0x0 0x4a820000 0x0 0x20000>,
+				<0x0 0x4aa40000 0x0 0x20000>;
+			reg-names = "gcfg", "bchanrt", "rchanrt", "tchanrt";
+			msi-parent = <&inta_main_dmss>;
+			#dma-cells = <2>;
+
+			ti,sci = <&dmsc>;
+			ti,sci-dev-id = <26>;
+			ti,ringacc = <&bcdma_ring>;
+
+			ti,sci-rm-range-bchan = <0x20>; /* BLOCK_COPY_CHAN */
+			ti,sci-rm-range-rchan = <0x21>; /* SPLIT_TR_RX_CHAN */
+			ti,sci-rm-range-tchan = <0x22>; /* SPLIT_TR_TX_CHAN */
+
+			bcdma_ring: dmss_ring@4bc00000 {
+				compatible = "ti,am64-dmss-rings";
+				reg =	<0x0 0x4bc00000 0x0 0x100000>;
+				reg-names = "rt";
+				ti,num-rings = <68>;
+			};
 		};
 	};
 
