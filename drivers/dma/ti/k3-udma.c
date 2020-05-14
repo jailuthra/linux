@@ -849,9 +849,6 @@ static int udma_start(struct udma_chan *uc)
 	/* Make sure that we clear the teardown bit, if it is set */
 	udma_reset_chan(uc, false);
 
-	/* Push descriptors before we start the channel */
-	udma_start_desc(uc);
-
 	switch (uc->desc->dir) {
 	case DMA_DEV_TO_MEM:
 		/* Config remote TR */
@@ -928,6 +925,8 @@ static int udma_start(struct udma_chan *uc)
 	}
 
 	uc->state = UDMA_CHAN_IS_ACTIVE;
+	/* Push descriptors before we start the channel */
+	udma_start_desc(uc);
 out:
 
 	return 0;
