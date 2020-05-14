@@ -55,7 +55,7 @@
 		};
 	};
 
-	main_dmass {
+	main_dmss {
 		compatible = "simple-mfd";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -74,7 +74,7 @@
 			interrupts = <GIC_SPI 34 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		inta_main_udmass: interrupt-controller@48000000 {
+		inta_main_dmss: interrupt-controller@48000000 {
 			compatible = "ti,sci-inta";
 			reg = <0x0 0x48000000 0x0 0x100000>;
 			interrupt-controller;
