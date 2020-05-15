@@ -75,6 +75,9 @@ EXPORT_SYMBOL(xudma_free_gp_rflow_range);
 
 bool xudma_rflow_is_gp(struct udma_dev *ud, int id)
 {
+	if (!ud->rflow_gp_map)
+		return false;
+
 	return !test_bit(id, ud->rflow_gp_map);
 }
 EXPORT_SYMBOL(xudma_rflow_is_gp);
@@ -106,6 +109,12 @@ void xudma_rflow_put(struct udma_dev *ud, struct udma_rflow *p)
 }
 EXPORT_SYMBOL(xudma_rflow_put);
 
+int xudma_get_rflow_ring_offset(struct udma_dev *ud)
+{
+	return ud->tflow_cnt;
+}
+EXPORT_SYMBOL(xudma_get_rflow_ring_offset);
+
 #define XUDMA_GET_RESOURCE_ID(res)					\
 int xudma_##res##_get_id(struct udma_##res *p)				\
 {									\
@@ -120,13 +129,17 @@ XUDMA_GET_RESOURCE_ID(rflow);
 #define XUDMA_RT_IO_FUNCTIONS(res)					\
 u32 xudma_##res##rt_read(struct udma_##res *p, int reg)			\
 {									\
-	return udma_##res##rt_read(p, reg);				\
+	if (!p)								\
+		return 0;						\
+	return udma_read(p->reg_rt, reg);				\
 }									\
 EXPORT_SYMBOL(xudma_##res##rt_read);					\
 									\
 void xudma_##res##rt_write(struct udma_##res *p, int reg, u32 val)	\
 {									\
-	udma_##res##rt_write(p, reg, val);				\
+	if (!p)								\
+		return;							\
+	udma_write(p->reg_rt, reg, val);				\
 }									\
 EXPORT_SYMBOL(xudma_##res##rt_write)
 XUDMA_RT_IO_FUNCTIONS(tchan);

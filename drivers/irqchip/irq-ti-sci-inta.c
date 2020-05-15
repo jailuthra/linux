@@ -94,10 +94,32 @@ struct ti_sci_inta_irq_domain {
 	struct mutex vint_mutex;
 	void __iomem *base;
 	struct platform_device *pdev;
+
+	u32 *dev_ids_for_unmapped;
+	int difu_cnt;
 };
 
 #define to_vint_desc(e, i) container_of(e, struct ti_sci_inta_vint_desc, \
 					events[i])
+
+static u16 ti_sci_inta_get_dev_id(struct ti_sci_inta_irq_domain *inta,
+				  u32 hwirq)
+{
+	u16 dev_id = HWIRQ_TO_DEVID(hwirq);
+	int i;
+
+	if (inta->difu_cnt == 0)
+		return dev_id;
+
+	for (i = 0; i < inta->difu_cnt; i++) {
+		if (dev_id == inta->dev_ids_for_unmapped[i]) {
+			dev_id = inta->pdev->id;
+			break;
+		}
+	}
+
+	return dev_id;
+}
 
 /**
  * ti_sci_inta_irq_handler() - Chained IRQ handler for the vint irqs
@@ -252,7 +274,7 @@ static struct ti_sci_inta_event_desc *ti_sci_inta_alloc_event(struct ti_sci_inta
 	u16 dev_id, dev_index;
 	int err;
 
-	dev_id = HWIRQ_TO_DEVID(hwirq);
+	dev_id = ti_sci_inta_get_dev_id(inta, hwirq);
 	dev_index = HWIRQ_TO_IRQID(hwirq);
 
 	event_desc = &vint_desc->events[free_bit];
@@ -352,14 +374,15 @@ static void ti_sci_inta_free_irq(struct ti_sci_inta_event_desc *event_desc,
 {
 	struct ti_sci_inta_vint_desc *vint_desc;
 	struct ti_sci_inta_irq_domain *inta;
+	u16 dev_id;
 
 	vint_desc = to_vint_desc(event_desc, event_desc->vint_bit);
 	inta = vint_desc->domain->host_data;
+	dev_id = ti_sci_inta_get_dev_id(inta, hwirq);
 	/* free event irq */
 	mutex_lock(&inta->vint_mutex);
 	inta->sci->ops.rm_irq_ops.free_event_map(inta->sci,
-						 HWIRQ_TO_DEVID(hwirq),
-						 HWIRQ_TO_IRQID(hwirq),
+						 dev_id, HWIRQ_TO_IRQID(hwirq),
 						 inta->pdev->id,
 						 vint_desc->vint_id,
 						 event_desc->global_event,
@@ -564,7 +587,6 @@ static void ti_sci_inta_msi_set_desc(msi_alloc_info_t *arg,
 	arg->desc = desc;
 	arg->hwirq = TO_HWIRQ(pdev->id, desc->inta.dev_index);
 }
-
 static struct msi_domain_ops ti_sci_inta_msi_ops = {
 	.set_desc	= ti_sci_inta_msi_set_desc,
 };
@@ -643,6 +665,27 @@ static int ti_sci_inta_irq_domain_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	if (of_device_is_compatible(dev->of_node, "ti,sci-am64-inta")) {
+		inta->difu_cnt = of_property_count_elems_of_size(dev->of_node,
+						      "ti,dev-ids-for-unmapped",
+						      sizeof(u32));
+		if (inta->difu_cnt < 0) {
+			dev_err(dev, "Missing dev-ids for unmapped events\n");
+			return inta->difu_cnt;
+		}
+
+		inta->dev_ids_for_unmapped = devm_kcalloc(dev, inta->difu_cnt,
+					sizeof(*inta->dev_ids_for_unmapped),
+					GFP_KERNEL);
+		if (!inta->dev_ids_for_unmapped)
+			return -ENOMEM;
+
+		of_property_read_u32_array(dev->of_node,
+					   "ti,dev-ids-for-unmapped",
+					   inta->dev_ids_for_unmapped,
+					   inta->difu_cnt);
+	}
+
 	msi_domain = ti_sci_inta_msi_create_irq_domain(of_node_to_fwnode(node),
 						&ti_sci_inta_msi_domain_info,
 						domain);
@@ -662,6 +705,7 @@ static int ti_sci_inta_irq_domain_probe(struct platform_device *pdev)
 
 static const struct of_device_id ti_sci_inta_irq_domain_of_match[] = {
 	{ .compatible = "ti,sci-inta", },
+	{ .compatible = "ti,sci-am64-inta", },
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, ti_sci_inta_irq_domain_of_match);
