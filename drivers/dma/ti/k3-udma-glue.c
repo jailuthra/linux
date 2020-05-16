@@ -316,19 +316,6 @@ struct k3_udma_glue_tx_channel *k3_udma_glue_request_tx_chn(struct device *dev,
 		goto err;
 	}
 
-	ret = xudma_navss_psil_pair(tx_chn->common.udmax,
-				    tx_chn->common.src_thread,
-				    tx_chn->common.dst_thread);
-	if (ret) {
-		dev_err(dev, "PSI-L request err %d\n", ret);
-		goto err;
-	}
-
-	tx_chn->psil_paired = true;
-
-	/* reset TX RT registers */
-	k3_udma_glue_disable_tx_chn(tx_chn);
-
 	k3_udma_glue_dump_tx_chn(tx_chn);
 
 	return tx_chn;
@@ -392,6 +379,17 @@ EXPORT_SYMBOL_GPL(k3_udma_glue_pop_tx_chn);
 int k3_udma_glue_enable_tx_chn(struct k3_udma_glue_tx_channel *tx_chn)
 {
 	u32 txrt_ctl;
+	int ret;
+
+	ret = xudma_navss_psil_pair(tx_chn->common.udmax,
+				    tx_chn->common.src_thread,
+				    tx_chn->common.dst_thread);
+	if (ret) {
+		dev_err(tx_chn->common.dev, "PSI-L request err %d\n", ret);
+		return ret;
+	}
+
+	tx_chn->psil_paired = true;
 
 	txrt_ctl = UDMA_PEER_RT_EN_ENABLE;
 	xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_PEER_RT_EN_REG,
@@ -417,6 +415,13 @@ void k3_udma_glue_disable_tx_chn(struct k3_udma_glue_tx_channel *tx_chn)
 	xudma_tchanrt_write(tx_chn->udma_tchanx,
 			    UDMA_CHAN_RT_PEER_RT_EN_REG, 0);
 	k3_udma_glue_dump_tx_rt_chn(tx_chn, "txchn dis2");
+
+	if (tx_chn->psil_paired) {
+		xudma_navss_psil_unpair(tx_chn->common.udmax,
+					tx_chn->common.src_thread,
+					tx_chn->common.dst_thread);
+		tx_chn->psil_paired = false;
+	}
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_disable_tx_chn);
 
@@ -875,19 +880,6 @@ k3_udma_glue_request_rx_chn_priv(struct device *dev, const char *name,
 			goto err;
 	}
 
-	ret = xudma_navss_psil_pair(rx_chn->common.udmax,
-				    rx_chn->common.src_thread,
-				    rx_chn->common.dst_thread);
-	if (ret) {
-		dev_err(dev, "PSI-L request err %d\n", ret);
-		goto err;
-	}
-
-	rx_chn->psil_paired = true;
-
-	/* reset RX RT registers */
-	k3_udma_glue_disable_rx_chn(rx_chn);
-
 	k3_udma_glue_dump_rx_chn(rx_chn);
 
 	return rx_chn;
@@ -1113,12 +1105,23 @@ EXPORT_SYMBOL_GPL(k3_udma_glue_rx_flow_disable);
 int k3_udma_glue_enable_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
 {
 	u32 rxrt_ctl;
+	int ret;
 
 	if (rx_chn->remote)
 		return -EINVAL;
 
 	if (rx_chn->flows_ready < rx_chn->flow_num)
 		return -EINVAL;
+
+	ret = xudma_navss_psil_pair(rx_chn->common.udmax,
+				    rx_chn->common.src_thread,
+				    rx_chn->common.dst_thread);
+	if (ret) {
+		dev_err(rx_chn->common.dev, "PSI-L request err %d\n", ret);
+		return ret;
+	}
+
+	rx_chn->psil_paired = true;
 
 	rxrt_ctl = xudma_rchanrt_read(rx_chn->udma_rchanx,
 				      UDMA_CHAN_RT_CTL_REG);
@@ -1143,6 +1146,13 @@ void k3_udma_glue_disable_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
 	xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG, 0);
 
 	k3_udma_glue_dump_rx_rt_chn(rx_chn, "rxrt dis2");
+
+	if (rx_chn->psil_paired) {
+		xudma_navss_psil_unpair(rx_chn->common.udmax,
+					rx_chn->common.src_thread,
+					rx_chn->common.dst_thread);
+		rx_chn->psil_paired = false;
+	}
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_disable_rx_chn);
 
