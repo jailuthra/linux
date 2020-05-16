@@ -155,6 +155,14 @@ const struct ale_entry_fld vlan_entry_nu[ALE_ENT_VID_LAST] = {
 	ALE_ENTRY_FLD(ALE_ENT_VID_REG_MCAST_IDX, 44, 3),
 };
 
+/* K3 j721e cpsw9g, am64x cpsw3g  */
+const struct ale_entry_fld vlan_entry_k3_cpswxg[] = {
+	ALE_ENTRY_FLD_DYN_MSK_SIZE(ALE_ENT_VID_MEMBER_LIST, 0),
+	ALE_ENTRY_FLD_DYN_MSK_SIZE(ALE_ENT_VID_UNREG_MCAST_MSK, 12),
+	ALE_ENTRY_FLD_DYN_MSK_SIZE(ALE_ENT_VID_FORCE_UNTAGGED_MSK, 24),
+	ALE_ENTRY_FLD_DYN_MSK_SIZE(ALE_ENT_VID_REG_MCAST_MSK, 36),
+};
+
 DEFINE_ALE_FIELD(entry_type,		60,	2)
 DEFINE_ALE_FIELD(vlan_id,		48,	12)
 DEFINE_ALE_FIELD(mcast_state,		62,	2)
@@ -1084,7 +1092,7 @@ struct cpsw_ale *cpsw_ale_create(struct cpsw_ale_params *params)
 	/* Set defaults override for ALE on NetCP NU switch and for version
 	 * 1R3
 	 */
-	if (ale->params.nu_switch_ale) {
+	if (ale->params.nu_switch_ale || ale->params.k3_cpswxg_switch_ale) {
 		/* Separate registers for unknown vlan configuration.
 		 * Also there are N bits, where N is number of ale
 		 * ports and shift value should be 0
@@ -1108,7 +1116,10 @@ struct cpsw_ale *cpsw_ale_create(struct cpsw_ale_params *params)
 		ale_controls[ALE_PORT_UNTAGGED_EGRESS].shift = 0;
 		ale_controls[ALE_PORT_UNTAGGED_EGRESS].offset =
 					ALE_UNKNOWNVLAN_FORCE_UNTAG_EGRESS;
-		ale->vlan_entry_tbl = vlan_entry_nu;
+		if (ale->params.k3_cpswxg_switch_ale)
+			ale->vlan_entry_tbl = vlan_entry_k3_cpswxg;
+		else
+			ale->vlan_entry_tbl = vlan_entry_nu;
 	}
 
 	cpsw_ale_control_set(ale, 0, ALE_CLEAR, 1);
