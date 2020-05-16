@@ -24,6 +24,7 @@ struct cpsw_ale_params {
 	 * to identify this hardware.
 	 */
 	bool			nu_switch_ale;
+	bool			k3_cpswxg_switch_ale;
 };
 
 struct ale_entry_fld;
