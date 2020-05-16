@@ -14,17 +14,19 @@ struct cpsw_ale_params {
 	unsigned long		ale_ageout;	/* in secs */
 	unsigned long		ale_entries;
 	unsigned long		ale_ports;
+	/* mask bit used in NU Switch ALE is 3 bits instead of 8 bits. So
+	 * pass it from caller.
+	 */
+	u32			major_ver_mask;
 	/* NU Switch has specific handling as number of bits in ALE entries
 	 * are different than other versions of ALE. Also there are specific
 	 * registers for unknown vlan specific fields. So use nu_switch_ale
 	 * to identify this hardware.
 	 */
 	bool			nu_switch_ale;
-	/* mask bit used in NU Switch ALE is 3 bits instead of 8 bits. So
-	 * pass it from caller.
-	 */
-	u32			major_ver_mask;
 };
+
+struct ale_entry_fld;
 
 struct cpsw_ale {
 	struct cpsw_ale_params	params;
@@ -47,6 +49,7 @@ struct cpsw_ale {
 	u32			port_mask_bits;
 	u32			port_num_bits;
 	u32			vlan_field_bits;
+	const struct ale_entry_fld *vlan_entry_tbl;
 };
 
 enum cpsw_ale_control {
