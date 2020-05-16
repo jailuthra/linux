@@ -942,7 +942,9 @@ static int am65_cpsw_nuss_tx_compl_packets(struct am65_cpsw_common *common,
 		struct am65_cpsw_ndev_priv *ndev_priv;
 		struct am65_cpsw_ndev_stats *stats;
 
+		spin_lock(&tx_chn->lock);
 		res = k3_udma_glue_pop_tx_chn(tx_chn->tx_chn, &desc_dma);
+		spin_unlock(&tx_chn->lock);
 		if (res == -ENODATA)
 			break;
 
@@ -969,31 +971,29 @@ static int am65_cpsw_nuss_tx_compl_packets(struct am65_cpsw_common *common,
 		stats->tx_bytes += skb->len;
 		u64_stats_update_end(&stats->syncp);
 
-		total_bytes += skb->len;
+		total_bytes = skb->len;
 		napi_consume_skb(skb, budget);
 		num_tx++;
+
+		netif_txq = netdev_get_tx_queue(ndev, chn);
+
+		netdev_tx_completed_queue(netif_txq, num_tx, total_bytes);
+
+		if (netif_tx_queue_stopped(netif_txq)) {
+			/* Check whether the queue is stopped due to stalled
+			 * tx dma, if the queue is stopped then wake the queue
+			 * as we have free desc for tx
+			 */
+			__netif_tx_lock(netif_txq, smp_processor_id());
+			if (netif_running(ndev) &&
+			    (k3_cppi_desc_pool_avail(tx_chn->desc_pool) >=
+			     MAX_SKB_FRAGS))
+				netif_tx_wake_queue(netif_txq);
+
+			__netif_tx_unlock(netif_txq);
+		}
 	}
 
-	if (!num_tx)
-		return 0;
-
-	netif_txq = netdev_get_tx_queue(ndev, chn);
-
-	netdev_tx_completed_queue(netif_txq, num_tx, total_bytes);
-
-	if (netif_tx_queue_stopped(netif_txq)) {
-		/* Check whether the queue is stopped due to stalled tx dma,
-		 * if the queue is stopped then wake the queue as
-		 * we have free desc for tx
-		 */
-		__netif_tx_lock(netif_txq, smp_processor_id());
-		if (netif_running(ndev) &&
-		    (k3_cppi_desc_pool_avail(tx_chn->desc_pool) >=
-		     MAX_SKB_FRAGS))
-			netif_tx_wake_queue(netif_txq);
-
-		__netif_tx_unlock(netif_txq);
-	}
 	dev_dbg(dev, "%s:%u pkt:%d\n", __func__, chn, num_tx);
 
 	return num_tx;
@@ -1149,7 +1149,9 @@ done_tx:
 
 	cppi5_hdesc_set_pktlen(first_desc, pkt_len);
 	desc_dma = k3_cppi_desc_pool_virt2dma(tx_chn->desc_pool, first_desc);
+	spin_lock_bh(&tx_chn->lock);
 	ret = k3_udma_glue_push_tx_chn(tx_chn->tx_chn, first_desc, desc_dma);
+	spin_unlock_bh(&tx_chn->lock);
 	if (ret) {
 		dev_err(dev, "can't push desc %d\n", ret);
 		/* inform bql */
@@ -1549,6 +1551,7 @@ static int am65_cpsw_nuss_init_tx_chns(struct am65_cpsw_common *common)
 		snprintf(tx_chn->tx_chn_name,
 			 sizeof(tx_chn->tx_chn_name), "tx%d", i);
 
+		spin_lock_init(&tx_chn->lock);
 		tx_chn->common = common;
 		tx_chn->id = i;
 		tx_chn->descs_num = max_desc_num;
@@ -1904,14 +1907,18 @@ static void am65_cpsw_pcpu_stats_free(void *data)
 	free_percpu(stats);
 }
 
-static int am65_cpsw_nuss_init_ndev_2g(struct am65_cpsw_common *common)
+static int
+am65_cpsw_nuss_init_port_ndev(struct am65_cpsw_common *common, u32 port_idx)
 {
 	struct am65_cpsw_ndev_priv *ndev_priv;
 	struct device *dev = common->dev;
 	struct am65_cpsw_port *port;
 	int ret;
 
-	port = am65_common_get_port(common, 1);
+	port = &common->ports[port_idx];
+
+	if (port->disabled)
+		return 0;
 
 	/* alloc netdev */
 	port->ndev = devm_alloc_etherdev_mqs(common->dev,
@@ -1953,10 +1960,25 @@ static int am65_cpsw_nuss_init_ndev_2g(struct am65_cpsw_common *common)
 
 	ret = devm_add_action_or_reset(dev, am65_cpsw_pcpu_stats_free,
 				       ndev_priv->stats);
-	if (ret) {
-		dev_err(dev, "Failed to add percpu stat free action %d\n", ret);
-		return ret;
+	if (ret)
+		dev_err(dev, "failed to add percpu stat free action %d", ret);
+
+	return ret;
+}
+
+static int am65_cpsw_nuss_init_ndev_2g(struct am65_cpsw_common *common)
+{
+	struct am65_cpsw_port *port;
+	int ret;
+	int i;
+
+	for (i = 0; i < common->port_num; i++) {
+		ret = am65_cpsw_nuss_init_port_ndev(common, i);
+		if (ret)
+			return ret;
 	}
+
+	port = am65_common_get_port(common, 1);
 
 	netif_napi_add(port->ndev, &common->napi_rx,
 		       am65_cpsw_nuss_rx_poll, NAPI_POLL_WEIGHT);
@@ -1997,9 +2019,8 @@ static int am65_cpsw_nuss_ndev_reg_2g(struct am65_cpsw_common *common)
 {
 	struct device *dev = common->dev;
 	struct am65_cpsw_port *port;
-	int ret = 0;
+	int ret = 0, i;
 
-	port = am65_common_get_port(common, 1);
 	ret = am65_cpsw_nuss_ndev_add_napi_2g(common);
 	if (ret)
 		goto err;
@@ -2013,9 +2034,20 @@ static int am65_cpsw_nuss_ndev_reg_2g(struct am65_cpsw_common *common)
 		goto err;
 	}
 
-	ret = register_netdev(port->ndev);
-	if (ret)
-		dev_err(dev, "error registering slave net device %d\n", ret);
+	for (i = 0; i < common->port_num; i++) {
+		port = &common->ports[i];
+
+		if (!port->ndev)
+			continue;
+
+		ret = register_netdev(port->ndev);
+		if (ret) {
+			dev_err(dev, "error registering slave net device%i %d\n",
+				i, ret);
+			goto err;
+		}
+	}
+
 
 	/* can't auto unregister ndev using devm_add_action() due to
 	 * devres release sequence in DD core for DMA
@@ -2128,9 +2160,6 @@ static int am65_cpsw_nuss_probe(struct platform_device *pdev)
 	if (common->port_num < 1 || common->port_num > AM65_CPSW_MAX_PORTS)
 		return -ENOENT;
 	of_node_put(node);
-
-	if (common->port_num != 1)
-		return -EOPNOTSUPP;
 
 	common->rx_flow_id_base = -1;
 	init_completion(&common->tdown_complete);
