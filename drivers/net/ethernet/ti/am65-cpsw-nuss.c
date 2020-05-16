@@ -1778,6 +1778,14 @@ static int am65_cpsw_init_cpts(struct am65_cpsw_common *common)
 		return ret;
 	}
 	common->cpts = cpts;
+	/* Forbid PM runtime if CPTS is running for now.
+	 * K3 CPSWxG modules can completely lose context during ON->OFF
+	 * transitions depending on integration.
+	 * MCU_CPSW2G: false
+	 * MAIN_CPSW9G: true
+	 * TODO: revise if needed.
+	 */
+	pm_runtime_forbid(dev);
 
 	return 0;
 }
