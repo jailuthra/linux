@@ -104,6 +104,57 @@ static inline void cpsw_ale_set_##name(u32 *ale_entry, u32 value,	\
 	cpsw_ale_set_field(ale_entry, start, bits, value);		\
 }
 
+enum {
+	ALE_ENT_VID_MEMBER_LIST = 0,
+	ALE_ENT_VID_UNREG_MCAST_MSK,
+	ALE_ENT_VID_REG_MCAST_MSK,
+	ALE_ENT_VID_FORCE_UNTAGGED_MSK,
+	ALE_ENT_VID_UNREG_MCAST_IDX,
+	ALE_ENT_VID_REG_MCAST_IDX,
+	ALE_ENT_VID_LAST,
+};
+
+#define ALE_FLD_ALLOWED			BIT(0)
+#define ALE_FLD_SIZE_PORT_MASK_BITS	BIT(1)
+#define ALE_FLD_SIZE_PORT_NUM_BITS	BIT(2)
+
+struct ale_entry_fld {
+	u8 start_bit;
+	u8 num_bits;
+	u8 flags;
+};
+
+#define ALE_ENTRY_FLD(id, start, bits)	\
+[id] = {				\
+	.start_bit = start,		\
+	.num_bits = bits,		\
+	.flags = ALE_FLD_ALLOWED,	\
+}
+
+#define ALE_ENTRY_FLD_DYN_MSK_SIZE(id, start)	\
+[id] = {					\
+	.start_bit = start,			\
+	.num_bits = 0,				\
+	.flags = ALE_FLD_ALLOWED |		\
+		 ALE_FLD_SIZE_PORT_MASK_BITS,	\
+}
+
+/* dm814x, am3/am4/am5, k2hk */
+const struct ale_entry_fld vlan_entry_cpsw[ALE_ENT_VID_LAST] = {
+	ALE_ENTRY_FLD(ALE_ENT_VID_MEMBER_LIST, 0, 3),
+	ALE_ENTRY_FLD(ALE_ENT_VID_UNREG_MCAST_MSK, 8, 3),
+	ALE_ENTRY_FLD(ALE_ENT_VID_REG_MCAST_MSK, 16, 3),
+	ALE_ENTRY_FLD(ALE_ENT_VID_FORCE_UNTAGGED_MSK, 24, 3),
+};
+
+/* k2e/k2l, k3 am65/j721e cpsw2g  */
+const struct ale_entry_fld vlan_entry_nu[ALE_ENT_VID_LAST] = {
+	ALE_ENTRY_FLD_DYN_MSK_SIZE(ALE_ENT_VID_MEMBER_LIST, 0),
+	ALE_ENTRY_FLD(ALE_ENT_VID_UNREG_MCAST_IDX, 20, 3),
+	ALE_ENTRY_FLD_DYN_MSK_SIZE(ALE_ENT_VID_FORCE_UNTAGGED_MSK, 24),
+	ALE_ENTRY_FLD(ALE_ENT_VID_REG_MCAST_IDX, 44, 3),
+};
+
 DEFINE_ALE_FIELD(entry_type,		60,	2)
 DEFINE_ALE_FIELD(vlan_id,		48,	12)
 DEFINE_ALE_FIELD(mcast_state,		62,	2)
@@ -113,16 +164,75 @@ DEFINE_ALE_FIELD(ucast_type,		62,     2)
 DEFINE_ALE_FIELD1(port_num,		66)
 DEFINE_ALE_FIELD(blocked,		65,     1)
 DEFINE_ALE_FIELD(secure,		64,     1)
-DEFINE_ALE_FIELD1(vlan_untag_force,	24)
-DEFINE_ALE_FIELD1(vlan_reg_mcast,	16)
-DEFINE_ALE_FIELD1(vlan_unreg_mcast,	8)
-DEFINE_ALE_FIELD1(vlan_member_list,	0)
 DEFINE_ALE_FIELD(mcast,			40,	1)
-/* ALE NetCP nu switch specific */
-DEFINE_ALE_FIELD(vlan_unreg_mcast_idx,	20,	3)
-DEFINE_ALE_FIELD(vlan_reg_mcast_idx,	44,	3)
 
 #define NU_VLAN_UNREG_MCAST_IDX	1
+
+static int cpsw_ale_entry_get_fld(struct cpsw_ale *ale,
+				  u32 *ale_entry,
+				  const struct ale_entry_fld *entry_tbl,
+				  int fld_id)
+{
+	const struct ale_entry_fld *entry_fld;
+	u32 bits;
+
+	if (!ale || !ale_entry)
+		return -EINVAL;
+
+	entry_fld = &entry_tbl[fld_id];
+	if (!(entry_fld->flags & ALE_FLD_ALLOWED)) {
+		dev_err(ale->params.dev, "get: wrong ale fld id %d\n", fld_id);
+		return -ENOENT;
+	}
+
+	bits = entry_fld->num_bits;
+	if (entry_fld->flags & ALE_FLD_SIZE_PORT_MASK_BITS)
+		bits = ale->port_mask_bits;
+
+	return cpsw_ale_get_field(ale_entry, entry_fld->start_bit, bits);
+}
+
+static void cpsw_ale_entry_set_fld(struct cpsw_ale *ale,
+				   u32 *ale_entry,
+				   const struct ale_entry_fld *entry_tbl,
+				   int fld_id,
+				   u32 value)
+{
+	const struct ale_entry_fld *entry_fld;
+	u32 bits;
+
+	if (!ale || !ale_entry)
+		return;
+
+	entry_fld = &entry_tbl[fld_id];
+	if (!(entry_fld->flags & ALE_FLD_ALLOWED)) {
+		dev_err(ale->params.dev, "set: wrong ale fld id %d\n", fld_id);
+		return;
+	}
+
+	bits = entry_fld->num_bits;
+	if (entry_fld->flags & ALE_FLD_SIZE_PORT_MASK_BITS)
+		bits = ale->port_mask_bits;
+
+	cpsw_ale_set_field(ale_entry, entry_fld->start_bit, bits, value);
+}
+
+static int cpsw_ale_vlan_get_fld(struct cpsw_ale *ale,
+				 u32 *ale_entry,
+				 int fld_id)
+{
+	return cpsw_ale_entry_get_fld(ale, ale_entry,
+				      ale->vlan_entry_tbl, fld_id);
+}
+
+static void cpsw_ale_vlan_set_fld(struct cpsw_ale *ale,
+				  u32 *ale_entry,
+				  int fld_id,
+				  u32 value)
+{
+	cpsw_ale_entry_set_fld(ale, ale_entry,
+			       ale->vlan_entry_tbl, fld_id, value);
+}
 
 /* The MAC address field in the ALE entry cannot be macroized as above */
 static inline void cpsw_ale_get_addr(u32 *ale_entry, u8 *addr)
@@ -411,11 +521,13 @@ static void cpsw_ale_set_vlan_mcast(struct cpsw_ale *ale, u32 *ale_entry,
 	int idx;
 
 	/* Set VLAN registered multicast flood mask */
-	idx = cpsw_ale_get_vlan_reg_mcast_idx(ale_entry);
+	idx = cpsw_ale_vlan_get_fld(ale, ale_entry,
+				    ALE_ENT_VID_REG_MCAST_IDX);
 	writel(reg_mcast, ale->params.ale_regs + ALE_VLAN_MASK_MUX(idx));
 
 	/* Set VLAN unregistered multicast flood mask */
-	idx = cpsw_ale_get_vlan_unreg_mcast_idx(ale_entry);
+	idx = cpsw_ale_vlan_get_fld(ale, ale_entry,
+				    ALE_ENT_VID_UNREG_MCAST_IDX);
 	writel(unreg_mcast, ale->params.ale_regs + ALE_VLAN_MASK_MUX(idx));
 }
 
@@ -432,18 +544,20 @@ int cpsw_ale_add_vlan(struct cpsw_ale *ale, u16 vid, int port, int untag,
 	cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_VLAN);
 	cpsw_ale_set_vlan_id(ale_entry, vid);
 
-	cpsw_ale_set_vlan_untag_force(ale_entry, untag, ale->vlan_field_bits);
+	cpsw_ale_vlan_set_fld(ale, ale_entry,
+			      ALE_ENT_VID_FORCE_UNTAGGED_MSK, untag);
 	if (!ale->params.nu_switch_ale) {
-		cpsw_ale_set_vlan_reg_mcast(ale_entry, reg_mcast,
-					    ale->vlan_field_bits);
-		cpsw_ale_set_vlan_unreg_mcast(ale_entry, unreg_mcast,
-					      ale->vlan_field_bits);
+		cpsw_ale_vlan_set_fld(ale, ale_entry,
+				      ALE_ENT_VID_REG_MCAST_MSK, reg_mcast);
+		cpsw_ale_vlan_set_fld(ale, ale_entry,
+				      ALE_ENT_VID_UNREG_MCAST_MSK, unreg_mcast);
 	} else {
-		cpsw_ale_set_vlan_unreg_mcast_idx(ale_entry,
-						  NU_VLAN_UNREG_MCAST_IDX);
+		cpsw_ale_vlan_set_fld(ale, ale_entry,
+				      ALE_ENT_VID_UNREG_MCAST_IDX,
+				      NU_VLAN_UNREG_MCAST_IDX);
 		cpsw_ale_set_vlan_mcast(ale, ale_entry, reg_mcast, unreg_mcast);
 	}
-	cpsw_ale_set_vlan_member_list(ale_entry, port, ale->vlan_field_bits);
+	cpsw_ale_vlan_set_fld(ale, ale_entry, ALE_ENT_VID_MEMBER_LIST, port);
 
 	if (idx < 0)
 		idx = cpsw_ale_match_free(ale);
@@ -468,8 +582,8 @@ int cpsw_ale_del_vlan(struct cpsw_ale *ale, u16 vid, int port_mask)
 	cpsw_ale_read(ale, idx, ale_entry);
 
 	if (port_mask)
-		cpsw_ale_set_vlan_member_list(ale_entry, port_mask,
-					      ale->vlan_field_bits);
+		cpsw_ale_vlan_set_fld(ale, ale_entry, ALE_ENT_VID_MEMBER_LIST,
+				      port_mask);
 	else
 		cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_FREE);
 
@@ -482,15 +596,15 @@ static void cpsw_ale_vlan_set_unreg_mcast(struct cpsw_ale *ale, u32 *ale_entry,
 {
 	int unreg_mcast;
 
-	unreg_mcast =
-		cpsw_ale_get_vlan_unreg_mcast(ale_entry,
-					      ale->vlan_field_bits);
+	unreg_mcast = cpsw_ale_vlan_get_fld(ale, ale_entry,
+					    ALE_ENT_VID_UNREG_MCAST_MSK);
 	if (allmulti)
 		unreg_mcast |= ALE_PORT_HOST;
 	else
 		unreg_mcast &= ~ALE_PORT_HOST;
-	cpsw_ale_set_vlan_unreg_mcast(ale_entry, unreg_mcast,
-				      ale->vlan_field_bits);
+
+	cpsw_ale_vlan_set_fld(ale, ale_entry,
+			      ALE_ENT_VID_UNREG_MCAST_MSK, unreg_mcast);
 }
 
 static void
@@ -500,7 +614,8 @@ cpsw_ale_vlan_set_unreg_mcast_idx(struct cpsw_ale *ale, u32 *ale_entry,
 	int unreg_mcast;
 	int idx;
 
-	idx = cpsw_ale_get_vlan_unreg_mcast_idx(ale_entry);
+	idx = cpsw_ale_vlan_get_fld(ale, ale_entry,
+				    ALE_ENT_VID_UNREG_MCAST_IDX);
 
 	unreg_mcast = readl(ale->params.ale_regs + ALE_VLAN_MASK_MUX(idx));
 
@@ -524,9 +639,9 @@ void cpsw_ale_set_allmulti(struct cpsw_ale *ale, int allmulti, int port)
 		type = cpsw_ale_get_entry_type(ale_entry);
 		if (type != ALE_TYPE_VLAN)
 			continue;
-		vlan_members =
-			cpsw_ale_get_vlan_member_list(ale_entry,
-						      ale->vlan_field_bits);
+
+		vlan_members = cpsw_ale_vlan_get_fld(ale, ale_entry,
+						     ALE_ENT_VID_MEMBER_LIST);
 
 		if (port != -1 && !(vlan_members & BIT(port)))
 			continue;
@@ -964,6 +1079,7 @@ struct cpsw_ale *cpsw_ale_create(struct cpsw_ale_params *params)
 	ale->port_mask_bits = ale->params.ale_ports;
 	ale->port_num_bits = order_base_2(ale->params.ale_ports);
 	ale->vlan_field_bits = ale->params.ale_ports;
+	ale->vlan_entry_tbl = vlan_entry_cpsw;
 
 	/* Set defaults override for ALE on NetCP NU switch and for version
 	 * 1R3
@@ -992,6 +1108,7 @@ struct cpsw_ale *cpsw_ale_create(struct cpsw_ale_params *params)
 		ale_controls[ALE_PORT_UNTAGGED_EGRESS].shift = 0;
 		ale_controls[ALE_PORT_UNTAGGED_EGRESS].offset =
 					ALE_UNKNOWNVLAN_FORCE_UNTAG_EGRESS;
+		ale->vlan_entry_tbl = vlan_entry_nu;
 	}
 
 	cpsw_ale_control_set(ale, 0, ALE_CLEAR, 1);
