@@ -2176,9 +2176,11 @@ static int am65_cpsw_nuss_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = am65_cpsw_init_cpts(common);
-	if (ret)
-		return ret;
+	if (IS_ENABLED(CONFIG_TI_AM65_CPTS)) {
+		ret = am65_cpsw_init_cpts(common);
+		if (ret)
+			return ret;
+	}
 
 	/* init common data */
 	ale_params.dev = dev;
