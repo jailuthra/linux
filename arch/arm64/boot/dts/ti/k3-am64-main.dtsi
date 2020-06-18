@@ -175,6 +175,55 @@
 		};
 	};
 
+	main_conf: scm_conf@43000000 {
+		compatible = "syscon", "simple-mfd";
+		reg = <0x0 0x43000000 0x0 0x20000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0x0 0x0 0x43000000 0x20000>;
+
+		phy_gmii_sel: phy-gmii-sel {
+			compatible = "ti,am64-phy-gmii-sel";
+			reg = <0x4044 0x8>;
+			#phy-cells = <1>;
+		};
+	};
+
+
+	cpsw3g: ethernet@8000000 {
+		compatible = "ti,am64-cpsw-nuss";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		reg = <0x0 0x8000000 0x0 0x200000>;
+		reg-names = "cpsw_nuss";
+		ranges = <0x0 0x0 0x0 0x8000000 0x0 0x200000>;
+		clocks = <&k3_clks 13 0>;
+		clock-names = "fck";
+		power-domains = <&k3_pds 13 TI_SCI_PD_EXCLUSIVE>;
+
+		dmas = <&main_pktdma 0xC500 0>,
+		       <&main_pktdma 0x4500 0>;
+		dma-names = "tx0", "rx";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			cpsw_port1: port@1 {
+				reg = <1>;
+				ti,mac-only;
+				ti,label = "port1";
+				phy-mode = "rgmii";
+				phys = <&phy_gmii_sel 1>;
+				mac-address = [00 00 de ad be ef];
+				fixed-link {
+					speed = <1000>;
+					full-duplex;
+				};
+			};
+		};
+	};
+
 	hwspinlock: spinlock@2a000000 {
 		compatible = "ti,am654-hwspinlock";
 		reg = <0x00 0x2a000000 0x00 0x1000>;
