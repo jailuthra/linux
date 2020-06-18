@@ -522,8 +522,6 @@ static int k3_udma_glue_cfg_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
 	req.valid_params = TI_SCI_MSG_VALUE_RM_UDMAP_CH_FETCH_SIZE_VALID |
 			   TI_SCI_MSG_VALUE_RM_UDMAP_CH_CQ_QNUM_VALID |
 			   TI_SCI_MSG_VALUE_RM_UDMAP_CH_CHAN_TYPE_VALID |
-			   TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_FLOWID_START_VALID |
-			   TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_FLOWID_CNT_VALID |
 			   TI_SCI_MSG_VALUE_RM_UDMAP_CH_ATYPE_VALID;
 
 	req.nav_id = tisci_rm->tisci_dev_id;
@@ -535,8 +533,11 @@ static int k3_udma_glue_cfg_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
 	 * req.rxcq_qnum = k3_ringacc_get_ring_id(rx_chn->flows[0].ringrx);
 	 */
 	req.rxcq_qnum = 0xFFFF;
-	if (rx_chn->flow_num && rx_chn->flow_id_base != rx_chn->udma_rchan_id) {
+	if (!xudma_is_pktdma(rx_chn->common.udmax) && rx_chn->flow_num &&
+	    rx_chn->flow_id_base != rx_chn->udma_rchan_id) {
 		/* Default flow + extra ones */
+		req.valid_params |= TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_FLOWID_START_VALID |
+				    TI_SCI_MSG_VALUE_RM_UDMAP_CH_RX_FLOWID_CNT_VALID;
 		req.flowid_start = rx_chn->flow_id_base;
 		req.flowid_cnt = rx_chn->flow_num;
 	}
