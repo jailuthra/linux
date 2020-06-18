@@ -146,4 +146,5 @@ void xudma_rchanrt_write(struct udma_rchan *rchan, int reg, u32 val);
 bool xudma_rflow_is_gp(struct udma_dev *ud, int id);
 int xudma_get_rflow_ring_offset(struct udma_dev *ud);
 
+int xudma_is_pktdma(struct udma_dev *ud);
 #endif /* K3_UDMA_H_ */

@@ -144,3 +144,9 @@ void xudma_##res##rt_write(struct udma_##res *p, int reg, u32 val)	\
 EXPORT_SYMBOL(xudma_##res##rt_write)
 XUDMA_RT_IO_FUNCTIONS(tchan);
 XUDMA_RT_IO_FUNCTIONS(rchan);
+
+int xudma_is_pktdma(struct udma_dev *ud)
+{
+	return ud->match_data->type == DMA_TYPE_PKTDMA;
+}
+EXPORT_SYMBOL(xudma_is_pktdma);
