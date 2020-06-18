@@ -500,7 +500,12 @@ EXPORT_SYMBOL_GPL(k3_udma_glue_tx_get_txcq_id);
 
 int k3_udma_glue_tx_get_irq(struct k3_udma_glue_tx_channel *tx_chn)
 {
-	tx_chn->virq = k3_ringacc_get_ring_irq_num(tx_chn->ringtxcq);
+	if (xudma_is_pktdma(tx_chn->common.udmax)) {
+		tx_chn->virq = xudma_pktdma_tflow_get_irq(tx_chn->common.udmax,
+							  tx_chn->udma_tflow_id);
+	} else {
+		tx_chn->virq = k3_ringacc_get_ring_irq_num(tx_chn->ringtxcq);
+	}
 
 	return tx_chn->virq;
 }
@@ -1243,7 +1248,12 @@ int k3_udma_glue_rx_get_irq(struct k3_udma_glue_rx_channel *rx_chn,
 
 	flow = &rx_chn->flows[flow_num];
 
-	flow->virq = k3_ringacc_get_ring_irq_num(flow->ringrx);
+	if (xudma_is_pktdma(rx_chn->common.udmax)) {
+		flow->virq = xudma_pktdma_rflow_get_irq(rx_chn->common.udmax,
+							flow->udma_rflow_id);
+	} else {
+		flow->virq = k3_ringacc_get_ring_irq_num(flow->ringrx);
+	}
 
 	return flow->virq;
 }
