@@ -50,8 +50,8 @@ struct k3_ring_rt_regs {
 #define KSLC_RING_RT_REGS_REVERSE_OFS		0x1000
 #define K3_RINGACC_RT_OCC_MASK			GENMASK(20, 0)
 #define KSLC_RING_RT_OCC_TDOWN_COMPLETE		BIT(31)
+#define KSLC_RING_RT_DB_ENTRY_MASK		GENMASK(7, 0)
 #define KSLC_RING_RT_DB_TDOWN_ACK		BIT(31)
-
 
 /**
  * struct k3_ring_fifo_regs - The Ring Accelerator Queues Registers region
@@ -1107,7 +1107,7 @@ static int kslc_ring_reverse_pop_mem(struct k3_ring *ring, void *elem)
 		memcpy(elem, elem_ptr, (4 << ring->elm_size));
 		ring->state.rindex = (ring->state.rindex + 1) % ring->size;
 		ring->state.occ--;
-		writel((s8)-1, &ring->rt->db);
+		writel(-1 & KSLC_RING_RT_DB_ENTRY_MASK, &ring->rt->db);
 	} else if (ring->state.tdown_complete) {
 		dma_addr_t *value = elem;
 
