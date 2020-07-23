@@ -175,14 +175,14 @@
 		};
 	};
 
-	main_conf: scm_conf@43000000 {
+	main_conf: syscon@43000000 {
 		compatible = "syscon", "simple-mfd";
 		reg = <0x0 0x43000000 0x0 0x20000>;
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges = <0x0 0x0 0x43000000 0x20000>;
 
-		phy_gmii_sel: phy-gmii-sel {
+		phy_gmii_sel: phy@4044 {
 			compatible = "ti,am64-phy-gmii-sel";
 			reg = <0x4044 0x8>;
 			#phy-cells = <1>;
@@ -205,14 +205,14 @@
 		       <&main_pktdma 0x4500 0>;
 		dma-names = "tx0", "rx";
 
-		ports {
+		ethernet-ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			cpsw_port1: port@1 {
 				reg = <1>;
 				ti,mac-only;
-				ti,label = "port1";
+				label = "port1";
 				phy-mode = "rgmii";
 				phys = <&phy_gmii_sel 1>;
 				mac-address = [00 00 de ad be ef];
