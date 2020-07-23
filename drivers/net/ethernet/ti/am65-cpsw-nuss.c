@@ -469,11 +469,9 @@ static int am65_cpsw_nuss_common_open(struct am65_cpsw_common *common,
 	port_mask = GENMASK(common->port_num, 0) &
 		    ~common->disabled_ports_mask;
 
-	if (!(common->pdata.quirks & AM64_CPSW_QUIRK_PRESIL)) {
-		cpsw_ale_add_vlan(common->ale, 0, port_mask,
-				  port_mask, port_mask,
-				  port_mask & ~ALE_PORT_HOST);
-	}
+	cpsw_ale_add_vlan(common->ale, 0, port_mask,
+			  port_mask, port_mask,
+			  port_mask & ~ALE_PORT_HOST);
 
 	for (i = 0; i < common->rx_chns.descs_num; i++) {
 		skb = __netdev_alloc_skb_ip_align(NULL,
@@ -1672,9 +1670,6 @@ static int am65_cpsw_nuss_init_rx_chns(struct am65_cpsw_common *common)
 				K3_UDMA_GLUE_SRC_TAG_LO_USE_REMOTE_SRC_TAG,
 		};
 
-		if (common->pdata.quirks & AM64_CPSW_QUIRK_PRESIL)
-			rx_flow_cfg.rxfdq_cfg.mode = K3_RINGACC_RING_MODE_RING;
-
 		rx_flow_cfg.ring_rxfdq0_id = fdqring_id;
 		rx_flow_cfg.rx_cfg.size = max_desc_num;
 		rx_flow_cfg.rxfdq_cfg.size = max_desc_num;
@@ -1937,10 +1932,6 @@ static int am65_cpsw_nuss_init_ndev_2g(struct am65_cpsw_common *common)
 	port->ndev->features = port->ndev->hw_features |
 			       NETIF_F_HW_VLAN_CTAG_FILTER;
 	port->ndev->vlan_features |=  NETIF_F_SG;
-	if (common->pdata.quirks & AM64_CPSW_QUIRK_PRESIL) {
-		port->ndev->hw_features = NETIF_F_SG;
-		port->ndev->features = port->ndev->hw_features;
-	}
 	port->ndev->netdev_ops = &am65_cpsw_nuss_netdev_ops_2g;
 	port->ndev->ethtool_ops = &am65_cpsw_ethtool_ops_slave;
 
@@ -2073,14 +2064,9 @@ static const struct am65_cpsw_pdata j721e_pdata = {
 	.quirks = 0,
 };
 
-static const struct am65_cpsw_pdata am64x_pdata = {
-	.quirks = AM64_CPSW_QUIRK_PRESIL,
-};
-
 static const struct of_device_id am65_cpsw_nuss_of_mtable[] = {
 	{ .compatible = "ti,am654-cpsw-nuss", .data = &am65x_sr1_0},
 	{ .compatible = "ti,j721e-cpsw-nuss", .data = &j721e_pdata},
-	{ .compatible = "ti,am64-cpsw-nuss", .data = &am64x_pdata},
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, am65_cpsw_nuss_of_mtable);
