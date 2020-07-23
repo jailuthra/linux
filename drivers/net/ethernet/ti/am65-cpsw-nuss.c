@@ -473,9 +473,6 @@ static int am65_cpsw_nuss_common_open(struct am65_cpsw_common *common,
 		cpsw_ale_add_vlan(common->ale, 0, port_mask,
 				  port_mask, port_mask,
 				  port_mask & ~ALE_PORT_HOST);
-	} else {
-		cpsw_ale_control_set(common->ale, HOST_PORT_NUM,
-				     ALE_BYPASS, 1);
 	}
 
 	for (i = 0; i < common->rx_chns.descs_num; i++) {
