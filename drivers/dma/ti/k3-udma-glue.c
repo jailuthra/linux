@@ -456,12 +456,9 @@ void k3_udma_glue_reset_tx_chn(struct k3_udma_glue_tx_channel *tx_chn,
 			       void *data,
 			       void (*cleanup)(void *data, dma_addr_t desc_dma))
 {
+	struct device *dev = tx_chn->common.dev;
 	dma_addr_t desc_dma;
 	int occ_tx, i, ret;
-
-	/* reset TXCQ as it is not input for udma - expected to be empty */
-	if (tx_chn->ringtxcq)
-		k3_ringacc_ring_reset(tx_chn->ringtxcq);
 
 	/*
 	 * TXQ reset need to be special way as it is input for udma and its
@@ -471,17 +468,20 @@ void k3_udma_glue_reset_tx_chn(struct k3_udma_glue_tx_channel *tx_chn,
 	 * 3) reset TXQ in a special way
 	 */
 	occ_tx = k3_ringacc_ring_get_occ(tx_chn->ringtx);
-	dev_dbg(tx_chn->common.dev, "TX reset occ_tx %u\n", occ_tx);
+	dev_dbg(dev, "TX reset occ_tx %u\n", occ_tx);
 
 	for (i = 0; i < occ_tx; i++) {
 		ret = k3_ringacc_ring_pop(tx_chn->ringtx, &desc_dma);
 		if (ret) {
-			dev_err(tx_chn->common.dev, "TX reset pop %d\n", ret);
+			if (ret != -ENODATA)
+				dev_err(dev, "TX reset pop %d\n", ret);
 			break;
 		}
 		cleanup(data, desc_dma);
 	}
 
+	/* reset TXCQ as it is not input for udma - expected to be empty */
+	k3_ringacc_ring_reset(tx_chn->ringtxcq);
 	k3_ringacc_ring_reset_dma(tx_chn->ringtx, occ_tx);
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_reset_tx_chn);
@@ -1193,12 +1193,10 @@ void k3_udma_glue_reset_rx_chn(struct k3_udma_glue_rx_channel *rx_chn,
 	/* reset RXCQ as it is not input for udma - expected to be empty */
 	occ_rx = k3_ringacc_ring_get_occ(flow->ringrx);
 	dev_dbg(dev, "RX reset flow %u occ_rx %u\n", flow_num, occ_rx);
-	if (flow->ringrx)
-		k3_ringacc_ring_reset(flow->ringrx);
 
 	/* Skip RX FDQ in case one FDQ is used for the set of flows */
 	if (skip_fdq)
-		return;
+		goto do_reset;
 
 	/*
 	 * RX FDQ reset need to be special way as it is input for udma and its
@@ -1213,13 +1211,17 @@ void k3_udma_glue_reset_rx_chn(struct k3_udma_glue_rx_channel *rx_chn,
 	for (i = 0; i < occ_rx; i++) {
 		ret = k3_ringacc_ring_pop(flow->ringrxfdq, &desc_dma);
 		if (ret) {
-			dev_err(dev, "RX reset pop %d\n", ret);
+			if (ret != -ENODATA)
+				dev_err(dev, "RX reset pop %d\n", ret);
 			break;
 		}
 		cleanup(data, desc_dma);
 	}
 
 	k3_ringacc_ring_reset_dma(flow->ringrxfdq, occ_rx);
+
+do_reset:
+	k3_ringacc_ring_reset(flow->ringrx);
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_reset_rx_chn);
 
