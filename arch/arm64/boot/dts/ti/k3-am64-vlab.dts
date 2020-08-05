@@ -160,3 +160,23 @@
 	ti,driver-strength-ohm = <50>;
 	disable-wp;
 };
+
+&cpsw3g_mdio {
+	status = "disabled";
+};
+
+&cpsw_port1 {
+	phy-mode = "rgmii-rxid";
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&cpsw_port2 {
+	phy-mode = "rgmii-rxid";
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};

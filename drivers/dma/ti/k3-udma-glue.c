@@ -316,19 +316,6 @@ struct k3_udma_glue_tx_channel *k3_udma_glue_request_tx_chn(struct device *dev,
 		goto err;
 	}
 
-	ret = xudma_navss_psil_pair(tx_chn->common.udmax,
-				    tx_chn->common.src_thread,
-				    tx_chn->common.dst_thread);
-	if (ret) {
-		dev_err(dev, "PSI-L request err %d\n", ret);
-		goto err;
-	}
-
-	tx_chn->psil_paired = true;
-
-	/* reset TX RT registers */
-	k3_udma_glue_disable_tx_chn(tx_chn);
-
 	k3_udma_glue_dump_tx_chn(tx_chn);
 
 	return tx_chn;
@@ -392,6 +379,17 @@ EXPORT_SYMBOL_GPL(k3_udma_glue_pop_tx_chn);
 int k3_udma_glue_enable_tx_chn(struct k3_udma_glue_tx_channel *tx_chn)
 {
 	u32 txrt_ctl;
+	int ret;
+
+	ret = xudma_navss_psil_pair(tx_chn->common.udmax,
+				    tx_chn->common.src_thread,
+				    tx_chn->common.dst_thread);
+	if (ret) {
+		dev_err(tx_chn->common.dev, "PSI-L request err %d\n", ret);
+		return ret;
+	}
+
+	tx_chn->psil_paired = true;
 
 	txrt_ctl = UDMA_PEER_RT_EN_ENABLE;
 	xudma_tchanrt_write(tx_chn->udma_tchanx, UDMA_CHAN_RT_PEER_RT_EN_REG,
@@ -417,6 +415,13 @@ void k3_udma_glue_disable_tx_chn(struct k3_udma_glue_tx_channel *tx_chn)
 	xudma_tchanrt_write(tx_chn->udma_tchanx,
 			    UDMA_CHAN_RT_PEER_RT_EN_REG, 0);
 	k3_udma_glue_dump_tx_rt_chn(tx_chn, "txchn dis2");
+
+	if (tx_chn->psil_paired) {
+		xudma_navss_psil_unpair(tx_chn->common.udmax,
+					tx_chn->common.src_thread,
+					tx_chn->common.dst_thread);
+		tx_chn->psil_paired = false;
+	}
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_disable_tx_chn);
 
@@ -456,12 +461,9 @@ void k3_udma_glue_reset_tx_chn(struct k3_udma_glue_tx_channel *tx_chn,
 			       void *data,
 			       void (*cleanup)(void *data, dma_addr_t desc_dma))
 {
+	struct device *dev = tx_chn->common.dev;
 	dma_addr_t desc_dma;
 	int occ_tx, i, ret;
-
-	/* reset TXCQ as it is not input for udma - expected to be empty */
-	if (tx_chn->ringtxcq)
-		k3_ringacc_ring_reset(tx_chn->ringtxcq);
 
 	/*
 	 * TXQ reset need to be special way as it is input for udma and its
@@ -471,17 +473,20 @@ void k3_udma_glue_reset_tx_chn(struct k3_udma_glue_tx_channel *tx_chn,
 	 * 3) reset TXQ in a special way
 	 */
 	occ_tx = k3_ringacc_ring_get_occ(tx_chn->ringtx);
-	dev_dbg(tx_chn->common.dev, "TX reset occ_tx %u\n", occ_tx);
+	dev_dbg(dev, "TX reset occ_tx %u\n", occ_tx);
 
 	for (i = 0; i < occ_tx; i++) {
 		ret = k3_ringacc_ring_pop(tx_chn->ringtx, &desc_dma);
 		if (ret) {
-			dev_err(tx_chn->common.dev, "TX reset pop %d\n", ret);
+			if (ret != -ENODATA)
+				dev_err(dev, "TX reset pop %d\n", ret);
 			break;
 		}
 		cleanup(data, desc_dma);
 	}
 
+	/* reset TXCQ as it is not input for udma - expected to be empty */
+	k3_ringacc_ring_reset(tx_chn->ringtxcq);
 	k3_ringacc_ring_reset_dma(tx_chn->ringtx, occ_tx);
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_reset_tx_chn);
@@ -875,19 +880,6 @@ k3_udma_glue_request_rx_chn_priv(struct device *dev, const char *name,
 			goto err;
 	}
 
-	ret = xudma_navss_psil_pair(rx_chn->common.udmax,
-				    rx_chn->common.src_thread,
-				    rx_chn->common.dst_thread);
-	if (ret) {
-		dev_err(dev, "PSI-L request err %d\n", ret);
-		goto err;
-	}
-
-	rx_chn->psil_paired = true;
-
-	/* reset RX RT registers */
-	k3_udma_glue_disable_rx_chn(rx_chn);
-
 	k3_udma_glue_dump_rx_chn(rx_chn);
 
 	return rx_chn;
@@ -1113,12 +1105,23 @@ EXPORT_SYMBOL_GPL(k3_udma_glue_rx_flow_disable);
 int k3_udma_glue_enable_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
 {
 	u32 rxrt_ctl;
+	int ret;
 
 	if (rx_chn->remote)
 		return -EINVAL;
 
 	if (rx_chn->flows_ready < rx_chn->flow_num)
 		return -EINVAL;
+
+	ret = xudma_navss_psil_pair(rx_chn->common.udmax,
+				    rx_chn->common.src_thread,
+				    rx_chn->common.dst_thread);
+	if (ret) {
+		dev_err(rx_chn->common.dev, "PSI-L request err %d\n", ret);
+		return ret;
+	}
+
+	rx_chn->psil_paired = true;
 
 	rxrt_ctl = xudma_rchanrt_read(rx_chn->udma_rchanx,
 				      UDMA_CHAN_RT_CTL_REG);
@@ -1143,6 +1146,13 @@ void k3_udma_glue_disable_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
 	xudma_rchanrt_write(rx_chn->udma_rchanx, UDMA_CHAN_RT_CTL_REG, 0);
 
 	k3_udma_glue_dump_rx_rt_chn(rx_chn, "rxrt dis2");
+
+	if (rx_chn->psil_paired) {
+		xudma_navss_psil_unpair(rx_chn->common.udmax,
+					rx_chn->common.src_thread,
+					rx_chn->common.dst_thread);
+		rx_chn->psil_paired = false;
+	}
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_disable_rx_chn);
 
@@ -1193,12 +1203,10 @@ void k3_udma_glue_reset_rx_chn(struct k3_udma_glue_rx_channel *rx_chn,
 	/* reset RXCQ as it is not input for udma - expected to be empty */
 	occ_rx = k3_ringacc_ring_get_occ(flow->ringrx);
 	dev_dbg(dev, "RX reset flow %u occ_rx %u\n", flow_num, occ_rx);
-	if (flow->ringrx)
-		k3_ringacc_ring_reset(flow->ringrx);
 
 	/* Skip RX FDQ in case one FDQ is used for the set of flows */
 	if (skip_fdq)
-		return;
+		goto do_reset;
 
 	/*
 	 * RX FDQ reset need to be special way as it is input for udma and its
@@ -1213,13 +1221,17 @@ void k3_udma_glue_reset_rx_chn(struct k3_udma_glue_rx_channel *rx_chn,
 	for (i = 0; i < occ_rx; i++) {
 		ret = k3_ringacc_ring_pop(flow->ringrxfdq, &desc_dma);
 		if (ret) {
-			dev_err(dev, "RX reset pop %d\n", ret);
+			if (ret != -ENODATA)
+				dev_err(dev, "RX reset pop %d\n", ret);
 			break;
 		}
 		cleanup(data, desc_dma);
 	}
 
 	k3_ringacc_ring_reset_dma(flow->ringrxfdq, occ_rx);
+
+do_reset:
+	k3_ringacc_ring_reset(flow->ringrx);
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_reset_rx_chn);
 
