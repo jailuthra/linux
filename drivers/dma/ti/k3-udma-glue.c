@@ -20,8 +20,11 @@
 #include "k3-udma.h"
 #include "k3-psil-priv.h"
 
+#define KSLC_ADDRESS_ASEL_SHIFT		48
+
 struct k3_udma_glue_common {
 	struct device *dev;
+	struct device chan_dev;
 	struct udma_dev *udmax;
 	const struct udma_tisci_rm *tisci_rm;
 	struct k3_ringacc *ringacc;
@@ -32,7 +35,7 @@ struct k3_udma_glue_common {
 	bool epib;
 	u32  psdata_size;
 	u32  swdata_size;
-	u32  atype;
+	u32  atype_asel;
 	struct psil_endpoint_config *ep_config;
 };
 
@@ -123,15 +126,26 @@ static int of_k3_udma_glue_parse_chn(struct device_node *chn_np,
 				       &dma_spec))
 		return -ENOENT;
 
+	ret = of_k3_udma_glue_parse(dma_spec.np, common);
+	if (ret)
+		goto out_put_spec;
+
 	thread_id = dma_spec.args[0];
 	if (dma_spec.args_count == 2) {
-		if (dma_spec.args[1] > 2) {
+		if (dma_spec.args[1] > 2 && !xudma_is_pktdma(common->udmax)) {
 			dev_err(common->dev, "Invalid channel atype: %u\n",
 				dma_spec.args[1]);
 			ret = -EINVAL;
 			goto out_put_spec;
 		}
-		common->atype = dma_spec.args[1];
+		if (dma_spec.args[1] > 15 && xudma_is_pktdma(common->udmax)) {
+			dev_err(common->dev, "Invalid channel asel: %u\n",
+				dma_spec.args[1]);
+			ret = -EINVAL;
+			goto out_put_spec;
+		}
+
+		common->atype_asel = dma_spec.args[1];
 	}
 
 	if (tx_chn && !(thread_id & K3_PSIL_DST_THREAD_ID_OFFSET)) {
@@ -161,8 +175,6 @@ static int of_k3_udma_glue_parse_chn(struct device_node *chn_np,
 		common->dst_thread = thread_id;
 	else
 		common->src_thread = thread_id;
-
-	ret = of_k3_udma_glue_parse(dma_spec.np, common);
 
 out_put_spec:
 	of_node_put(dma_spec.np);
@@ -229,7 +241,7 @@ static int k3_udma_glue_cfg_tx_chn(struct k3_udma_glue_tx_channel *tx_chn)
 		req.tx_supr_tdpkt = 1;
 	req.tx_fetch_size = tx_chn->common.hdesc_size >> 2;
 	req.txcq_qnum = k3_ringacc_get_ring_id(tx_chn->ringtxcq);
-	req.tx_atype = tx_chn->common.atype;
+	req.tx_atype = tx_chn->common.atype_asel;
 
 	return tisci_rm->tisci_udmap_ops->tx_ch_cfg(tisci_rm->tisci, &req);
 }
@@ -239,6 +251,9 @@ static void k3_udma_glue_fixup_tx_ringcfg(struct k3_udma_glue_tx_channel *tx_chn
 {
 	if (ring_cfg->mode == K3_RINGACC_RING_MODE_RING)
 		ring_cfg->alloc_dev = k3_udma_glue_tx_dev_for_dma_api(tx_chn);
+
+	if (xudma_is_pktdma(tx_chn->common.udmax))
+		ring_cfg->asel = tx_chn->common.atype_asel;
 }
 
 struct k3_udma_glue_tx_channel *k3_udma_glue_request_tx_chn(struct device *dev,
@@ -282,6 +297,23 @@ struct k3_udma_glue_tx_channel *k3_udma_glue_request_tx_chn(struct device *dev,
 		goto err;
 	}
 	tx_chn->udma_tchan_id = xudma_tchan_get_id(tx_chn->udma_tchanx);
+
+	tx_chn->common.chan_dev.parent = xudma_get_device(tx_chn->common.udmax);
+	dev_set_name(&tx_chn->common.chan_dev, "tchan%d-0x%04x",
+		     tx_chn->udma_tchan_id, tx_chn->common.dst_thread);
+	ret = device_register(&tx_chn->common.chan_dev);
+	if (ret) {
+		dev_err(dev, "Channel Device registration failed %d\n", ret);
+		tx_chn->common.chan_dev.parent = NULL;
+		goto err;
+	}
+
+	if (xudma_is_pktdma(tx_chn->common.udmax)) {
+		/* prepare the channel device as coherent */
+		tx_chn->common.chan_dev.dma_coherent = true;
+		dma_coerce_mask_and_coherent(&tx_chn->common.chan_dev,
+					     DMA_BIT_MASK(48));
+	}
 
 	atomic_set(&tx_chn->free_pkts, cfg->txcq_cfg.size);
 
@@ -353,6 +385,11 @@ void k3_udma_glue_release_tx_chn(struct k3_udma_glue_tx_channel *tx_chn)
 
 	if (tx_chn->ringtx)
 		k3_ringacc_ring_free(tx_chn->ringtx);
+
+	if (tx_chn->common.chan_dev.parent) {
+		device_unregister(&tx_chn->common.chan_dev);
+		tx_chn->common.chan_dev.parent = NULL;
+	}
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_release_tx_chn);
 
@@ -528,9 +565,35 @@ EXPORT_SYMBOL_GPL(k3_udma_glue_tx_get_irq);
 struct device *
 	k3_udma_glue_tx_dev_for_dma_api(struct k3_udma_glue_tx_channel *tx_chn)
 {
+	if (xudma_is_pktdma(tx_chn->common.udmax) &&
+	    (tx_chn->common.atype_asel == 14 || tx_chn->common.atype_asel == 15))
+		return &tx_chn->common.chan_dev;
+
 	return xudma_get_device(tx_chn->common.udmax);
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_tx_dev_for_dma_api);
+
+void k3_udma_glue_tx_dma_to_cppi5_addr(struct k3_udma_glue_tx_channel *tx_chn,
+				       dma_addr_t *addr)
+{
+	if (!xudma_is_pktdma(tx_chn->common.udmax) ||
+	    !tx_chn->common.atype_asel)
+		return;
+
+	*addr |= (u64)tx_chn->common.atype_asel << KSLC_ADDRESS_ASEL_SHIFT;
+}
+EXPORT_SYMBOL_GPL(k3_udma_glue_tx_dma_to_cppi5_addr);
+
+void k3_udma_glue_tx_cppi5_to_dma_addr(struct k3_udma_glue_tx_channel *tx_chn,
+				       dma_addr_t *addr)
+{
+	if (!xudma_is_pktdma(tx_chn->common.udmax) ||
+	    !tx_chn->common.atype_asel)
+		return;
+
+	*addr &= (u64)GENMASK(KSLC_ADDRESS_ASEL_SHIFT - 1, 0);
+}
+EXPORT_SYMBOL_GPL(k3_udma_glue_tx_cppi5_to_dma_addr);
 
 static int k3_udma_glue_cfg_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
 {
@@ -563,7 +626,7 @@ static int k3_udma_glue_cfg_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
 		req.flowid_cnt = rx_chn->flow_num;
 	}
 	req.rx_chan_type = TI_SCI_RM_UDMAP_CHAN_TYPE_PKT_PBRR;
-	req.rx_atype = rx_chn->common.atype;
+	req.rx_atype = rx_chn->common.atype_asel;
 
 	ret = tisci_rm->tisci_udmap_ops->rx_ch_cfg(tisci_rm->tisci, &req);
 	if (ret)
@@ -597,6 +660,9 @@ static void k3_udma_glue_fixup_rx_ringcfg(struct k3_udma_glue_rx_channel *rx_chn
 {
 	if (ring_cfg->mode == K3_RINGACC_RING_MODE_RING)
 		ring_cfg->alloc_dev = k3_udma_glue_rx_dev_for_dma_api(rx_chn);
+
+	if (xudma_is_pktdma(rx_chn->common.udmax))
+		ring_cfg->asel = rx_chn->common.atype_asel;
 }
 
 static int k3_udma_glue_cfg_rx_flow(struct k3_udma_glue_rx_channel *rx_chn,
@@ -848,6 +914,23 @@ k3_udma_glue_request_rx_chn_priv(struct device *dev, const char *name,
 	}
 	rx_chn->udma_rchan_id = xudma_rchan_get_id(rx_chn->udma_rchanx);
 
+	rx_chn->common.chan_dev.parent = xudma_get_device(rx_chn->common.udmax);
+	dev_set_name(&rx_chn->common.chan_dev, "rchan%d-0x%04x",
+		     rx_chn->udma_rchan_id, rx_chn->common.src_thread);
+	ret = device_register(&rx_chn->common.chan_dev);
+	if (ret) {
+		dev_err(dev, "Channel Device registration failed %d\n", ret);
+		rx_chn->common.chan_dev.parent = NULL;
+		goto err;
+	}
+
+	if (xudma_is_pktdma(rx_chn->common.udmax)) {
+		/* prepare the channel device as coherent */
+		rx_chn->common.chan_dev.dma_coherent = true;
+		dma_coerce_mask_and_coherent(&rx_chn->common.chan_dev,
+					     DMA_BIT_MASK(48));
+	}
+
 	if (xudma_is_pktdma(rx_chn->common.udmax)) {
 		int flow_start = cfg->flow_id_base;
 		int flow_end;
@@ -961,6 +1044,23 @@ k3_udma_glue_request_remote_rx_chn(struct device *dev, const char *name,
 		goto err;
 	}
 
+	rx_chn->common.chan_dev.parent = xudma_get_device(rx_chn->common.udmax);
+	dev_set_name(&rx_chn->common.chan_dev, "rchan_remote-0x%04x",
+		     rx_chn->common.src_thread);
+	ret = device_register(&rx_chn->common.chan_dev);
+	if (ret) {
+		dev_err(dev, "Channel Device registration failed %d\n", ret);
+		rx_chn->common.chan_dev.parent = NULL;
+		goto err;
+	}
+
+	if (xudma_is_pktdma(rx_chn->common.udmax)) {
+		/* prepare the channel device as coherent */
+		rx_chn->common.chan_dev.dma_coherent = true;
+		dma_coerce_mask_and_coherent(&rx_chn->common.chan_dev,
+					     DMA_BIT_MASK(48));
+	}
+
 	ret = k3_udma_glue_allocate_rx_flows(rx_chn, cfg);
 	if (ret)
 		goto err;
@@ -1013,6 +1113,11 @@ void k3_udma_glue_release_rx_chn(struct k3_udma_glue_rx_channel *rx_chn)
 	if (!IS_ERR_OR_NULL(rx_chn->udma_rchanx))
 		xudma_rchan_put(rx_chn->common.udmax,
 				rx_chn->udma_rchanx);
+
+	if (rx_chn->common.chan_dev.parent) {
+		device_unregister(&rx_chn->common.chan_dev);
+		rx_chn->common.chan_dev.parent = NULL;
+	}
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_release_rx_chn);
 
@@ -1300,6 +1405,32 @@ EXPORT_SYMBOL_GPL(k3_udma_glue_rx_get_irq);
 struct device *
 	k3_udma_glue_rx_dev_for_dma_api(struct k3_udma_glue_rx_channel *rx_chn)
 {
+	if (xudma_is_pktdma(rx_chn->common.udmax) &&
+	    (rx_chn->common.atype_asel == 14 || rx_chn->common.atype_asel == 15))
+		return &rx_chn->common.chan_dev;
+
 	return xudma_get_device(rx_chn->common.udmax);
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_rx_dev_for_dma_api);
+
+void k3_udma_glue_rx_dma_to_cppi5_addr(struct k3_udma_glue_rx_channel *rx_chn,
+				       dma_addr_t *addr)
+{
+	if (!xudma_is_pktdma(rx_chn->common.udmax) ||
+	    !rx_chn->common.atype_asel)
+		return;
+
+	*addr |= (u64)rx_chn->common.atype_asel << KSLC_ADDRESS_ASEL_SHIFT;
+}
+EXPORT_SYMBOL_GPL(k3_udma_glue_rx_dma_to_cppi5_addr);
+
+void k3_udma_glue_rx_cppi5_to_dma_addr(struct k3_udma_glue_rx_channel *rx_chn,
+				       dma_addr_t *addr)
+{
+	if (!xudma_is_pktdma(rx_chn->common.udmax) ||
+	    !rx_chn->common.atype_asel)
+		return;
+
+	*addr &= (u64)GENMASK(KSLC_ADDRESS_ASEL_SHIFT - 1, 0);
+}
+EXPORT_SYMBOL_GPL(k3_udma_glue_rx_cppi5_to_dma_addr);
