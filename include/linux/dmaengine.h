@@ -342,12 +342,15 @@ struct dma_chan {
  * @device: sysfs device
  * @dev_id: parent dma_device dev_id
  * @idr_ref: reference count to gate release of dma_device dev_id
+ * @custom_dma_mapping: The channel is using custom/different dma-mapping
+ * compared to the parent dma_device
  */
 struct dma_chan_dev {
 	struct dma_chan *chan;
 	struct device device;
 	int dev_id;
 	atomic_t *idr_ref;
+	bool custom_dma_mapping;
 };
 
 /**
@@ -1578,4 +1581,14 @@ dmaengine_get_direction_text(enum dma_transfer_direction dir)
 
 	return "invalid";
 }
+
+static inline struct device *
+dmaengine_get_device_for_dma_api(struct dma_chan *chan)
+{
+	if (chan->dev->custom_dma_mapping)
+		return &chan->dev->device;
+
+	return chan->device->dev;
+}
+
 #endif /* DMAENGINE_H */
