@@ -234,6 +234,13 @@ static int k3_udma_glue_cfg_tx_chn(struct k3_udma_glue_tx_channel *tx_chn)
 	return tisci_rm->tisci_udmap_ops->tx_ch_cfg(tisci_rm->tisci, &req);
 }
 
+static void k3_udma_glue_fixup_tx_ringcfg(struct k3_udma_glue_tx_channel *tx_chn,
+					  struct k3_ring_cfg *ring_cfg)
+{
+	if (ring_cfg->mode == K3_RINGACC_RING_MODE_RING)
+		ring_cfg->alloc_dev = k3_udma_glue_tx_dev_for_dma_api(tx_chn);
+}
+
 struct k3_udma_glue_tx_channel *k3_udma_glue_request_tx_chn(struct device *dev,
 		const char *name, struct k3_udma_glue_tx_channel_cfg *cfg)
 {
@@ -293,12 +300,14 @@ struct k3_udma_glue_tx_channel *k3_udma_glue_request_tx_chn(struct device *dev,
 		goto err;
 	}
 
+	k3_udma_glue_fixup_tx_ringcfg(tx_chn, &cfg->tx_cfg);
 	ret = k3_ringacc_ring_cfg(tx_chn->ringtx, &cfg->tx_cfg);
 	if (ret) {
 		dev_err(dev, "Failed to cfg ringtx %d\n", ret);
 		goto err;
 	}
 
+	k3_udma_glue_fixup_tx_ringcfg(tx_chn, &cfg->txcq_cfg);
 	ret = k3_ringacc_ring_cfg(tx_chn->ringtxcq, &cfg->txcq_cfg);
 	if (ret) {
 		dev_err(dev, "Failed to cfg ringtx %d\n", ret);
@@ -583,6 +592,13 @@ static void k3_udma_glue_release_rx_flow(struct k3_udma_glue_rx_channel *rx_chn,
 	rx_chn->flows_ready--;
 }
 
+static void k3_udma_glue_fixup_rx_ringcfg(struct k3_udma_glue_rx_channel *rx_chn,
+					  struct k3_ring_cfg *ring_cfg)
+{
+	if (ring_cfg->mode == K3_RINGACC_RING_MODE_RING)
+		ring_cfg->alloc_dev = k3_udma_glue_rx_dev_for_dma_api(rx_chn);
+}
+
 static int k3_udma_glue_cfg_rx_flow(struct k3_udma_glue_rx_channel *rx_chn,
 				    u32 flow_idx,
 				    struct k3_udma_glue_rx_flow_cfg *flow_cfg)
@@ -627,12 +643,14 @@ static int k3_udma_glue_cfg_rx_flow(struct k3_udma_glue_rx_channel *rx_chn,
 		goto err_rflow_put;
 	}
 
+	k3_udma_glue_fixup_rx_ringcfg(rx_chn, &flow_cfg->rx_cfg);
 	ret = k3_ringacc_ring_cfg(flow->ringrx, &flow_cfg->rx_cfg);
 	if (ret) {
 		dev_err(dev, "Failed to cfg ringrx %d\n", ret);
 		goto err_ringrxfdq_free;
 	}
 
+	k3_udma_glue_fixup_rx_ringcfg(rx_chn, &flow_cfg->rxfdq_cfg);
 	ret = k3_ringacc_ring_cfg(flow->ringrxfdq, &flow_cfg->rxfdq_cfg);
 	if (ret) {
 		dev_err(dev, "Failed to cfg ringrxfdq %d\n", ret);
