@@ -464,6 +464,8 @@ static void k3_ringacc_ring_reset_sci(struct k3_ring *ring)
 			ring->size,
 			0,
 			0,
+			0,
+			0,
 			0);
 	if (ret)
 		dev_err(ringacc->dev, "TISCI reset ring fail (%d) ring_idx %d\n",
@@ -496,6 +498,8 @@ static void k3_ringacc_ring_reconfig_qmode_sci(struct k3_ring *ring,
 			0,
 			0,
 			mode,
+			0,
+			0,
 			0,
 			0);
 	if (ret)
@@ -572,6 +576,8 @@ static void k3_ringacc_ring_free_sci(struct k3_ring *ring)
 			TI_SCI_MSG_VALUE_RM_ALL_NO_ORDER,
 			ringacc->tisci_dev_id,
 			ring->ring_id,
+			0,
+			0,
 			0,
 			0,
 			0,
@@ -688,6 +694,8 @@ static int k3_ringacc_ring_cfg_sci(struct k3_ring *ring)
 			ring->size,
 			ring->mode,
 			ring->elm_size,
+			0,
+			0,
 			0);
 	if (ret)
 		dev_err(ringacc->dev, "TISCI config ring fail (%d) ring_idx %d\n",
