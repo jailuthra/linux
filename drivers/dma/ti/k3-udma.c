@@ -54,6 +54,8 @@ struct udma_static_tr {
 #define UDMA_RFLOW_DSTTAG_DST_TAG_LO	4
 #define UDMA_RFLOW_DSTTAG_DST_TAG_HI	5
 
+#define KSLC_ADDRESS_ASEL_SHIFT		48
+
 struct udma_chan;
 
 enum k3_dma_type {
@@ -195,7 +197,7 @@ struct udma_dev {
 
 	struct udma_chan *channels;
 	u32 psil_base;
-	u32 atype;
+	u32 atype_asel;
 };
 
 struct udma_desc {
@@ -239,7 +241,7 @@ struct udma_chan_config {
 	u32 hdesc_size; /* Size of a packet descriptor in packet mode */
 	bool notdpkt; /* Suppress sending TDC packet */
 	int remote_thread_id;
-	u32 atype;
+	u32 atype_asel;
 	u32 src_thread;
 	u32 dst_thread;
 	enum psil_endpoint_type ep_type;
@@ -259,6 +261,7 @@ struct udma_chan {
 	struct virt_dma_chan vc;
 	struct dma_slave_config	cfg;
 	struct udma_dev *ud;
+	struct device *alloc_dev;
 	struct udma_desc *desc;
 	struct udma_desc *terminated_desc;
 	struct udma_static_tr static_tr;
@@ -400,6 +403,24 @@ static int navss_psil_unpair(struct udma_dev *ud, u32 src_thread,
 						src_thread, dst_thread);
 }
 
+static void kslc_configure_chan_coherency(struct dma_chan *chan, u32 asel)
+{
+	if (asel == 0) {
+		/* No special handling for the channel */
+		chan->dev->custom_dma_mapping = false;
+		chan->dev->device.dma_coherent = false;
+	} else if (asel == 14 || asel == 15) {
+		chan->dev->custom_dma_mapping = true;
+		chan->dev->device.dma_coherent = true;
+		dma_coerce_mask_and_coherent(&chan->dev->device,
+					     DMA_BIT_MASK(48));
+	} else {
+		dev_warn(chan->device->dev, "Invalid ASEL value: %u\n", asel);
+		chan->dev->custom_dma_mapping = false;
+		chan->dev->device.dma_coherent = false;
+	}
+}
+
 static void udma_reset_uchan(struct udma_chan *uc)
 {
 	memset(&uc->config, 0, sizeof(uc->config));
@@ -488,9 +509,7 @@ static void udma_free_hwdesc(struct udma_chan *uc, struct udma_desc *d)
 			d->hwdesc[i].cppi5_desc_vaddr = NULL;
 		}
 	} else if (d->hwdesc[0].cppi5_desc_vaddr) {
-		struct udma_dev *ud = uc->ud;
-
-		dma_free_coherent(ud->dev, d->hwdesc[0].cppi5_desc_size,
+		dma_free_coherent(uc->alloc_dev, d->hwdesc[0].cppi5_desc_size,
 				  d->hwdesc[0].cppi5_desc_vaddr,
 				  d->hwdesc[0].cppi5_desc_paddr);
 
@@ -1527,6 +1546,7 @@ static void bcdma_free_bchan_resources(struct udma_chan *uc)
 	k3_ringacc_ring_free(uc->bchan->t_ring);
 	uc->bchan->tc_ring = NULL;
 	uc->bchan->t_ring = NULL;
+	kslc_configure_chan_coherency(&uc->vc.chan, 0);
 
 	bcdma_put_bchan(uc);
 }
@@ -1554,6 +1574,10 @@ static int bcdma_alloc_bchan_resources(struct udma_chan *uc)
 	ring_cfg.elm_size = K3_RINGACC_RING_ELSIZE_8;
 	ring_cfg.mode = K3_RINGACC_RING_MODE_RING;
 
+	kslc_configure_chan_coherency(&uc->vc.chan, ud->atype_asel);
+	ring_cfg.asel = ud->atype_asel;
+	ring_cfg.alloc_dev = dmaengine_get_device_for_dma_api(&uc->vc.chan);
+
 	ret = k3_ringacc_ring_cfg(uc->bchan->t_ring, &ring_cfg);
 	if (ret)
 		goto err_ringcfg;
@@ -1565,6 +1589,7 @@ err_ringcfg:
 	uc->bchan->tc_ring = NULL;
 	k3_ringacc_ring_free(uc->bchan->t_ring);
 	uc->bchan->t_ring = NULL;
+	kslc_configure_chan_coherency(&uc->vc.chan, 0);
 err_ring:
 	bcdma_put_bchan(uc);
 
@@ -1612,10 +1637,17 @@ static int udma_alloc_tx_resources(struct udma_chan *uc)
 	memset(&ring_cfg, 0, sizeof(ring_cfg));
 	ring_cfg.size = K3_UDMA_DEFAULT_RING_SIZE;
 	ring_cfg.elm_size = K3_RINGACC_RING_ELSIZE_8;
-	if (ud->match_data->type == DMA_TYPE_UDMA)
+	if (ud->match_data->type == DMA_TYPE_UDMA) {
 		ring_cfg.mode = K3_RINGACC_RING_MODE_MESSAGE;
-	else
+	} else {
 		ring_cfg.mode = K3_RINGACC_RING_MODE_RING;
+
+		kslc_configure_chan_coherency(&uc->vc.chan,
+					      uc->config.atype_asel);
+		ring_cfg.asel = uc->config.atype_asel;
+		ring_cfg.alloc_dev =
+				dmaengine_get_device_for_dma_api(&uc->vc.chan);
+	}
 
 	ret = k3_ringacc_ring_cfg(tchan->t_ring, &ring_cfg);
 	ret |= k3_ringacc_ring_cfg(tchan->tc_ring, &ring_cfg);
@@ -1708,6 +1740,12 @@ static int udma_alloc_rx_resources(struct udma_chan *uc)
 	} else {
 		ring_cfg.mode = K3_RINGACC_RING_MODE_RING;
 		ring_cfg.size = K3_UDMA_DEFAULT_RING_SIZE;
+
+		kslc_configure_chan_coherency(&uc->vc.chan,
+					      uc->config.atype_asel);
+		ring_cfg.asel = uc->config.atype_asel;
+		ring_cfg.alloc_dev =
+				dmaengine_get_device_for_dma_api(&uc->vc.chan);
 	}
 
 	ret = k3_ringacc_ring_cfg(rflow->fd_ring, &ring_cfg);
@@ -1786,7 +1824,7 @@ static int udma_tisci_m2m_channel_config(struct udma_chan *uc)
 	req_tx.tx_chan_type = TI_SCI_RM_UDMAP_CHAN_TYPE_3RDP_BCOPY_PBRR;
 	req_tx.tx_fetch_size = sizeof(struct cppi5_desc_hdr_t) >> 2;
 	req_tx.txcq_qnum = tc_ring;
-	req_tx.tx_atype = ud->atype;
+	req_tx.tx_atype = ud->atype_asel;
 
 	ret = tisci_ops->tx_ch_cfg(tisci_rm->tisci, &req_tx);
 	if (ret) {
@@ -1800,7 +1838,7 @@ static int udma_tisci_m2m_channel_config(struct udma_chan *uc)
 	req_rx.rx_fetch_size = sizeof(struct cppi5_desc_hdr_t) >> 2;
 	req_rx.rxcq_qnum = tc_ring;
 	req_rx.rx_chan_type = TI_SCI_RM_UDMAP_CHAN_TYPE_3RDP_BCOPY_PBRR;
-	req_rx.rx_atype = ud->atype;
+	req_rx.rx_atype = ud->atype_asel;
 
 	ret = tisci_ops->rx_ch_cfg(tisci_rm->tisci, &req_rx);
 	if (ret)
@@ -1857,7 +1895,7 @@ static int udma_tisci_tx_channel_config(struct udma_chan *uc)
 	req_tx.tx_supr_tdpkt = uc->config.notdpkt;
 	req_tx.tx_fetch_size = fetch_size >> 2;
 	req_tx.txcq_qnum = tc_ring;
-	req_tx.tx_atype = uc->config.atype;
+	req_tx.tx_atype = uc->config.atype_asel;
 	if (uc->config.ep_type == PSIL_EP_PDMA_XY &&
 	    ud->match_data->flags & UDMA_FLAG_TDTYPE) {
 		/* wait for peer to complete the teardown for PDMAs */
@@ -1929,7 +1967,7 @@ static int udma_tisci_rx_channel_config(struct udma_chan *uc)
 	req_rx.rx_fetch_size =  fetch_size >> 2;
 	req_rx.rxcq_qnum = rx_ring;
 	req_rx.rx_chan_type = mode;
-	req_rx.rx_atype = uc->config.atype;
+	req_rx.rx_atype = uc->config.atype_asel;
 
 	ret = tisci_ops->rx_ch_cfg(tisci_rm->tisci, &req_rx);
 	if (ret) {
@@ -2056,6 +2094,8 @@ static int udma_alloc_chan_resources(struct dma_chan *chan)
 	struct k3_ring *irq_ring;
 	u32 irq_udma_idx;
 	int ret;
+
+	uc->alloc_dev = ud->dev;
 
 	if (uc->config.pkt_mode || uc->config.dir == DMA_MEM_TO_MEM) {
 		uc->use_dma_pool = true;
@@ -2262,25 +2302,8 @@ static int bcdma_alloc_chan_resources(struct dma_chan *chan)
 	u32 irq_udma_idx, irq_ring_idx;
 	int ret;
 
+	/* Only TR mode is supported */
 	uc->config.pkt_mode = false;
-
-	if (uc->config.dir == DMA_MEM_TO_MEM) {
-		uc->config.hdesc_size = cppi5_trdesc_calc_size(
-					sizeof(struct cppi5_tr_type15_t), 2);
-
-		uc->hdesc_pool = dma_pool_create(uc->name, ud->ddev.dev,
-						 uc->config.hdesc_size,
-						 ud->desc_align,
-						 0);
-		if (!uc->hdesc_pool) {
-			dev_err(ud->ddev.dev,
-				"Descriptor pool allocation failed\n");
-			uc->use_dma_pool = false;
-			return -ENOMEM;
-		}
-
-		uc->use_dma_pool = true;
-	}
 
 	/*
 	 * Make sure that the completion is in a known state:
@@ -2366,7 +2389,25 @@ static int bcdma_alloc_chan_resources(struct dma_chan *chan)
 		}
 	}
 
-	if (uc->config.dir != DMA_MEM_TO_MEM) {
+	uc->alloc_dev = dmaengine_get_device_for_dma_api(chan);
+	if (uc->config.dir == DMA_MEM_TO_MEM) {
+		uc->config.hdesc_size = cppi5_trdesc_calc_size(
+					sizeof(struct cppi5_tr_type15_t), 2);
+
+		uc->hdesc_pool = dma_pool_create(uc->name, uc->alloc_dev,
+						 uc->config.hdesc_size,
+						 ud->desc_align,
+						 0);
+		if (!uc->hdesc_pool) {
+			dev_err(ud->ddev.dev,
+				"Descriptor pool allocation failed\n");
+			uc->use_dma_pool = false;
+			ret = -ENOMEM;
+			goto err_res_free;
+		}
+
+		uc->use_dma_pool = true;
+	} else {
 		/* PSI-L pairing */
 		ret = navss_psil_pair(ud, uc->config.src_thread,
 				      uc->config.dst_thread);
@@ -2456,18 +2497,6 @@ static int pktdma_alloc_chan_resources(struct dma_chan *chan)
 	u32 irq_ring_idx;
 	int ret;
 
-	uc->hdesc_pool = dma_pool_create(uc->name, ud->ddev.dev,
-					 uc->config.hdesc_size, ud->desc_align,
-					 0);
-	if (!uc->hdesc_pool) {
-		dev_err(ud->ddev.dev,
-			"Descriptor pool allocation failed\n");
-		uc->use_dma_pool = false;
-		return -ENOMEM;
-	}
-
-	uc->use_dma_pool = true;
-
 	/*
 	 * Make sure that the completion is in a known state:
 	 * No teardown, the channel is idle
@@ -2535,6 +2564,20 @@ static int pktdma_alloc_chan_resources(struct dma_chan *chan)
 			goto err_res_free;
 		}
 	}
+
+	uc->alloc_dev = dmaengine_get_device_for_dma_api(chan);
+	uc->hdesc_pool = dma_pool_create(uc->name, uc->alloc_dev,
+					 uc->config.hdesc_size, ud->desc_align,
+					 0);
+	if (!uc->hdesc_pool) {
+		dev_err(ud->ddev.dev,
+			"Descriptor pool allocation failed\n");
+		uc->use_dma_pool = false;
+		ret = -ENOMEM;
+		goto err_res_free;
+	}
+
+	uc->use_dma_pool = true;
 
 	/* PSI-L pairing */
 	ret = navss_psil_pair(ud, uc->config.src_thread, uc->config.dst_thread);
@@ -2741,6 +2784,7 @@ udma_prep_slave_sg_tr(struct udma_chan *uc, struct scatterlist *sgl,
 	size_t tr_size;
 	int num_tr = 0;
 	int tr_idx = 0;
+	u64 atype;
 
 	if (!is_slave_direction(dir)) {
 		dev_err(uc->ud->dev, "Only slave cyclic is supported\n");
@@ -2763,6 +2807,11 @@ udma_prep_slave_sg_tr(struct udma_chan *uc, struct scatterlist *sgl,
 
 	d->sglen = sglen;
 
+	if (uc->ud->match_data->type == DMA_TYPE_UDMA)
+		atype = 0;
+	else
+		atype = (u64)uc->config.atype_asel << KSLC_ADDRESS_ASEL_SHIFT;
+
 	tr_req = d->hwdesc[0].tr_req_base;
 	for_each_sg(sgl, sgent, sglen, i) {
 		dma_addr_t sg_addr = sg_dma_address(sgent);
@@ -2781,6 +2830,7 @@ udma_prep_slave_sg_tr(struct udma_chan *uc, struct scatterlist *sgl,
 			      CPPI5_TR_EVENT_SIZE_COMPLETION, 0);
 		cppi5_tr_csf_set(&tr_req[i].flags, CPPI5_TR_CSF_SUPR_EVT);
 
+		sg_addr |= atype;
 		tr_req[tr_idx].addr = sg_addr;
 		tr_req[tr_idx].icnt0 = tr0_cnt0;
 		tr_req[tr_idx].icnt1 = tr0_cnt1;
@@ -2874,6 +2924,7 @@ udma_prep_slave_sg_pkt(struct udma_chan *uc, struct scatterlist *sgl,
 	struct udma_desc *d;
 	u32 ring_id;
 	unsigned int i;
+	u64 asel;
 
 	d = kzalloc(sizeof(*d) + sglen * sizeof(d->hwdesc[0]), GFP_NOWAIT);
 	if (!d)
@@ -2886,6 +2937,11 @@ udma_prep_slave_sg_pkt(struct udma_chan *uc, struct scatterlist *sgl,
 		ring_id = k3_ringacc_get_ring_id(uc->rflow->r_ring);
 	else
 		ring_id = k3_ringacc_get_ring_id(uc->tchan->tc_ring);
+
+	if (uc->ud->match_data->type == DMA_TYPE_UDMA)
+		asel = 0;
+	else
+		asel = (u64)uc->config.atype_asel << KSLC_ADDRESS_ASEL_SHIFT;
 
 	for_each_sg(sgl, sgent, sglen, i) {
 		struct udma_hwdesc *hwdesc = &d->hwdesc[i];
@@ -2921,12 +2977,13 @@ udma_prep_slave_sg_pkt(struct udma_chan *uc, struct scatterlist *sgl,
 		}
 
 		/* attach the sg buffer to the descriptor */
+		sg_addr |= asel;
 		cppi5_hdesc_attach_buf(desc, sg_addr, sg_len, sg_addr, sg_len);
 
 		/* Attach link as host buffer descriptor */
 		if (h_desc)
 			cppi5_hdesc_link_hbdesc(h_desc,
-						hwdesc->cppi5_desc_paddr);
+						hwdesc->cppi5_desc_paddr | asel);
 
 		if (uc->ud->match_data->type == DMA_TYPE_PKTDMA ||
 		    dir == DMA_MEM_TO_DEV)
@@ -3139,7 +3196,12 @@ udma_prep_dma_cyclic_tr(struct udma_chan *uc, dma_addr_t buf_addr,
 		return NULL;
 
 	tr_req = d->hwdesc[0].tr_req_base;
-	period_addr = buf_addr;
+	if (uc->ud->match_data->type == DMA_TYPE_UDMA)
+		period_addr = buf_addr;
+	else
+		period_addr = buf_addr |
+			((u64)uc->config.atype_asel << KSLC_ADDRESS_ASEL_SHIFT);
+
 	for (i = 0; i < periods; i++) {
 		int tr_idx = i * num_tr;
 
@@ -3203,6 +3265,10 @@ udma_prep_dma_cyclic_pkt(struct udma_chan *uc, dma_addr_t buf_addr,
 		ring_id = k3_ringacc_get_ring_id(uc->rflow->r_ring);
 	else
 		ring_id = k3_ringacc_get_ring_id(uc->tchan->tc_ring);
+
+	if (uc->ud->match_data->type != DMA_TYPE_UDMA)
+		buf_addr |=
+			(u64)uc->config.atype_asel << KSLC_ADDRESS_ASEL_SHIFT;
 
 	for (i = 0; i < periods; i++) {
 		struct udma_hwdesc *hwdesc = &d->hwdesc[i];
@@ -3344,6 +3410,11 @@ udma_prep_dma_memcpy(struct dma_chan *chan, dma_addr_t dest, dma_addr_t src,
 	d->desc_idx = 0;
 	d->tr_idx = 0;
 	d->residue = len;
+
+	if (uc->ud->match_data->type != DMA_TYPE_UDMA) {
+		src |= (u64)uc->ud->atype_asel << KSLC_ADDRESS_ASEL_SHIFT;
+		dest |= (u64)uc->ud->atype_asel << KSLC_ADDRESS_ASEL_SHIFT;
+	}
 
 	tr_req = d->hwdesc[0].tr_req_base;
 
@@ -3720,7 +3791,7 @@ static struct platform_driver pktdma_driver;
 
 struct udma_filter_param {
 	int remote_thread_id;
-	u32 atype;
+	u32 atype_asel;
 };
 
 static bool udma_dma_filter_fn(struct dma_chan *chan, void *param)
@@ -3741,14 +3812,22 @@ static bool udma_dma_filter_fn(struct dma_chan *chan, void *param)
 	ud = uc->ud;
 	filter_param = param;
 
-	if (filter_param->atype > 2) {
-		dev_err(ud->dev, "Invalid channel atype: %u\n",
-			filter_param->atype);
-		return false;
+	if (ud->match_data->type == DMA_TYPE_UDMA) {
+		if (filter_param->atype_asel > 2) {
+			dev_err(ud->dev, "Invalid channel atype: %u\n",
+				filter_param->atype_asel);
+			return false;
+		}
+	} else {
+		if (filter_param->atype_asel > 15) {
+			dev_err(ud->dev, "Invalid channel asel: %u\n",
+				filter_param->atype_asel);
+			return false;
+		}
 	}
 
 	ucc->remote_thread_id = filter_param->remote_thread_id;
-	ucc->atype = filter_param->atype;
+	ucc->atype_asel = filter_param->atype_asel;
 
 	if (ucc->remote_thread_id & K3_PSIL_DST_THREAD_ID_OFFSET)
 		ucc->dir = DMA_MEM_TO_DEV;
@@ -3761,7 +3840,7 @@ static bool udma_dma_filter_fn(struct dma_chan *chan, void *param)
 			ucc->remote_thread_id);
 		ucc->dir = DMA_MEM_TO_MEM;
 		ucc->remote_thread_id = -1;
-		ucc->atype = 0;
+		ucc->atype_asel = 0;
 		return false;
 	}
 
@@ -3772,7 +3851,7 @@ static bool udma_dma_filter_fn(struct dma_chan *chan, void *param)
 			ucc->remote_thread_id);
 		ucc->dir = DMA_MEM_TO_MEM;
 		ucc->remote_thread_id = -1;
-		ucc->atype = 0;
+		ucc->atype_asel = 0;
 		return false;
 	}
 
@@ -3828,9 +3907,9 @@ static struct dma_chan *udma_of_xlate(struct of_phandle_args *dma_spec,
 
 	filter_param.remote_thread_id = dma_spec->args[0];
 	if (dma_spec->args_count == 2)
-		filter_param.atype = dma_spec->args[1];
+		filter_param.atype_asel = dma_spec->args[1];
 	else
-		filter_param.atype = 0;
+		filter_param.atype_asel = 0;
 
 	chan = __dma_request_channel(&mask, udma_dma_filter_fn, &filter_param,
 				     ofdma->of_node);
@@ -4703,10 +4782,20 @@ static int udma_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = of_property_read_u32(dev->of_node, "ti,udma-atype", &ud->atype);
-	if (!ret && ud->atype > 2) {
-		dev_err(dev, "Invalid atype: %u\n", ud->atype);
-		return -EINVAL;
+	if (ud->match_data->type == DMA_TYPE_UDMA) {
+		ret = of_property_read_u32(dev->of_node, "ti,udma-atype",
+					   &ud->atype_asel);
+		if (!ret && ud->atype_asel > 2) {
+			dev_err(dev, "Invalid atype: %u\n", ud->atype_asel);
+			return -EINVAL;
+		}
+	} else {
+		ret = of_property_read_u32(dev->of_node, "ti,asel",
+					   &ud->atype_asel);
+		if (!ret && ud->atype_asel > 15) {
+			dev_err(dev, "Invalid asel: %u\n", ud->atype_asel);
+			return -EINVAL;
+		}
 	}
 
 	ud->tisci_rm.tisci_udmap_ops = &ud->tisci_rm.tisci->ops.rm_udmap_ops;
