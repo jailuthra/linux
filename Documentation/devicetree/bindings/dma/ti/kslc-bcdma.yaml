@@ -66,6 +66,11 @@ properties:
     allOf:
       - $ref: /schemas/types.yaml#/definitions/uint32
 
+  ti,asel:
+    description: ASEL value for non slave channels
+    allOf:
+      - $ref: /schemas/types.yaml#/definitions/uint32
+
   ti,ringacc:
     description: phandle to the ring node
     allOf:
