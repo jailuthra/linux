@@ -171,6 +171,8 @@ struct k3_ring {
 	u32		use_count;
 	int		proxy_id;
 	struct device	*alloc_dev;
+	u32		asel;
+#define KSLC_ADDRESS_ASEL_SHIFT	48
 };
 
 struct k3_ringacc_ops {
@@ -627,6 +629,8 @@ int k3_ringacc_ring_free(struct k3_ring *ring)
 	ring->flags = 0;
 	ring->ops = NULL;
 	ring->alloc_dev = NULL;
+	ring->asel = 0;
+
 	if (ring->proxy_id != K3_RINGACC_PROXY_NOT_USED) {
 		clear_bit(ring->proxy_id, ringacc->proxy_inuse);
 		ring->proxy = NULL;
@@ -688,7 +692,8 @@ static int k3_ringacc_ring_cfg_sci(struct k3_ring *ring)
 	ring_idx = ring->ring_id;
 	ret = ringacc->tisci_ring_ops->config(
 			ringacc->tisci,
-			TI_SCI_MSG_VALUE_RM_ALL_NO_ORDER,
+			TI_SCI_MSG_VALUE_RM_ALL_NO_ORDER |
+			TI_SCI_MSG_VALUE_RM_RING_ASEL_VALID,
 			ringacc->tisci_dev_id,
 			ring_idx,
 			lower_32_bits(ring->ring_mem_dma),
@@ -698,7 +703,7 @@ static int k3_ringacc_ring_cfg_sci(struct k3_ring *ring)
 			ring->elm_size,
 			0,
 			0,
-			0);
+			ring->asel);
 	if (ret)
 		dev_err(ringacc->dev, "TISCI config ring fail (%d) ring_idx %d\n",
 			ret, ring_idx);
@@ -732,6 +737,7 @@ static int kslc_ring_cfg(struct k3_ring *ring, struct k3_ring_cfg *cfg)
 	ring->size = cfg->size;
 	ring->elm_size = cfg->elm_size;
 	ring->mode = cfg->mode;
+	ring->asel = cfg->asel;
 	ring->alloc_dev = cfg->alloc_dev;
 	if (!ring->alloc_dev) {
 		dev_warn(ringacc->dev, "alloc_dev is not provided for ring%d\n",
@@ -765,6 +771,7 @@ static int kslc_ring_cfg(struct k3_ring *ring, struct k3_ring_cfg *cfg)
 	reverse_ring->size = cfg->size;
 	reverse_ring->elm_size = cfg->elm_size;
 	reverse_ring->mode = cfg->mode;
+	reverse_ring->asel = cfg->asel;
 	memset(&reverse_ring->state, 0, sizeof(reverse_ring->state));
 	reverse_ring->ops = &kslc_reverse_ring_ops;
 
@@ -784,6 +791,7 @@ err_free_ops:
 	ring->ops = NULL;
 	ring->proxy = NULL;
 	ring->alloc_dev = NULL;
+	ring->asel = 0;
 	return ret;
 }
 
@@ -1114,6 +1122,11 @@ static int kslc_ring_fwd_pop_mem(struct k3_ring *ring, void *elem)
 
 	elem_ptr = k3_ringacc_get_elm_addr(ring, elem_idx);
 	memcpy(elem, elem_ptr, (4 << ring->elm_size));
+	if (ring->asel && ring->elm_size == K3_RINGACC_RING_ELSIZE_8) {
+		u64 *addr = elem;
+
+		*addr &= GENMASK_ULL(KSLC_ADDRESS_ASEL_SHIFT - 1, 0);
+	}
 
 	ring->state.occ--;
 	writel(-1, &ring->rt->db);
@@ -1132,6 +1145,12 @@ static int kslc_ring_reverse_pop_mem(struct k3_ring *ring, void *elem)
 
 	if (ring->state.occ) {
 		memcpy(elem, elem_ptr, (4 << ring->elm_size));
+		if (ring->asel &&
+		    ring->elm_size == K3_RINGACC_RING_ELSIZE_8) {
+			u64 *addr = elem;
+
+			*addr &= GENMASK_ULL(KSLC_ADDRESS_ASEL_SHIFT - 1, 0);
+		}
 		ring->state.rindex = (ring->state.rindex + 1) % ring->size;
 		ring->state.occ--;
 		writel(-1 & KSLC_RING_RT_DB_ENTRY_MASK, &ring->rt->db);
@@ -1155,6 +1174,12 @@ static int k3_ringacc_ring_push_mem(struct k3_ring *ring, void *elem)
 	elem_ptr = k3_ringacc_get_elm_addr(ring, ring->state.windex);
 
 	memcpy(elem_ptr, elem, (4 << ring->elm_size));
+	if (ring->parent->dual_ring && ring->asel &&
+	    ring->elm_size == K3_RINGACC_RING_ELSIZE_8) {
+		u64 *addr = elem_ptr;
+
+		*addr |= ((u64)ring->asel << KSLC_ADDRESS_ASEL_SHIFT);
+	}
 
 	ring->state.windex = (ring->state.windex + 1) % ring->size;
 	ring->state.free--;

@@ -70,6 +70,7 @@ struct k3_ring;
  * @alloc_dev: Master device which is using and accessing to the ring
  *	memory when the mode is K3_RINGACC_RING_MODE_RING. Memory allocations
  *	should be done using this device.
+ * @asel: ASEL value for KSLC.
  */
 struct k3_ring_cfg {
 	u32 size;
@@ -79,6 +80,7 @@ struct k3_ring_cfg {
 	u32 flags;
 
 	struct device *alloc_dev;
+	u32 asel;
 };
 
 #define K3_RINGACC_RING_ID_ANY (-1)
