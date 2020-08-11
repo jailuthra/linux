@@ -2071,7 +2071,8 @@ static int ti_sci_cmd_free_event_map(const struct ti_sci_handle *handle,
 static int ti_sci_cmd_ring_config(const struct ti_sci_handle *handle,
 				  u32 valid_params, u16 nav_id, u16 index,
 				  u32 addr_lo, u32 addr_hi, u32 count,
-				  u8 mode, u8 size, u8 order_id)
+				  u8 mode, u8 size, u8 order_id, u16 virtid,
+				  u8 asel)
 {
 	struct ti_sci_msg_rm_ring_cfg_req *req;
 	struct ti_sci_msg_hdr *resp;
@@ -2104,6 +2105,8 @@ static int ti_sci_cmd_ring_config(const struct ti_sci_handle *handle,
 	req->mode = mode;
 	req->size = size;
 	req->order_id = order_id;
+	req->virtid = virtid;
+	req->asel = asel;
 
 	ret = ti_sci_do_xfer(info, xfer);
 	if (ret) {
