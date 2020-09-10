@@ -57,6 +57,7 @@ struct cpsw_ale {
 
 enum cpsw_ale_control {
 	/* global */
+	ALE_VERSION,
 	ALE_ENABLE,
 	ALE_CLEAR,
 	ALE_AGEOUT,
