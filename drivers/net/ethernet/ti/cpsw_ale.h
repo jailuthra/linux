@@ -135,5 +135,6 @@ int cpsw_ale_control_get(struct cpsw_ale *ale, int port, int control);
 int cpsw_ale_control_set(struct cpsw_ale *ale, int port,
 			 int control, int value);
 void cpsw_ale_dump(struct cpsw_ale *ale, u32 *data);
+u32 cpsw_ale_get_num_entries(struct cpsw_ale *ale);
 
 #endif
