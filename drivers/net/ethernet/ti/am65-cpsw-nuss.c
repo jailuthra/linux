@@ -2122,25 +2122,25 @@ static const struct soc_device_attribute am65_cpsw_socinfo[] = {
 
 static const struct am65_cpsw_pdata am65x_sr1_0 = {
 	.quirks = AM65_CPSW_QUIRK_I2027_NO_TX_CSUM,
-	.nu_switch_ale = true,
+	.dev_id = "am65x-cpsw2g",
 	.fdqring_mode = K3_RINGACC_RING_MODE_MESSAGE,
 };
 
 static const struct am65_cpsw_pdata j721e_pdata = {
 	.quirks = 0,
-	.nu_switch_ale = true,
+	.dev_id = "am65x-cpsw2g",
 	.fdqring_mode = K3_RINGACC_RING_MODE_MESSAGE,
 };
 
 static const struct am65_cpsw_pdata j721e_cpswxg_pdata = {
 	.quirks = 0,
-	.nu_switch_ale = false,
+	.dev_id = "j721e-cpswxg",
 	.fdqring_mode = K3_RINGACC_RING_MODE_MESSAGE,
 };
 
 static const struct am65_cpsw_pdata am64x_cpswxg_pdata = {
 	.quirks = AM64_CPSW_QUIRK_PRESIL,
-	.nu_switch_ale = false,
+	.dev_id = "j721e-cpswxg",
 	.fdqring_mode = K3_RINGACC_RING_MODE_RING,
 };
 
@@ -2275,13 +2275,9 @@ static int am65_cpsw_nuss_probe(struct platform_device *pdev)
 	/* init common data */
 	ale_params.dev = dev;
 	ale_params.ale_ageout = AM65_CPSW_ALE_AGEOUT_DEFAULT;
-	ale_params.ale_entries = 0;
 	ale_params.ale_ports = common->port_num + 1;
 	ale_params.ale_regs = common->cpsw_base + AM65_CPSW_NU_ALE_BASE;
-	if (common->pdata.nu_switch_ale)
-		ale_params.nu_switch_ale = true;
-	else
-		ale_params.k3_cpswxg_switch_ale = true;
+	ale_params.dev_id = common->pdata.dev_id;
 
 	common->ale = cpsw_ale_create(&ale_params);
 	if (!common->ale) {

@@ -83,7 +83,7 @@ struct am65_cpsw_rx_chn {
 struct am65_cpsw_pdata {
 	u32	quirks;
 	enum k3_ring_mode fdqring_mode;
-	unsigned nu_switch_ale:1;
+	const char *dev_id;
 };
 
 struct am65_cpsw_common {
