@@ -27,6 +27,8 @@ struct cpsw_ale_params {
 	const char		*dev_id;
 };
 
+struct ale_entry_fld;
+
 struct cpsw_ale {
 	struct cpsw_ale_params	params;
 	struct timer_list	timer;
@@ -49,11 +51,12 @@ struct cpsw_ale {
 	u32			port_mask_bits;
 	u32			port_num_bits;
 	u32			vlan_field_bits;
+	unsigned long		*p0_untag_vid_mask;
+	const struct ale_entry_fld *vlan_entry_tbl;
 };
 
 enum cpsw_ale_control {
 	/* global */
-	ALE_VERSION,
 	ALE_ENABLE,
 	ALE_CLEAR,
 	ALE_AGEOUT,
@@ -138,5 +141,15 @@ int cpsw_ale_control_set(struct cpsw_ale *ale, int port,
 			 int control, int value);
 void cpsw_ale_dump(struct cpsw_ale *ale, u32 *data);
 u32 cpsw_ale_get_num_entries(struct cpsw_ale *ale);
+
+static inline int cpsw_ale_get_vlan_p0_untag(struct cpsw_ale *ale, u16 vid)
+{
+	return test_bit(vid, ale->p0_untag_vid_mask);
+}
+
+int cpsw_ale_vlan_add_modify(struct cpsw_ale *ale, u16 vid, int port_mask,
+			     int untag_mask, int reg_mcast, int unreg_mcast);
+void cpsw_ale_set_unreg_mcast(struct cpsw_ale *ale, int unreg_mcast_mask,
+			      bool add);
 
 #endif
