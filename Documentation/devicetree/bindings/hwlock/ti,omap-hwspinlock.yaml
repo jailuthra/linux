@@ -13,7 +13,7 @@ properties:
   compatible:
     enum:
       - ti,omap4-hwspinlock  # for OMAP44xx, OMAP54xx, AM33xx, AM43xx, DRA7xx SoCs
-      - ti,am654-hwspinlock  # for K3 AM65x, J721E and J7200 SoCs
+      - ti,am654-hwspinlock  # for K3 AM65x, J721E, J7200 and AM64x SoCs
 
   reg:
     maxItems: 1
@@ -71,6 +71,28 @@ examples:
                     reg = <0x00 0x30e00000 0x00 0x1000>;
                     #hwlock-cells = <1>;
                 };
+            };
+        };
+    };
+
+  - |
+    / {
+        /* K3 AM64x SoCs */
+        model = "Texas Instruments K3 AM64 SoC";
+        compatible = "ti,am64";
+        #address-cells = <2>;
+        #size-cells = <2>;
+
+        bus {
+            compatible = "simple-bus";
+            #address-cells = <2>;
+            #size-cells = <2>;
+            ranges;
+
+            spinlock@2a000000 {
+                compatible = "ti,am654-hwspinlock";
+                reg = <0x00 0x2a000000 0x00 0x1000>;
+                #hwlock-cells = <1>;
             };
         };
     };
