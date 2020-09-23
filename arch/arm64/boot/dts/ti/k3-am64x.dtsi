@@ -13,10 +13,15 @@
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
+
 		cpu-map {
 			cluster0: cluster0 {
 				core0 {
 					cpu = <&cpu0>;
+				};
+
+				core1 {
+					cpu = <&cpu1>;
 				};
 			};
 		};
@@ -34,6 +39,7 @@
 			d-cache-sets = <128>;
 			next-level-cache = <&L2_0>;
 		};
+
 		cpu1: cpu@1 {
 			compatible = "arm,cortex-a53", "arm,armv8";
 			reg = <0x001>;
