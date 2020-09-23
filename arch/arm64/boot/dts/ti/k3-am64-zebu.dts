@@ -48,6 +48,16 @@
 };
 
 &mailbox0_cluster2 {
+	mbox_main_r5fss0_core0: mbox-main-r5fss0-core0 {
+		ti,mbox-rx = <0 0 2>;
+		ti,mbox-tx = <1 0 2>;
+	};
+
+	mbox_main_r5fss0_core1: mbox-main-r5fss0-core1 {
+		ti,mbox-rx = <2 0 2>;
+		ti,mbox-tx = <3 0 2>;
+	};
+
 	mbox_loop2_0: mbox-loop2-0 {
 		ti,mbox-rx = <15 0 2>;
 		ti,mbox-tx = <15 0 2>;
@@ -72,6 +82,16 @@
 };
 
 &mailbox0_cluster4 {
+	mbox_main_r5fss1_core0: mbox-main-r5fss1-core0 {
+		ti,mbox-rx = <0 0 2>;
+		ti,mbox-tx = <1 0 2>;
+	};
+
+	mbox_main_r5fss1_core1: mbox-main-r5fss1-core1 {
+		ti,mbox-rx = <2 0 2>;
+		ti,mbox-tx = <3 0 2>;
+	};
+
 	mbox_loop4_0: mbox-loop4-0 {
 		ti,mbox-rx = <15 0 2>;
 		ti,mbox-tx = <15 0 2>;
@@ -96,6 +116,11 @@
 };
 
 &mailbox0_cluster6 {
+	mbox_m4_0: mbox-m4-0 {
+		ti,mbox-rx = <0 0 2>;
+		ti,mbox-tx = <1 0 2>;
+	};
+
 	mbox_loop6: mbox-loop6 {
 		ti,mbox-rx = <15 0 2>;
 		ti,mbox-tx = <15 0 2>;
