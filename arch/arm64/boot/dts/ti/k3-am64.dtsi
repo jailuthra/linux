@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Device Tree Source for DRA8 SoC Family
+ * Device Tree Source for AM64 SoC Family
  *
- * Copyright (C) 2019 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2019-2020 Texas Instruments Incorporated - https://www.ti.com/
  */
 
 #include <dt-bindings/gpio/gpio.h>
@@ -11,7 +11,7 @@
 #include <dt-bindings/soc/ti,sci_pm_domain.h>
 
 / {
-	model = "Texas Instruments K3 DRA822 SoC";
+	model = "Texas Instruments K3 AM64 SoC";
 	compatible = "ti,am64";
 	interrupt-parent = <&gic500>;
 	#address-cells = <2>;
