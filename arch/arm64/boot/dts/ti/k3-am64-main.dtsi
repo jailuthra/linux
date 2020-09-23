@@ -114,7 +114,7 @@
 			ti,sci-rm-range-rchan = <0x21>; /* SPLIT_TR_RX_CHAN */
 			ti,sci-rm-range-tchan = <0x22>; /* SPLIT_TR_TX_CHAN */
 
-			bcdma_ring: dmss_ring@4bc00000 {
+			bcdma_ring: dmss-ring@4bc00000 {
 				compatible = "ti,am64-dmss-rings";
 				reg =	<0x0 0x4bc00000 0x0 0x100000>;
 				reg-names = "rt";
