@@ -27,6 +27,8 @@ The following are the mandatory properties:
 			                       K3 J721E SoCs
 			    "ti,j7200-r5fss" for R5F clusters/subsystems on
 			                       K3 J7200 SoCs
+			    "ti,am64-r5fss" for R5F clusters/subsystems on
+			                       K3 AM64x SoCs
 - power-domains:	Should contain a phandle to a PM domain provider node
 			and an args specifier containing the R5FSS device id
 			value. This property is as per the binding,
@@ -42,6 +44,11 @@ Optional properties:
 			cluster. Should be either a value of 1 (LockStep mode) or
 			0 (Split mode), default is LockStep mode if omitted.
 
+			AM64x SoCs does not support LockStep mode, but rather a
+			new mode called "Single CPU" mode, where only Core0 is
+			used, but with ability to use Core1's TCMs as well. The
+			value of 1 will be re-purposed to indicate this new mode
+			on AM64x SoCs.
 
 R5F Processor Child Nodes:
 ==========================
@@ -59,6 +66,7 @@ The following are the mandatory properties:
 			    "ti,am654-r5f" for the R5F cores in K3 AM65x SoCs
 			    "ti,j721e-r5f" for the R5F cores in K3 J721E SOCs
 			    "ti,j7200-r5f" for the R5F cores in K3 J7200 SOCs
+			    "ti,am64-r5f" for the R5F cores in K3 AM64x SOCs
 - reg:			Should contain an entry for each value in 'reg-names'.
 			Each entry should have the memory region's start address
 			and the size of the region, the representation matching
@@ -82,7 +90,7 @@ The following are the mandatory properties:
 			specifier. Please refer to the following reset bindings
 			for the reset argument specifier,
 			Documentation/devicetree/bindings/reset/ti,sci-reset.txt
-			    for AM65x, J721E and J7200 SoCs
+			    for AM65x, J721E, J7200 and AM64x SoCs
 - firmware-name:	Should contain the name of the default firmware image
 			file located on the firmware search path
 
