@@ -35,7 +35,7 @@
 		};
 	};
 
-	clk_200mhz: dummy_clock_200mhz {
+	clk_200mhz: clk-dummy-200mhz {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <200000000>;
