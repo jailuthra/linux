@@ -23,7 +23,7 @@
 
 	};
 
-	mbox_test {
+	mbox-test {
 		compatible = "ti,omap-mbox-test";
 		mboxes = <&mailbox0_cluster2 &mbox_loop2_0>,
 			 <&mailbox0_cluster2 &mbox_loop2_1>,
