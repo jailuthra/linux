@@ -166,7 +166,7 @@
 						<0x36>, /* FLOW_ICSSG_0_RX_CHAN */
 						<0x38>; /* FLOW_ICSSG_1_RX_CHAN */
 
-			pkdma_ring: dmss_ring@4b800000 {
+			pkdma_ring: dmss-ring@4b800000 {
 				compatible = "ti,am64-dmss-rings";
 				reg =	<0x0 0x4b800000 0x0 0x400000>;
 				reg-names = "rt";
