@@ -81,6 +81,8 @@ config TI_CPTS_MOD
 config TI_AM65_CPSW_NUSS
 	tristate "TI K3 CPSW Ethernet driver"
 	depends on ARCH_K3 && OF && TI_K3_UDMA_GLUE_LAYER
+	depends on NET_SWITCHDEV
+	select NET_DEVLINK
 	select TI_DAVINCI_MDIO
 	imply PHY_TI_GMII_SEL
 	help
