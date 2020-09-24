@@ -6,12 +6,14 @@
 #ifndef AM65_CPSW_NUSS_H_
 #define AM65_CPSW_NUSS_H_
 
+#include <linux/if_ether.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
 #include <linux/phy.h>
 #include <linux/platform_device.h>
 #include <linux/soc/ti/k3-ringacc.h>
+#include <net/devlink.h>
 #include "am65-cpsw-qos.h"
 
 struct am65_cpts;
@@ -47,6 +49,7 @@ struct am65_cpsw_port {
 	bool				tx_ts_enabled;
 	bool				rx_ts_enabled;
 	struct am65_cpsw_qos		qos;
+	struct devlink_port			devlink_port;
 };
 
 struct am65_cpsw_host {
@@ -86,6 +89,15 @@ struct am65_cpsw_pdata {
 	const char *dev_id;
 };
 
+enum cpsw_devlink_param_id {
+	AM65_CPSW_DEVLINK_PARAM_ID_BASE = DEVLINK_PARAM_GENERIC_ID_MAX,
+	AM65_CPSW_DL_PARAM_SWITCH_MODE,
+};
+
+struct am65_cpsw_devlink {
+	struct am65_cpsw_common *common;
+};
+
 struct am65_cpsw_common {
 	struct device		*dev;
 	struct device		*mdio_dev;
@@ -118,6 +130,13 @@ struct am65_cpsw_common {
 	struct am65_cpts	*cpts;
 	int			est_enabled;
 	int			iet_enabled;
+
+	bool		is_emac_mode;
+	u16			br_members;
+	struct devlink *devlink;
+	struct net_device *hw_bridge_dev;
+	struct notifier_block am65_cpsw_netdevice_nb;
+	u8 switch_id[ETH_ALEN];
 };
 
 struct am65_cpsw_ndev_stats {
@@ -132,6 +151,7 @@ struct am65_cpsw_ndev_priv {
 	u32			msg_enable;
 	struct am65_cpsw_port	*port;
 	struct am65_cpsw_ndev_stats __percpu *stats;
+	bool offload_fwd_mark;
 };
 
 #define am65_ndev_to_priv(ndev) \
@@ -142,6 +162,8 @@ struct am65_cpsw_ndev_priv {
 
 #define am65_common_get_host(common) (&(common)->host)
 #define am65_common_get_port(common, id) (&(common)->ports[(id) - 1])
+
+#define am65_cpsw_ndev_priv_to_common(priv) ((priv)->port->common)
 
 #define am65_cpsw_napi_to_common(pnapi) \
 	container_of(pnapi, struct am65_cpsw_common, napi_rx)
