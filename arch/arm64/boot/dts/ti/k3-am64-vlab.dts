@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2019 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (C) 2019-2020 Texas Instruments Incorporated - https://www.ti.com/
  */
 
 /dts-v1/;
 
-#include "k3-am64x.dtsi"
+#include "k3-am642.dtsi"
 
 / {
 	compatible =  "ti,am64-vlab", "ti,am64";
@@ -27,20 +27,21 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-		secure_ddr: secure_ddr@9e800000 {
+
+		secure_ddr: optee@9e800000 {
 			reg = <0x00 0x9e800000 0x00 0x01800000>; /* for OP-TEE */
 			alignment = <0x1000>;
 			no-map;
 		};
 	};
 
-	clk_200mhz: dummy_clock_200mhz {
+	clk_200mhz: clk-dummy-200mhz {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <200000000>;
 	};
 
-	mbox_test {
+	mbox-test {
 		compatible = "ti,omap-mbox-test";
 		mboxes = <&mailbox0_cluster2 &mbox_loop2_0>,
 			 <&mailbox0_cluster2 &mbox_loop2_1>,
