@@ -2,7 +2,7 @@
 /*
  * OMAP hardware spinlock test driver
  *
- * Copyright (C) 2014-2020 Texas Instruments Incorporated - http://www.ti.com
+ * Copyright (C) 2014-2020 Texas Instruments Incorporated - https://www.ti.com
  *	Suman Anna <s-anna@ti.com>
  */
 
@@ -195,6 +195,7 @@ static const struct hwspinlock_data soc_data[] = {
 	{ "ti,am43",	128, },
 	{ "ti,am654",	256, },
 	{ "ti,j721e",	256, },
+	{ "ti,j7200",	256, },
 	{ "ti,am64",	256, },
 	{ /* sentinel */ },
 };
