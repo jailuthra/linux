@@ -39,6 +39,8 @@
 #define PROC_BOOT_CFG_FLAG_R5_ATCM_EN			0x00002000
 /* Available from J7200 SoCs onwards */
 #define PROC_BOOT_CFG_FLAG_R5_MEM_INIT_DIS		0x00004000
+/* Applicable to only AM64x SoCs */
+#define PROC_BOOT_CFG_FLAG_R5_SINGLE_CORE		0x00008000
 
 /* R5 TI-SCI Processor Control Flags */
 #define PROC_BOOT_CTRL_FLAG_R5_CORE_HALT		0x00000001
@@ -48,6 +50,8 @@
 #define PROC_BOOT_STATUS_FLAG_R5_WFI			0x00000002
 #define PROC_BOOT_STATUS_FLAG_R5_CLK_GATED		0x00000004
 #define PROC_BOOT_STATUS_FLAG_R5_LOCKSTEP_PERMITTED	0x00000100
+/* Applicable to only AM64x SoCs */
+#define PROC_BOOT_STATUS_FLAG_R5_SINGLECORE_ONLY	0x00000200
 
 /**
  * struct k3_r5_mem - internal memory structure
@@ -63,19 +67,28 @@ struct k3_r5_mem {
 	size_t size;
 };
 
+/*
+ * All cluster mode values are not applicable on all SoCs. The following
+ * are the modes supported on various SoCs:
+ *   AM65x, J721E, J7200 SoCs : Split and LockStep modes only
+ *   AM64x SoCs : Split and Single-CPU modes only
+ */
 enum cluster_mode {
 	CLUSTER_MODE_SPLIT = 0,
 	CLUSTER_MODE_LOCKSTEP,
+	CLUSTER_MODE_SINGLECPU,
 };
 
 /**
  * struct k3_r5_soc_data - match data to handle SoC variations
  * @tcm_is_double: flag to denote the larger unified TCMs in certain modes
  * @tcm_ecc_autoinit: flag to denote the auto-initialization of TCMs for ECC
+ * @single_cpu_mode: flag to denote if SoC/IP supports Single-CPU mode
  */
 struct k3_r5_soc_data {
 	bool tcm_is_double;
 	bool tcm_ecc_autoinit;
+	bool single_cpu_mode;
 };
 
 /**
@@ -391,6 +404,7 @@ static int k3_r5_rproc_prepare(struct rproc *rproc)
 		return ret;
 	mem_init_dis = !!(cfg & PROC_BOOT_CFG_FLAG_R5_MEM_INIT_DIS);
 
+	/* TODO: Adjust for Single-CPU mode on AM64x SoCs */
 	ret = (cluster->mode == CLUSTER_MODE_LOCKSTEP) ?
 		k3_r5_lockstep_release(cluster) : k3_r5_split_release(core);
 	if (ret) {
@@ -445,6 +459,7 @@ static int k3_r5_rproc_unprepare(struct rproc *rproc)
 	if (kproc->ipc_only)
 		return 0;
 
+	/* TODO: Adjust for Single-CPU mode on AM64x SoCs */
 	ret = (cluster->mode == CLUSTER_MODE_LOCKSTEP) ?
 		k3_r5_lockstep_reset(cluster) : k3_r5_split_reset(core);
 	if (ret)
@@ -521,6 +536,7 @@ static int k3_r5_rproc_start(struct rproc *rproc)
 	if (ret)
 		goto put_mbox;
 
+	/* TODO: Fix for Single-CPU mode on AM64x SoCs */
 	/* unhalt/run all applicable cores */
 	if (cluster->mode == CLUSTER_MODE_LOCKSTEP) {
 		list_for_each_entry_reverse(core, &cluster->cores, elem) {
@@ -582,6 +598,7 @@ static int k3_r5_rproc_stop(struct rproc *rproc)
 		return 0;
 	}
 
+	/* TODO: Fix for Single-CPU mode on AM64x SoCs */
 	/* halt all applicable cores */
 	if (cluster->mode == CLUSTER_MODE_LOCKSTEP) {
 		list_for_each_entry(core, &cluster->cores, elem) {
@@ -728,10 +745,16 @@ static int k3_r5_rproc_configure(struct k3_r5_rproc *kproc)
 	u32 set_cfg = 0, clr_cfg = 0;
 	u64 boot_vec = 0;
 	bool lockstep_en;
+	bool single_cpu;
 	int ret;
 
 	core0 = list_first_entry(&cluster->cores, struct k3_r5_core, elem);
-	core = (cluster->mode == CLUSTER_MODE_LOCKSTEP) ? core0 : kproc->core;
+	if (cluster->mode == CLUSTER_MODE_LOCKSTEP ||
+	    cluster->mode == CLUSTER_MODE_SINGLECPU) {
+		core = core0;
+	} else {
+		core = kproc->core;
+	}
 
 	ret = ti_sci_proc_get_status(core->tsp, &boot_vec, &cfg, &ctrl,
 				     &stat);
@@ -741,23 +764,48 @@ static int k3_r5_rproc_configure(struct k3_r5_rproc *kproc)
 	dev_dbg(dev, "boot_vector = 0x%llx, cfg = 0x%x ctrl = 0x%x stat = 0x%x\n",
 		boot_vec, cfg, ctrl, stat);
 
+	/* check if only Single-CPU mode is supported on applicable SoCs */
+	if (cluster->soc_data->single_cpu_mode) {
+		single_cpu =
+			!!(stat & PROC_BOOT_STATUS_FLAG_R5_SINGLECORE_ONLY);
+		if (single_cpu && cluster->mode == CLUSTER_MODE_SPLIT) {
+			dev_err(cluster->dev, "split-mode not permitted, force configuring for single-cpu mode\n");
+			cluster->mode = CLUSTER_MODE_SINGLECPU;
+		}
+		goto config;
+	}
+
+	/* check conventional LockStep vs Split mode configuration */
 	lockstep_en = !!(stat & PROC_BOOT_STATUS_FLAG_R5_LOCKSTEP_PERMITTED);
 	if (!lockstep_en && cluster->mode == CLUSTER_MODE_LOCKSTEP) {
 		dev_err(cluster->dev, "lockstep mode not permitted, force configuring for split-mode\n");
 		cluster->mode = CLUSTER_MODE_SPLIT;
 	}
 
+config:
 	/* always enable ARM mode and set boot vector to 0 */
 	boot_vec = 0x0;
 	if (core == core0) {
 		clr_cfg = PROC_BOOT_CFG_FLAG_R5_TEINIT;
-		/*
-		 * LockStep configuration bit is Read-only on Split-mode _only_
-		 * devices and system firmware will NACK any requests with the
-		 * bit configured, so program it only on permitted devices
-		 */
-		if (lockstep_en)
-			clr_cfg |= PROC_BOOT_CFG_FLAG_R5_LOCKSTEP;
+		if (cluster->soc_data->single_cpu_mode) {
+			/*
+			 * Single-CPU configuration bit can only be configured
+			 * on Core0 and system firmware will NACK any requests
+			 * with the bit configured, so program it only on
+			 * permitted cores
+			 */
+			if (cluster->mode == CLUSTER_MODE_SINGLECPU)
+				set_cfg = PROC_BOOT_CFG_FLAG_R5_SINGLE_CORE;
+		} else {
+			/*
+			 * LockStep configuration bit is Read-only on Split-mode
+			 * _only_ devices and system firmware will NACK any
+			 * requests with the bit configured, so program it only
+			 * on permitted devices
+			 */
+			if (lockstep_en)
+				clr_cfg |= PROC_BOOT_CFG_FLAG_R5_LOCKSTEP;
+		}
 	}
 
 	if (core->atcm_enable)
@@ -922,12 +970,12 @@ static void k3_r5_reserved_mem_exit(struct k3_r5_rproc *kproc)
  * cores are usable in Split-mode, but only the Core0 TCMs can be used in
  * LockStep-mode. The newer revisions of the R5FSS IP maximizes these TCMs by
  * leveraging the Core1 TCMs as well in certain modes where they would have
- * otherwise been unusable (Eg: LockStep-mode on J7200 SoCs). This is done by
- * making a Core1 TCM visible immediately after the corresponding Core0 TCM.
- * The SoC memory map uses the larger 64 KB sizes for the Core0 TCMs, and the
- * dts representation reflects this increased size on supported SoCs. The Core0
- * TCM sizes therefore have to be adjusted to only half the original size in
- * Split mode.
+ * otherwise been unusable (Eg: LockStep-mode on J7200 SoCs, Single-CPU mode on
+ * AM64x SoCs). This is done by making a Core1 TCM visible immediately after the
+ * corresponding Core0 TCM. The SoC memory map uses the larger 64 KB sizes for
+ * the Core0 TCMs, and the dts representation reflects this increased size on
+ * supported SoCs. The Core0 TCM sizes therefore have to be adjusted to only
+ * half the original size in Split mode.
  */
 static void k3_r5_adjust_tcm_sizes(struct k3_r5_rproc *kproc)
 {
@@ -936,7 +984,7 @@ static void k3_r5_adjust_tcm_sizes(struct k3_r5_rproc *kproc)
 	struct device *cdev = core->dev;
 	struct k3_r5_core *core0;
 
-	if (cluster->mode == CLUSTER_MODE_LOCKSTEP ||
+	if (cluster->mode != CLUSTER_MODE_SPLIT ||
 	    !cluster->soc_data->tcm_is_double)
 		return;
 
@@ -1010,8 +1058,13 @@ static int k3_r5_rproc_configure_mode(struct k3_r5_rproc *kproc)
 	atcm_enable = cfg & PROC_BOOT_CFG_FLAG_R5_ATCM_EN ?  1 : 0;
 	btcm_enable = cfg & PROC_BOOT_CFG_FLAG_R5_BTCM_EN ?  1 : 0;
 	loczrama = cfg & PROC_BOOT_CFG_FLAG_R5_TCM_RSTBASE ?  1 : 0;
-	mode = cfg & PROC_BOOT_CFG_FLAG_R5_LOCKSTEP ?
-			CLUSTER_MODE_LOCKSTEP : CLUSTER_MODE_SPLIT;
+	if (cluster->soc_data->single_cpu_mode) {
+		mode = cfg & PROC_BOOT_CFG_FLAG_R5_SINGLE_CORE ?
+				CLUSTER_MODE_SINGLECPU : CLUSTER_MODE_SPLIT;
+	} else {
+		mode = cfg & PROC_BOOT_CFG_FLAG_R5_LOCKSTEP ?
+				CLUSTER_MODE_LOCKSTEP : CLUSTER_MODE_SPLIT;
+	}
 	halted = ctrl & PROC_BOOT_CTRL_FLAG_R5_CORE_HALT;
 
 	/*
@@ -1122,8 +1175,9 @@ init_rmem:
 		if (rproc_get_id(rproc) < 0)
 			dev_warn(dev, "device does not have an alias id or platform device id\n");
 
-		/* create only one rproc in lockstep mode */
-		if (cluster->mode == CLUSTER_MODE_LOCKSTEP)
+		/* create only one rproc in lockstep mode or single-cpu mode */
+		if (cluster->mode == CLUSTER_MODE_LOCKSTEP ||
+		    cluster->mode == CLUSTER_MODE_SINGLECPU)
 			break;
 	}
 
@@ -1532,7 +1586,9 @@ static int k3_r5_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	cluster->dev = dev;
-	cluster->mode = CLUSTER_MODE_LOCKSTEP;
+	/* default to most common efuse configurations */
+	cluster->mode = data->single_cpu_mode ?
+				CLUSTER_MODE_SPLIT : CLUSTER_MODE_LOCKSTEP;
 	cluster->soc_data = data;
 	INIT_LIST_HEAD(&cluster->cores);
 
@@ -1542,6 +1598,12 @@ static int k3_r5_probe(struct platform_device *pdev)
 			ret);
 		return ret;
 	}
+	/*
+	 * Translate dts value of 1 into appropriate driver-specific mode
+	 * TODO: Evaluate if dts needs to use distinct value
+	 */
+	if (cluster->mode && data->single_cpu_mode)
+		cluster->mode = CLUSTER_MODE_SINGLECPU;
 
 	num_cores = of_get_available_child_count(np);
 	if (num_cores != 2) {
@@ -1590,17 +1652,26 @@ static int k3_r5_probe(struct platform_device *pdev)
 static const struct k3_r5_soc_data am65_j721e_soc_data = {
 	.tcm_is_double = false,
 	.tcm_ecc_autoinit = false,
+	.single_cpu_mode = false,
 };
 
 static const struct k3_r5_soc_data j7200_soc_data = {
 	.tcm_is_double = true,
 	.tcm_ecc_autoinit = true,
+	.single_cpu_mode = false,
+};
+
+static const struct k3_r5_soc_data am64_soc_data = {
+	.tcm_is_double = true,
+	.tcm_ecc_autoinit = true,
+	.single_cpu_mode = true,
 };
 
 static const struct of_device_id k3_r5_of_match[] = {
 	{ .compatible = "ti,am654-r5fss", .data = &am65_j721e_soc_data, },
 	{ .compatible = "ti,j721e-r5fss", .data = &am65_j721e_soc_data, },
 	{ .compatible = "ti,j7200-r5fss", .data = &j7200_soc_data, },
+	{ .compatible = "ti,am64-r5fss",  .data = &am64_soc_data, },
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, k3_r5_of_match);
