@@ -21,7 +21,8 @@ dtb-$(CONFIG_ARCH_K3_AM6_SOC) += k3-am654-base-board.dtb  \
 				 k3-am654-evm-prupwm.dtbo \
 				 k3-am654-idk-sr1.dtbo
 
-dtb-$(CONFIG_ARCH_K3_AM64_SOC) += k3-am64-vlab.dtb \
+dtb-$(CONFIG_ARCH_K3_AM64_SOC) += k3-am64-base-board.dtb \
+				  k3-am64-vlab.dtb \
 				  k3-am64-zebu.dtb
 
 dtb-$(CONFIG_ARCH_K3_J721E_SOC) += k3-j721e-common-proc-board.dtb \
