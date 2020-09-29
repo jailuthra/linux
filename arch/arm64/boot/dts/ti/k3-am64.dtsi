@@ -19,6 +19,10 @@
 
 	aliases {
 		serial2 = &main_uart0;
+		rproc0 = &main_r5fss0_core0;
+		rproc1 = &main_r5fss0_core1;
+		rproc2 = &main_r5fss1_core0;
+		rproc3 = &main_r5fss1_core1;
 	};
 
 	chosen { };
