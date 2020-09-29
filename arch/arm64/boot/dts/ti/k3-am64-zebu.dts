@@ -194,6 +194,14 @@
 	};
 };
 
+&main_r5fss0 {
+	status = "disabled";
+};
+
+&main_r5fss1 {
+	status = "disabled";
+};
+
 &main_r5fss0_core0 {
 	mboxes = <&mailbox0_cluster2 &mbox_main_r5fss0_core0>;
 	memory-region = <&main_r5fss0_core0_dma_memory_region>,
