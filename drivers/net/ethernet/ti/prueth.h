@@ -14,6 +14,7 @@
 #include <net/lredev.h>
 
 #include "icss_switch.h"
+#include "prueth_ptp.h"
 
 #define PRUETH_NUMQUEUES	5
 
@@ -103,6 +104,7 @@ struct prueth_queue_info {
  * @sv_frame: indicate if the frame is a SV frame for HSR/PRP
  * @lookup_success: src mac found in FDB
  * @flood: packet is to be flooded
+ * @timstamp: Specifies if timestamp is appended to the packet
  */
 struct prueth_packet_info {
 	bool start_offset;
@@ -114,6 +116,7 @@ struct prueth_packet_info {
 	bool sv_frame;
 	bool lookup_success;
 	bool flood;
+	bool timestamp;
 };
 
 /**
@@ -377,6 +380,14 @@ struct prueth_emac {
 	bool nsp_enabled;
 
 	int offload_fwd_mark;
+
+	struct sk_buff *ptp_skb[PRUETH_PTP_TS_EVENTS];
+	struct sk_buff *ptp_ct_skb[PRUETH_PTP_TS_EVENTS];
+	spinlock_t ptp_skb_lock;	/* serialize access */
+	int emac_ptp_tx_irq;
+	int hsr_ptp_tx_irq;
+	bool ptp_tx_enable;
+	bool ptp_rx_enable;
 };
 
 struct prueth_ndev_priority {
@@ -420,6 +431,7 @@ struct prueth {
 	struct gen_pool *sram_pool;
 	struct regmap *mii_rt;
 	struct icss_iep *iep;
+	struct prueth_ecap *ecap;
 	struct hrtimer tbl_check_timer;
 	const struct prueth_private_data *fw_data;
 	struct prueth_fw_offsets *fw_offsets;
@@ -482,6 +494,8 @@ int emac_rx_packet(struct prueth_emac *emac, u16 *bd_rd_ptr,
 		   const struct prueth_queue_info *rxqueue);
 int emac_add_del_vid(struct prueth_emac *emac,
 		     bool add, __be16 proto, u16 vid);
+irqreturn_t prueth_ptp_tx_irq_handle(int irq, void *dev);
+irqreturn_t prueth_ptp_tx_irq_work(int irq, void *dev);
 
 extern const struct prueth_queue_desc queue_descs[][NUM_QUEUES];
 
@@ -493,4 +507,7 @@ static inline void emac_finish_napi(struct prueth_emac *emac,
 	enable_irq(irq);
 }
 
+void emac_mc_filter_bin_allow(struct prueth_emac *emac, u8 hash);
+void emac_mc_filter_bin_disallow(struct prueth_emac *emac, u8 hash);
+u8 emac_get_mc_hash(u8 *mac, u8 *mask);
 #endif /* __NET_TI_PRUETH_H */

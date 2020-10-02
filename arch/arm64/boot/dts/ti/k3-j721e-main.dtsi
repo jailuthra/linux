@@ -383,13 +383,13 @@
 		};
 	};
 
-	main_crypto: crypto@4E00000 {
+	main_crypto: crypto@4e00000 {
 		compatible = "ti,j721e-sa2ul";
-		reg = <0x0 0x4E00000 0x0 0x1200>;
+		reg = <0x0 0x4e00000 0x0 0x1200>;
 		power-domains = <&k3_pds 264 TI_SCI_PD_EXCLUSIVE>;
 		#address-cells = <2>;
 		#size-cells = <2>;
-		ranges = <0x0 0x04E00000 0x00 0x04E00000 0x0 0x30000>;
+		ranges = <0x0 0x04e00000 0x00 0x04e00000 0x0 0x30000>;
 
 		status = "okay";
 
@@ -953,7 +953,7 @@
 			clock-names = "refclk";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			torrent_phy_dp: torrent-phy@0{
+			torrent_phy_dp: link@0{
 				reg = <0>;
 				resets = <&serdes_wiz4 1>;
 				cdns,phy-type = <PHY_TYPE_DP>;
@@ -1605,16 +1605,6 @@
 		power-domains = <&k3_pds 185 TI_SCI_PD_EXCLUSIVE>;
 
 		status = "disabled";
-	};
-
-	timesync_router: timesync_router@A40000 {
-		compatible = "pinctrl-single";
-		reg = <0x0 0xa40000 0x0 0x800>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		#pinctrl-cells = <1>;
-		pinctrl-single,register-width = <32>;
-		pinctrl-single,function-mask = <0x000107ff>;
 	};
 
 	main_sdhci0: sdhci@4f80000 {
