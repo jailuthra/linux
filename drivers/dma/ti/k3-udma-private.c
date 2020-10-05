@@ -159,7 +159,7 @@ EXPORT_SYMBOL(xudma_is_pktdma);
 
 int xudma_pktdma_tflow_get_irq(struct udma_dev *ud, int udma_tflow_id)
 {
-	const struct udma_oes_offsets *oes = &ud->match_data->oes;
+	const struct udma_oes_offsets *oes = &ud->soc_data->oes;
 
 	return ti_sci_inta_msi_get_virq(ud->dev, udma_tflow_id +
 					oes->pktdma_tchan_flow);
@@ -168,7 +168,7 @@ EXPORT_SYMBOL(xudma_pktdma_tflow_get_irq);
 
 int xudma_pktdma_rflow_get_irq(struct udma_dev *ud, int udma_rflow_id)
 {
-	const struct udma_oes_offsets *oes = &ud->match_data->oes;
+	const struct udma_oes_offsets *oes = &ud->soc_data->oes;
 
 	return ti_sci_inta_msi_get_virq(ud->dev, udma_rflow_id +
 					oes->pktdma_rchan_flow);
