@@ -5,6 +5,8 @@
 
 /dts-v1/;
 
+#include <dt-bindings/mux/mux-j721e-wiz.h>
+#include <dt-bindings/phy/phy.h>
 #include "k3-am642.dtsi"
 
 / {
@@ -75,4 +77,36 @@
 &usb0 {
 	dr_mode = "otg";
 	maximum-speed = "high-speed";
+};
+
+&serdes_ln_ctrl {
+	idle-states = <AM64_SERDES0_LANE0_PCIE0>;
+};
+
+&serdes_wiz0 {
+	status = "okay";
+};
+
+&serdes0 {
+	serdes0_pcie_link: link@0 {
+		reg = <0>;
+		cdns,num-lanes = <1>;
+		#phy-cells = <0>;
+		cdns,phy-type = <PHY_TYPE_PCIE>;
+		resets = <&serdes_wiz0 1>;
+	};
+};
+
+&pcie0_rc {
+	/* TODO: Add reset-gpio property */
+	phys = <&serdes0_pcie_link>;
+	phy-names = "pcie_phy";
+	num-lanes = <2>;
+};
+
+&pcie0_ep {
+	phys = <&serdes0_pcie_link>;
+	phy-names = "pcie_phy";
+	num-lanes = <2>;
+	status = "disabled";
 };
