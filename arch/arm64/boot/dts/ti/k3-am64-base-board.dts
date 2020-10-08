@@ -66,3 +66,13 @@
 	ti,driver-strength-ohm = <50>;
 	disable-wp;
 };
+
+&usbss0 {
+	ti,vbus-divider;
+	ti,usb2-only;
+};
+
+&usb0 {
+	dr_mode = "otg";
+	maximum-speed = "high-speed";
+};
