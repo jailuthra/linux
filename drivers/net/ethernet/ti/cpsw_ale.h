@@ -14,17 +14,17 @@ struct cpsw_ale_params {
 	unsigned long		ale_ageout;	/* in secs */
 	unsigned long		ale_entries;
 	unsigned long		ale_ports;
-	/* mask bit used in NU Switch ALE is 3 bits instead of 8 bits. So
-	 * pass it from caller.
-	 */
-	u32			major_ver_mask;
 	/* NU Switch has specific handling as number of bits in ALE entries
 	 * are different than other versions of ALE. Also there are specific
 	 * registers for unknown vlan specific fields. So use nu_switch_ale
 	 * to identify this hardware.
 	 */
 	bool			nu_switch_ale;
-	bool			k3_cpswxg_switch_ale;
+	/* mask bit used in NU Switch ALE is 3 bits instead of 8 bits. So
+	 * pass it from caller.
+	 */
+	u32			major_ver_mask;
+	const char		*dev_id;
 };
 
 struct ale_entry_fld;
@@ -34,6 +34,7 @@ struct cpsw_ale {
 	struct timer_list	timer;
 	unsigned long		ageout;
 	u32			version;
+	u32			features;
 	struct device_attribute ale_control_attr;
 #define control_attr_to_ale(attr)	\
 	container_of(attr, struct cpsw_ale, ale_control_attr)
@@ -50,6 +51,7 @@ struct cpsw_ale {
 	u32			port_mask_bits;
 	u32			port_num_bits;
 	u32			vlan_field_bits;
+	unsigned long		*p0_untag_vid_mask;
 	const struct ale_entry_fld *vlan_entry_tbl;
 };
 
@@ -139,5 +141,16 @@ int cpsw_ale_control_get(struct cpsw_ale *ale, int port, int control);
 int cpsw_ale_control_set(struct cpsw_ale *ale, int port,
 			 int control, int value);
 void cpsw_ale_dump(struct cpsw_ale *ale, u32 *data);
+u32 cpsw_ale_get_num_entries(struct cpsw_ale *ale);
+
+static inline int cpsw_ale_get_vlan_p0_untag(struct cpsw_ale *ale, u16 vid)
+{
+	return test_bit(vid, ale->p0_untag_vid_mask);
+}
+
+int cpsw_ale_vlan_add_modify(struct cpsw_ale *ale, u16 vid, int port_mask,
+			     int untag_mask, int reg_mcast, int unreg_mcast);
+void cpsw_ale_set_unreg_mcast(struct cpsw_ale *ale, int unreg_mcast_mask,
+			      bool add);
 
 #endif
