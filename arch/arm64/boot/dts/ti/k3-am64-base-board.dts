@@ -55,6 +55,13 @@
 			AM64X_IOPAD(0x0234, PIN_OUTPUT, 0) /* (C16) UART0_TXD */
 		>;
 	};
+
+	main_i2c1_pins_default: main-i2c1-pins-default {
+		pinctrl-single,pins = <
+			AM64X_IOPAD(0x0268, PIN_INPUT_PULLUP, 0) /* (C18) I2C1_SCL */
+			AM64X_IOPAD(0x026c, PIN_INPUT_PULLUP, 0) /* (B19) I2C1_SDA */
+		>;
+	};
 };
 
 &main_uart0 {
@@ -98,10 +105,10 @@
 };
 
 &pcie0_rc {
-	/* TODO: Add reset-gpio property */
+	reset-gpios = <&exp1 5 GPIO_ACTIVE_HIGH>;
 	phys = <&serdes0_pcie_link>;
 	phy-names = "pcie_phy";
-	num-lanes = <2>;
+	num-lanes = <1>;
 };
 
 &pcie0_ep {
@@ -109,4 +116,17 @@
 	phy-names = "pcie_phy";
 	num-lanes = <2>;
 	status = "disabled";
+};
+
+&main_i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&main_i2c1_pins_default>;
+	clock-frequency = <400000>;
+
+	exp1: gpio@22 {
+		compatible = "ti,tca6424";
+		reg = <0x22>;
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
 };
