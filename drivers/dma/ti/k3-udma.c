@@ -4039,7 +4039,7 @@ static const struct soc_device_attribute k3_soc_devices[] = {
 	{ .family = "AM65X", .data = &am654_soc_data },
 	{ .family = "J721E", .data = &j721e_soc_data },
 	{ .family = "J7200", .data = &j7200_soc_data },
-	{ .family = "AM64X", .data = &am64_soc_data },
+	{ .family = "AM64", .data = &am64_soc_data },
 	{ /* sentinel */ }
 };
 
@@ -4819,13 +4819,6 @@ static int udma_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to get MSI domain\n");
 		return -EPROBE_DEFER;
 	}
-
-	match = of_match_node(udma_of_match, dev->of_node);
-	if (!match) {
-		dev_err(dev, "No compatible match found\n");
-		return -ENODEV;
-	}
-	ud->match_data = match->data;
 
 	soc = soc_device_match(k3_soc_devices);
 	if (!soc) {
