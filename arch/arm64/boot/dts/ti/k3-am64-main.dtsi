@@ -255,7 +255,7 @@
 			cpsw_port2: port@2 {
 				reg = <2>;
 				ti,mac-only;
-				label = "port1";
+				label = "port2";
 				phys = <&phy_gmii_sel 2>;
 				mac-address = [00 01 de ad be ef];
 			};
