@@ -61,11 +61,5 @@
 		cache-size = <0x40000>;
 		cache-line-size = <64>;
 		cache-sets = <512>;
-		next-level-cache = <&msmc_l3>;
-	};
-
-	msmc_l3: l3-cache0 {
-		compatible = "cache";
-		cache-level = <3>;
 	};
 };
