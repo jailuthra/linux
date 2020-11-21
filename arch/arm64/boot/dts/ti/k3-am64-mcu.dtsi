@@ -40,7 +40,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clock-names = "fck";
-		clocks = <&k3_clks 106 2>;
+		clocks = <&k3_clks 106 0>;
 		power-domains = <&k3_pds 106 TI_SCI_PD_EXCLUSIVE>;
 	};
 
@@ -51,7 +51,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clock-names = "fck";
-		clocks = <&k3_clks 107 2>;
+		clocks = <&k3_clks 107 0>;
 		power-domains = <&k3_pds 107 TI_SCI_PD_EXCLUSIVE>;
 	};
 };
