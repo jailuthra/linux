@@ -648,7 +648,7 @@
 		interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clk-names = "fck";
+		clock-names = "fck";
 		clocks = <&k3_clks 102 2>;
 		power-domains = <&k3_pds 102 TI_SCI_PD_EXCLUSIVE>;
 	};
@@ -659,7 +659,7 @@
 		interrupts = <GIC_SPI 162 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clk-names = "fck";
+		clock-names = "fck";
 		clocks = <&k3_clks 103 2>;
 		power-domains = <&k3_pds 103 TI_SCI_PD_EXCLUSIVE>;
 	};
@@ -670,7 +670,7 @@
 		interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clk-names = "fck";
+		clock-names = "fck";
 		clocks = <&k3_clks 104 2>;
 		power-domains = <&k3_pds 104 TI_SCI_PD_EXCLUSIVE>;
 	};
@@ -681,7 +681,7 @@
 		interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		clk-names = "fck";
+		clock-names = "fck";
 		clocks = <&k3_clks 105 2>;
 		power-domains = <&k3_pds 105 TI_SCI_PD_EXCLUSIVE>;
 	};
