@@ -1989,11 +1989,6 @@ am65_cpsw_nuss_init_port_ndev(struct am65_cpsw_common *common, u32 port_idx)
 	if (common->pdata.quirks & AM65_CPSW_QUIRK_I2027_NO_TX_CSUM)
 		port->ndev->features &= ~NETIF_F_HW_CSUM;
 
-	if (common->pdata.quirks & AM64_CPSW_QUIRK_PRESIL) {
-		port->ndev->features &= ~NETIF_F_HW_CSUM;
-		port->ndev->features &= ~NETIF_F_RXCSUM;
-	}
-
 	ndev_priv->stats = netdev_alloc_pcpu_stats(struct am65_cpsw_ndev_stats);
 	if (!ndev_priv->stats)
 		return -ENOMEM;
@@ -2576,8 +2571,8 @@ static const struct am65_cpsw_pdata j721e_cpswxg_pdata = {
 };
 
 static const struct am65_cpsw_pdata am64x_cpswxg_pdata = {
-	.quirks = AM64_CPSW_QUIRK_PRESIL,
-	.dev_id = "j721e-cpswxg",
+	.quirks = 0,
+	.dev_id = "am64-cpswxg",
 	.fdqring_mode = K3_RINGACC_RING_MODE_RING,
 };
 
