@@ -2422,6 +2422,9 @@ static int am65_cpsw_nuss_register_devlink(struct am65_cpsw_common *common)
 		port = am65_common_get_port(common, i);
 		dl_port = &port->devlink_port;
 
+		if (!port->ndev)
+			continue;
+
 		devlink_port_attrs_set(dl_port, DEVLINK_PORT_FLAVOUR_PHYSICAL,
 				       port->port_id, false, 0, common->switch_id,
 				       sizeof(*common->switch_id));
