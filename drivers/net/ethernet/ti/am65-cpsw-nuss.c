@@ -119,8 +119,8 @@
 
 #define AM65_CPSW_ALE_AGEOUT_DEFAULT	30
 /* Number of TX/RX descriptors */
-#define AM65_CPSW_MAX_TX_DESC	127
-#define AM65_CPSW_MAX_RX_DESC	127
+#define AM65_CPSW_MAX_TX_DESC	500
+#define AM65_CPSW_MAX_RX_DESC	500
 
 #define AM65_CPSW_NAV_PS_DATA_SIZE 16
 #define AM65_CPSW_NAV_SW_DATA_SIZE 16
@@ -810,10 +810,6 @@ static int am65_cpsw_nuss_rx_packets(struct am65_cpsw_common *common,
 	pkt_len = cppi5_hdesc_get_pktlen(desc_rx);
 	cppi5_desc_get_tags_ids(&desc_rx->hdr, &port_id, NULL);
 	dev_dbg(dev, "%s rx port_id:%d\n", __func__, port_id);
-	if (!port_id) {
-		port_id = 1;
-		WARN_ONCE(true, "Invalid port_id 0");
-	}
 	port = am65_common_get_port(common, port_id);
 	ndev = port->ndev;
 	skb->dev = ndev;
