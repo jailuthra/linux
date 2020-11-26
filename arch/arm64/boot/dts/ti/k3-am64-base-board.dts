@@ -9,6 +9,7 @@
 #include <dt-bindings/net/ti-dp83867.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/k3.h>
+#include <dt-bindings/leds/common.h>
 #include "k3-am642.dtsi"
 
 / {
@@ -104,6 +105,18 @@
 		regulator-boot-on;
 		enable-active-high;
 		gpio = <&main_gpio0 12 GPIO_ACTIVE_HIGH>;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led-0 {
+			label = "am64-evm:red:heartbeat";
+			gpios = <&exp1 16 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			function = LED_FUNCTION_HEARTBEAT;
+			default-state = "off";
+		};
 	};
 };
 
