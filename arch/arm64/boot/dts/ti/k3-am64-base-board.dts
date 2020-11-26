@@ -92,6 +92,19 @@
 		regulator-always-on;
 		regulator-boot-on;
 	};
+
+	vtt_fixed: fixedregulator-vtt {
+		/* TPS51206DSQR */
+		compatible = "regulator-fixed";
+		regulator-name = "vtt_fixed";
+		vin-supply = <&vsys_3v3>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+		enable-active-high;
+		gpio = <&main_gpio0 12 GPIO_ACTIVE_HIGH>;
+	};
 };
 
 &main_pmx0 {
