@@ -686,9 +686,9 @@ static int k3_udma_glue_cfg_rx_flow(struct k3_udma_glue_rx_channel *rx_chn,
 	}
 
 	if (xudma_is_pktdma(rx_chn->common.udmax)) {
-		rx_ring_id = flow->udma_rflow_id +
+		rx_ringfdq_id = flow->udma_rflow_id +
 			     xudma_get_rflow_ring_offset(rx_chn->common.udmax);
-		rx_ringfdq_id = 0;
+		rx_ring_id = 0;
 	} else {
 		rx_ring_id = flow_cfg->ring_rxq_id;
 		rx_ringfdq_id = flow_cfg->ring_rxfdq0_id;
