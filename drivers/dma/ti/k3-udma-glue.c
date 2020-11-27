@@ -256,6 +256,16 @@ static void k3_udma_glue_fixup_tx_ringcfg(struct k3_udma_glue_tx_channel *tx_chn
 		ring_cfg->asel = tx_chn->common.atype_asel;
 }
 
+static void chan_dev_release(struct device *dev)
+{
+	/* The struct containing the device is devm managed */
+}
+static struct class k3_udma_glue_devclass = {
+	.name		= "k3_udma_glue_chan",
+	.dev_release	= chan_dev_release,
+};
+
+
 struct k3_udma_glue_tx_channel *k3_udma_glue_request_tx_chn(struct device *dev,
 		const char *name, struct k3_udma_glue_tx_channel_cfg *cfg)
 {
@@ -298,6 +308,7 @@ struct k3_udma_glue_tx_channel *k3_udma_glue_request_tx_chn(struct device *dev,
 	}
 	tx_chn->udma_tchan_id = xudma_tchan_get_id(tx_chn->udma_tchanx);
 
+	tx_chn->common.chan_dev.class = &k3_udma_glue_devclass;
 	tx_chn->common.chan_dev.parent = xudma_get_device(tx_chn->common.udmax);
 	dev_set_name(&tx_chn->common.chan_dev, "tchan%d-0x%04x",
 		     tx_chn->udma_tchan_id, tx_chn->common.dst_thread);
@@ -909,6 +920,7 @@ k3_udma_glue_request_rx_chn_priv(struct device *dev, const char *name,
 	}
 	rx_chn->udma_rchan_id = xudma_rchan_get_id(rx_chn->udma_rchanx);
 
+	rx_chn->common.chan_dev.class = &k3_udma_glue_devclass;
 	rx_chn->common.chan_dev.parent = xudma_get_device(rx_chn->common.udmax);
 	dev_set_name(&rx_chn->common.chan_dev, "rchan%d-0x%04x",
 		     rx_chn->udma_rchan_id, rx_chn->common.src_thread);
@@ -1039,6 +1051,7 @@ k3_udma_glue_request_remote_rx_chn(struct device *dev, const char *name,
 		goto err;
 	}
 
+	rx_chn->common.chan_dev.class = &k3_udma_glue_devclass;
 	rx_chn->common.chan_dev.parent = xudma_get_device(rx_chn->common.udmax);
 	dev_set_name(&rx_chn->common.chan_dev, "rchan_remote-0x%04x",
 		     rx_chn->common.src_thread);
@@ -1425,3 +1438,9 @@ void k3_udma_glue_rx_cppi5_to_dma_addr(struct k3_udma_glue_rx_channel *rx_chn,
 	*addr &= (u64)GENMASK(KSLC_ADDRESS_ASEL_SHIFT - 1, 0);
 }
 EXPORT_SYMBOL_GPL(k3_udma_glue_rx_cppi5_to_dma_addr);
+
+static int __init k3_udma_glue_class_init(void)
+{
+	return class_register(&k3_udma_glue_devclass);
+}
+arch_initcall(k3_udma_glue_class_init);
