@@ -87,8 +87,9 @@ static int eeprom_93xx46_read(void *priv, unsigned int off,
 			if (has_quirk_single_word_read(edev))
 				nbytes = 1;
 		} else {
-			cmd_addr |= (off >> 1) & 0x3f;
-			bits = 9;
+			cmd_addr = cmd_addr << 1;
+			cmd_addr |= off & 0x7e;
+			bits = 10;
 			if (has_quirk_single_word_read(edev))
 				nbytes = 2;
 		}
