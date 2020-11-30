@@ -225,6 +225,8 @@
 		reg-names = "cpsw_nuss";
 		ranges = <0x0 0x0 0x0 0x8000000 0x0 0x200000>;
 		clocks = <&k3_clks 13 0>;
+		assigned-clocks = <&k3_clks 13 1>;
+		assigned-clock-parents = <&k3_clks 13 9>;
 		clock-names = "fck";
 		power-domains = <&k3_pds 13 TI_SCI_PD_EXCLUSIVE>;
 
