@@ -415,7 +415,7 @@
 
 &timesync_router {
 	pinctrl-names = "default";
-	pinctrl-0 = <&mcu_cpts_pps>;
+	pinctrl-0 = <&mcu_cpts_pps &mcu_cpts_hw_ts>;
 
 	/* Example of the timesync routing */
 	mcu_cpts_pps: mcu_cpts_pps {
@@ -424,6 +424,13 @@
 				TS_OFFSET(37, 22)
 				/* pps [cpts genf1] in22 -> out25 [SYNC1_OUT pin] */
 				TS_OFFSET(25, 22)
+				>;
+	};
+
+	mcu_cpts_hw_ts: mcu_cpts_hw_ts {
+		pinctrl-single,pins = <
+				/* pps [main cpts genf0] in16 -> out36 [cpts hw7_push] */
+				TS_OFFSET(36, 16)
 				>;
 	};
 };
