@@ -292,7 +292,7 @@
 			clock-names = "cpts";
 			interrupts-extended = <&gic500 GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cpts";
-			ti,cpts-ext-ts-inputs = <4>;
+			ti,cpts-ext-ts-inputs = <8>;
 			ti,cpts-periodic-outputs = <2>;
 		};
 	};
