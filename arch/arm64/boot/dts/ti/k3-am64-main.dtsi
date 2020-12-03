@@ -546,6 +546,10 @@
 			#clock-cells = <0>;
 		};
 
+		wiz0_phy_en_refclk: phy-en-refclk {
+			#clock-cells = <0>;
+		};
+
 		serdes0: serdes@f000000 {
 			compatible = "ti,j721e-serdes-10g";
 			reg = <0x00 0x0f000000 0x0 0x00010000>;
@@ -555,6 +559,11 @@
 			clock-names = "refclk";
 			#address-cells = <1>;
 			#size-cells = <0>;
+
+			serdes0_refclk_driver: refclk-driver {
+				clocks = <&wiz0_phy_en_refclk>;
+				#clock-cells = <0>;
+			};
 		};
 	};
 
@@ -569,8 +578,8 @@
 		max-link-speed = <2>;
 		num-lanes = <1>;
 		power-domains = <&k3_pds 114 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 114 0>;
-		clock-names = "fck";
+		clocks = <&k3_clks 114 0>, <&serdes0_refclk_driver>;
+		clock-names = "fck", "pcie_refclk";
 		#address-cells = <3>;
 		#size-cells = <2>;
 		bus-range = <0x0 0xf>;
