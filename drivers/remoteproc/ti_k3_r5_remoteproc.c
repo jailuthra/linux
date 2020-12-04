@@ -383,6 +383,13 @@ static inline int k3_r5_core_run(struct k3_r5_core *core)
  * applicable cores to allow loading into the TCMs. The .prepare() ops is
  * invoked by remoteproc core before any firmware loading, and is followed
  * by the .start() ops after loading to actually let the R5 cores run.
+ *
+ * The Single-CPU mode on applicable SoCs (eg: AM64x) only uses Core0 to
+ * execute code, but combines the TCMs from both cores. The resets for both
+ * cores need to be released to make this possible, as they are in general
+ * private to each core. Only Core0 needs to be unhalted for running the
+ * cluster in this mode. The function uses the same reset logic as LockStep
+ * mode for this (the reset release order is agnostic though).
  */
 static int k3_r5_rproc_prepare(struct rproc *rproc)
 {
@@ -404,8 +411,9 @@ static int k3_r5_rproc_prepare(struct rproc *rproc)
 		return ret;
 	mem_init_dis = !!(cfg & PROC_BOOT_CFG_FLAG_R5_MEM_INIT_DIS);
 
-	/* TODO: Adjust for Single-CPU mode on AM64x SoCs */
-	ret = (cluster->mode == CLUSTER_MODE_LOCKSTEP) ?
+	/* Re-use LockStep-mode reset logic for Single-CPU mode on AM64x SoCs */
+	ret = (cluster->mode == CLUSTER_MODE_LOCKSTEP ||
+	       cluster->mode == CLUSTER_MODE_SINGLECPU) ?
 		k3_r5_lockstep_release(cluster) : k3_r5_split_release(core);
 	if (ret) {
 		dev_err(dev, "unable to enable cores for TCM loading, ret = %d\n",
@@ -446,6 +454,12 @@ static int k3_r5_rproc_prepare(struct rproc *rproc)
  * cores. The cores themselves are only halted in the .stop() ops, and the
  * .unprepare() ops is invoked by the remoteproc core after the remoteproc is
  * stopped.
+ *
+ * The Single-CPU mode on applicable SoCs (eg: AM64x) combines the TCMs from
+ * both cores. The access is made possible only with releasing the resets for
+ * both cores, but with only Core0 unhalted. This function re-uses the same
+ * reset assert logic as LockStep mode for this mode (the reset assert order
+ * is agnostic though).
  */
 static int k3_r5_rproc_unprepare(struct rproc *rproc)
 {
@@ -459,8 +473,9 @@ static int k3_r5_rproc_unprepare(struct rproc *rproc)
 	if (kproc->ipc_only)
 		return 0;
 
-	/* TODO: Adjust for Single-CPU mode on AM64x SoCs */
-	ret = (cluster->mode == CLUSTER_MODE_LOCKSTEP) ?
+	/* Re-use LockStep-mode reset logic for Single-CPU mode on AM64x SoCs */
+	ret = (cluster->mode == CLUSTER_MODE_LOCKSTEP ||
+	       cluster->mode == CLUSTER_MODE_SINGLECPU) ?
 		k3_r5_lockstep_reset(cluster) : k3_r5_split_reset(core);
 	if (ret)
 		dev_err(dev, "unable to disable cores, ret = %d\n", ret);
@@ -479,6 +494,10 @@ static int k3_r5_rproc_unprepare(struct rproc *rproc)
  * first followed by Core0. The Split-mode requires that Core0 to be maintained
  * always in a higher power state that Core1 (implying Core1 needs to be started
  * always only after Core0 is started).
+ *
+ * The Single-CPU mode on applicable SoCs (eg: AM64x) only uses Core0 to execute
+ * code, so only Core0 needs to be unhalted. The function uses the same logic
+ * flow as Split-mode for this.
  */
 static int k3_r5_rproc_start(struct rproc *rproc)
 {
@@ -536,7 +555,6 @@ static int k3_r5_rproc_start(struct rproc *rproc)
 	if (ret)
 		goto put_mbox;
 
-	/* TODO: Fix for Single-CPU mode on AM64x SoCs */
 	/* unhalt/run all applicable cores */
 	if (cluster->mode == CLUSTER_MODE_LOCKSTEP) {
 		list_for_each_entry_reverse(core, &cluster->cores, elem) {
@@ -573,6 +591,10 @@ put_mbox:
  * Core0 to be maintained always in a higher power state that Core1 (implying
  * Core1 needs to be stopped first before Core0).
  *
+ * The Single-CPU mode on applicable SoCs (eg: AM64x) only uses Core0 to execute
+ * code, so only Core0 needs to be halted. The function uses the same logic
+ * flow as Split-mode for this.
+ *
  * Note that the R5F halt operation in general is not effective when the R5F
  * core is running, but is needed to make sure the core won't run after
  * deasserting the reset the subsequent time. The asserting of reset can
@@ -598,7 +620,6 @@ static int k3_r5_rproc_stop(struct rproc *rproc)
 		return 0;
 	}
 
-	/* TODO: Fix for Single-CPU mode on AM64x SoCs */
 	/* halt all applicable cores */
 	if (cluster->mode == CLUSTER_MODE_LOCKSTEP) {
 		list_for_each_entry(core, &cluster->cores, elem) {
@@ -1213,7 +1234,8 @@ static int k3_r5_cluster_rproc_exit(struct platform_device *pdev)
 	 * split-mode has two rprocs associated with each core, and requires
 	 * that core1 be powered down first
 	 */
-	core = (cluster->mode == CLUSTER_MODE_LOCKSTEP) ?
+	core = (cluster->mode == CLUSTER_MODE_LOCKSTEP ||
+		cluster->mode == CLUSTER_MODE_SINGLECPU) ?
 		list_first_entry(&cluster->cores, struct k3_r5_core, elem) :
 		list_last_entry(&cluster->cores, struct k3_r5_core, elem);
 
