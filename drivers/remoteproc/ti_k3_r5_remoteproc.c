@@ -1627,11 +1627,6 @@ static int k3_r5_probe(struct platform_device *pdev)
 	if (cluster->mode && data->single_cpu_mode)
 		cluster->mode = CLUSTER_MODE_SINGLECPU;
 
-	if (cluster->mode == CLUSTER_MODE_SINGLECPU) {
-		dev_info(dev, "Single-CPU mode currently not supported\n");
-		cluster->mode = CLUSTER_MODE_SPLIT;
-	}
-
 	num_cores = of_get_available_child_count(np);
 	if (num_cores != 2) {
 		dev_err(dev, "MCU cluster requires both R5F cores to be enabled, num_cores = %d\n",
