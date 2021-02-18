@@ -150,7 +150,25 @@ static void csi2rx_reset(struct csi2rx_priv *csi2rx)
 static int csi2rx_configure_ext_dphy(struct csi2rx_priv *csi2rx)
 {
 	union phy_configure_opts opts = { };
+	struct phy_configure_opts_mipi_dphy *cfg = &opts.mipi_dphy;
+	const struct csi2rx_fmt *fmt;
+	s64 pixel_clock;
 	int ret;
+
+	fmt = csi2rx_get_fmt_by_code(csi2rx->fmt.code);
+
+	/*
+	 * Do not divide by the number of lanes here. That will be done by
+	 * phy_mipi_dphy_get_default_config().
+	 */
+	pixel_clock = v4l2_get_link_freq(csi2rx->source_subdev->ctrl_handler,
+					 fmt->bpp, 2 * csi2rx->num_lanes);
+	if (pixel_clock < 0)
+		return pixel_clock;
+
+	ret = phy_mipi_dphy_get_default_config(pixel_clock, 1, 1, cfg);
+	if (ret)
+		return ret;
 
 	ret = phy_power_on(csi2rx->dphy);
 	if (ret)
