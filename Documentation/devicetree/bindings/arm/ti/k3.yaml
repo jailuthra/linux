@@ -41,6 +41,11 @@ properties:
               - ti,am642-evm
               - ti,am642-sk
           - const: ti,am642
+      - description: K3 AM624 SoC
+        items:
+          - enum:
+              - ti,am624-evm
+          - const: ti,am624
 
 additionalProperties: true
 
