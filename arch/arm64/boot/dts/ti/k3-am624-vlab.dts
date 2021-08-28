@@ -31,8 +31,20 @@
 		#size-cells = <2>;
 		ranges;
 
+		secure_tfa_ddr: tfa@9e780000 {
+			reg = <0x00 0x9e780000 0x00 0x80000>;
+			alignment = <0x1000>;
+			no-map;
+		};
+
 		secure_ddr: optee@9e800000 {
 			reg = <0x00 0x9e800000 0x00 0x01800000>; /* for OP-TEE */
+			alignment = <0x1000>;
+			no-map;
+		};
+
+		device_manager_ddr: dm-memory@a0000000 {
+			reg = <0x00 0xa0000000 0x00 0x1000000>;
 			alignment = <0x1000>;
 			no-map;
 		};
