@@ -9,8 +9,6 @@
 	wkup_uart0: serial@2b300000 {
 		compatible = "ti,am64-uart", "ti,am654-uart";
 		reg = <0x00 0x2b300000 0x00 0x100>;
-		reg-shift = <2>;
-		reg-io-width = <4>;
 		interrupts = <GIC_SPI 186 IRQ_TYPE_LEVEL_HIGH>;
 		clock-frequency = <48000000>;
 		current-speed = <115200>;
