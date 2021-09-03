@@ -52,7 +52,7 @@
 };
 
 /* wkup_uart0 is reserved for firmware usage */
-&main_uart0 {
+&wkup_uart0 {
 	status = "reserved";
 };
 
