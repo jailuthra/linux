@@ -4327,12 +4327,20 @@ static const struct of_device_id bcdma_of_match[] = {
 		.compatible = "ti,am64-dmss-bcdma",
 		.data = &am64_bcdma_data,
 	},
+	{
+		.compatible = "ti,am62-dmss-bcdma",
+		.data = &am64_bcdma_data,
+	},
 	{ /* Sentinel */ },
 };
 
 static const struct of_device_id pktdma_of_match[] = {
 	{
 		.compatible = "ti,am64-dmss-pktdma",
+		.data = &am64_pktdma_data,
+	},
+	{
+		.compatible = "ti,am62-dmss-pktdma",
 		.data = &am64_pktdma_data,
 	},
 	{ /* Sentinel */ },
@@ -4376,6 +4384,7 @@ static const struct soc_device_attribute k3_soc_devices[] = {
 	{ .family = "J7200", .data = &j7200_soc_data },
 	{ .family = "AM64X", .data = &am64_soc_data },
 	{ .family = "J721S2", .data = &j721e_soc_data},
+	{ .family = "AM62X", .data = &am64_soc_data },
 	{ /* sentinel */ }
 };
 
