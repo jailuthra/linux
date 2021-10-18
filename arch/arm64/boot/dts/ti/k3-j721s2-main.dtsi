@@ -388,7 +388,9 @@
 		clock-names =  "clk_ahb", "clk_xin";
 		assigned-clocks = <&k3_clks 99 1>;
 		assigned-clock-parents = <&k3_clks 99 2>;
-		bus-width = <4>;
+		bus-width = <1>;
+		ti,otap-del-sel-legacy = <0x0>;
+		sdhci-caps-mask = <0x80000007 0x00200000>;
 		dma-coherent;
 	};
 
