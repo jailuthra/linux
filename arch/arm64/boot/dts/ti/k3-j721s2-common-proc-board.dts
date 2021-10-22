@@ -518,6 +518,7 @@
 &ospi1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&mcu_fss0_ospi1_pins_default>;
+	status = "disabled";
 
 	flash@0{
 		compatible = "jedec,spi-nor";
@@ -562,5 +563,11 @@ sysfs: cannot create duplicate filename '/devices/platform/bus@100000/64800000.d
 /* HACK Disable for now.. no real reason.. but I just dont like c7x atm
 */
 &c71_1 {
+	status = "disabled";
+};
+
+/* HACK: clk: failed to reparent clk:109:0 to clk:109:7: -22 
+ */
+&ospi0 {
 	status = "disabled";
 };
