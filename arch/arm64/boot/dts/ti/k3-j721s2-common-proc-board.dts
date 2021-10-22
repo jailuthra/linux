@@ -380,7 +380,7 @@
 &main_sdhci0 {
 	/* eMMC */
 	non-removable;
-	ti,driver-strength = <50>;
+	ti,driver-strength-ohm = <50>;
 	disable-wp;
 };
 
@@ -388,7 +388,6 @@
 	/* SD card */
 	pinctrl-0 = <&main_mmc1_pins_default>;
 	pinctrl-names = "default";
-	ti,driver-strength = <50>;
 	disable-wp;
 	vmmc-supply = <&vdd_mmc1>;
 	vqmmc-supply = <&vdd_sd_dv>;
