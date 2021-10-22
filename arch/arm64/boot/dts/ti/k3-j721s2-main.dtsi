@@ -415,9 +415,9 @@
 			#interrupt-cells = <1>;
 			ti,sci = <&sms>;
 			ti,sci-dev-id = <227>;
-			ti,interrupt-ranges = <0 32 64>,
-					      <64 416 64>,
-					      <128 640 64>;
+			ti,interrupt-ranges = <0 64 64>,
+					      <64 448 64>,
+					      <128 672 64>;
 		};
 
 		main_udmass_inta: msi-controller@33d00000 {
