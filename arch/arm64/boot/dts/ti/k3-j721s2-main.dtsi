@@ -360,7 +360,7 @@
 			interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 102 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
-			 interrupt-names = "host", "peripheral,", "otg";
+			 interrupt-names = "host", "peripheral", "otg";
 			 maximum-speed = "super-speed";
 			 dr_mode = "otg";
 		};
