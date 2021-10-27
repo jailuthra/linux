@@ -33,6 +33,11 @@
 		serial11 = &main_uart9;
 		mmc0 = &main_sdhci0;
 		mmc1 = &main_sdhci1;
+		can0 = &main_mcan16;
+		can1 = &mcu_mcan0;
+		can2 = &mcu_mcan1;
+		can3 = &main_mcan3;
+		can4 = &main_mcan5;
 	};
 
 	chosen { };
