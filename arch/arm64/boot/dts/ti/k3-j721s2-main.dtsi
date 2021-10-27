@@ -633,37 +633,37 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		power-domains = <&k3_pds 365 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 365 75>, <&k3_clks 365 40>, <&serdes_refclk>;
+		clocks = <&k3_clks 365 0>, <&k3_clks 365 3>, <&serdes_refclk>;
 		clock-names = "fck", "core_ref_clk", "ext_ref_clk";
 		num-lanes = <4>;
 		#reset-cells = <1>;
 		ranges = <0x5060000 0x0 0x5060000 0x10000>;
 
-		assigned-clocks = <&k3_clks 365 40>;
-		assigned-clock-parents = <&k3_clks 365 44>;
+		assigned-clocks = <&k3_clks 365 3>;
+		assigned-clock-parents = <&k3_clks 365 7>;
 
 		wiz0_pll0_refclk: pll0-refclk {
-			clocks = <&k3_clks 365 40>, <&serdes_refclk>;
+			clocks = <&k3_clks 365 3>, <&serdes_refclk>;
 			clock-output-names = "wiz0_pll0_refclk";
 			#clock-cells = <0>;
 			assigned-clocks = <&wiz0_pll0_refclk>;
-			assigned-clock-parents = <&k3_clks 365 40>;
+			assigned-clock-parents = <&k3_clks 365 3>;
 		};
 
 		wiz0_pll1_refclk: pll1-refclk {
-			clocks = <&k3_clks 365 40>, <&serdes_refclk>;
+			clocks = <&k3_clks 365 3>, <&serdes_refclk>;
 			clock-output-names = "wiz0_pll1_refclk";
 			#clock-cells = <0>;
 			assigned-clocks = <&wiz0_pll1_refclk>;
-			assigned-clock-parents = <&k3_clks 365 40>;
+			assigned-clock-parents = <&k3_clks 365 3>;
 		};
 
 		wiz0_refclk_dig: refclk-dig {
-			clocks = <&k3_clks 365 40>, <&serdes_refclk>;
+			clocks = <&k3_clks 365 3>, <&serdes_refclk>;
 			clock-output-names = "wiz0_refclk_dig";
 			#clock-cells = <0>;
 			assigned-clocks = <&wiz0_refclk_dig>;
-			assigned-clock-parents = <&k3_clks 365 40>;
+			assigned-clock-parents = <&k3_clks 365 3>;
 		};
 
 		wiz0_cmn_refclk_dig_div: cmn-refclk-dig-div {
