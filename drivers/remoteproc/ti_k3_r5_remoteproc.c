@@ -1787,7 +1787,7 @@ static const struct of_device_id k3_r5_of_match[] = {
 	{ .compatible = "ti,j721e-r5fss", .data = &am65_j721e_soc_data, },
 	{ .compatible = "ti,j7200-r5fss", .data = &j7200_soc_data, },
 	{ .compatible = "ti,am64-r5fss",  .data = &am64_soc_data, },
-	{ .compatible = "ti,j721s2-r5fss",  .data = &am64_soc_data, },
+	{ .compatible = "ti,j721s2-r5fss",  .data = &j7200_soc_data, },
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, k3_r5_of_match);
