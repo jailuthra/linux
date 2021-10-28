@@ -553,18 +553,3 @@
 	phy-mode = "rgmii-rxid";
 	phy-handle = <&phy0>;
 };
-
-/* HACK Disable for now..
-sysfs: cannot create duplicate filename '/devices/platform/bus@100000/64800000.dsp'
-*/
-/*
-&c71_0 {
-	status = "disabled";
-};
-*/
-/* HACK Disable for now.. no real reason.. but I just dont like c7x atm
-*/
-/* &c71_1 {
-	status = "disabled";
-};
-*/
