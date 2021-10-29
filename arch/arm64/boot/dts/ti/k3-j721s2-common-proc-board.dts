@@ -6,7 +6,6 @@
 /dts-v1/;
 
 #include "k3-j721s2-som-p0.dtsi"
-#include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/net/ti-dp83867.h>
 #include <dt-bindings/phy/phy-cadence.h>
 #include <dt-bindings/phy/phy.h>
