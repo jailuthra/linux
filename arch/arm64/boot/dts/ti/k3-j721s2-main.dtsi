@@ -764,7 +764,7 @@
 			ti,sci-dev-id = <279>;
 			ti,sci-proc-ids = <0x06 0xff>;
 			resets = <&k3_reset 279 1>;
-			firmware-name = "j7-main-r5f0_0-fw";
+			firmware-name = "j721s2-main-r5f0_0-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
 			ti,loczrama = <1>;
@@ -779,7 +779,7 @@
 			ti,sci-dev-id = <280>;
 			ti,sci-proc-ids = <0x07 0xff>;
 			resets = <&k3_reset 280 1>;
-			firmware-name = "j7-main-r5f0_1-fw";
+			firmware-name = "j721s2-main-r5f0_1-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
 			ti,loczrama = <1>;
@@ -804,7 +804,7 @@
 			ti,sci-dev-id = <281>;
 			ti,sci-proc-ids = <0x08 0xff>;
 			resets = <&k3_reset 281 1>;
-			firmware-name = "j7-main-r5f1_0-fw";
+			firmware-name = "j721s2-main-r5f1_0-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
 			ti,loczrama = <1>;
@@ -819,7 +819,7 @@
 			ti,sci-dev-id = <282>;
 			ti,sci-proc-ids = <0x09 0xff>;
 			resets = <&k3_reset 282 1>;
-			firmware-name = "j7-main-r5f1_1-fw";
+			firmware-name = "j721s2-main-r5f1_1-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
 			ti,loczrama = <1>;
@@ -835,7 +835,7 @@
 		ti,sci-dev-id = <8>;
 		ti,sci-proc-ids = <0x30 0xff>;
 		resets = <&k3_reset 8 1>;
-		firmware-name = "j7-c71_0-fw";
+		firmware-name = "j721s2-c71_0-fw";
 	};
 
 	c71_1: dsp@65800000 {
@@ -847,7 +847,7 @@
 		ti,sci-dev-id = <11>;
 		ti,sci-proc-ids = <0x31 0xff>;
 		resets = <&k3_reset 11 1>;
-		firmware-name = "j7-c71_1-fw";
+		firmware-name = "j721s2-c71_1-fw";
 	};
 
 	main_mcan0: can@2701000 {

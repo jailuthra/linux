@@ -356,7 +356,7 @@
 			ti,sci-dev-id = <284>;
 			ti,sci-proc-ids = <0x01 0xff>;
 			resets = <&k3_reset 284 1>;
-			firmware-name = "j7-mcu-r5f0_0-fw";
+			firmware-name = "j721s2-mcu-r5f0_0-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
 			ti,loczrama = <1>;
@@ -371,7 +371,7 @@
 			ti,sci-dev-id = <285>;
 			ti,sci-proc-ids = <0x02 0xff>;
 			resets = <&k3_reset 285 1>;
-			firmware-name = "j7-mcu-r5f0_1-fw";
+			firmware-name = "j721s2-mcu-r5f0_1-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
 			ti,loczrama = <1>;
