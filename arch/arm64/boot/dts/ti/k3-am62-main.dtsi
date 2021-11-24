@@ -694,4 +694,14 @@
 			firmware-name = "am62x-pru1-fw";
 		};
 	};
+
+	rtc0: rtc@2b1f0000 {
+		compatible = "ti,am62-rtc";
+		reg = <0x00 0x2b1f0000 0x00 0x100>;
+		interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&k3_clks 117 0> , <&k3_clks 117 6>;
+		clock-names = "osc32k", "vbus";
+		power-domains = <&k3_pds 117 TI_SCI_PD_EXCLUSIVE>;
+		wakeup-source;
+	};
 };
