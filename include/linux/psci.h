@@ -9,6 +9,7 @@
 
 #include <linux/arm-smccc.h>
 #include <linux/init.h>
+#include <linux/suspend.h>
 #include <linux/types.h>
 
 #define PSCI_POWER_STATE_TYPE_STANDBY		0
@@ -33,6 +34,8 @@ struct psci_operations {
 };
 
 extern struct psci_operations psci_ops;
+
+int psci_set_platform_begin_suspend(int (*begin_handler)(suspend_state_t state));
 
 #if defined(CONFIG_ARM_PSCI_FW)
 int __init psci_dt_init(void);

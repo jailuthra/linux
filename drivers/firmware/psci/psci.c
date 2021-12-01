@@ -49,6 +49,8 @@ static int resident_cpu = -1;
 struct psci_operations psci_ops;
 static enum arm_smccc_conduit psci_conduit = SMCCC_CONDUIT_NONE;
 
+static int (*psci_system_suspend_begin_handler)(suspend_state_t state);
+
 bool psci_tos_resident_on(int cpu)
 {
 	return cpu == resident_cpu;
@@ -312,12 +314,28 @@ static int psci_system_suspend(unsigned long unused)
 			      __pa_symbol(cpu_resume), 0, 0);
 }
 
+int psci_set_platform_begin_suspend(int (*begin_handler)(suspend_state_t state))
+{
+	psci_system_suspend_begin_handler = begin_handler;
+
+	return 0;
+}
+
+static int psci_system_suspend_begin(suspend_state_t state)
+{
+	if (psci_system_suspend_begin_handler)
+		return psci_system_suspend_begin_handler(state);
+
+	return 0;
+}
+
 static int psci_system_suspend_enter(suspend_state_t state)
 {
 	return cpu_suspend(0, psci_system_suspend);
 }
 
 static const struct platform_suspend_ops psci_suspend_ops = {
+	.begin		= psci_system_suspend_begin,
 	.valid          = suspend_valid_only_mem,
 	.enter          = psci_system_suspend_enter,
 };
