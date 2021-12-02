@@ -35,6 +35,9 @@
 #define TI_SCI_MSG_QUERY_CLOCK_FREQ	0x010d
 #define TI_SCI_MSG_GET_CLOCK_FREQ	0x010e
 
+/* Low Power Mode Requests */
+#define TI_SCI_MSG_PREPARE_SLEEP       0x0300
+
 /* Resource Management Requests */
 #define TI_SCI_MSG_GET_RESOURCE_RANGE	0x1500
 
@@ -545,6 +548,29 @@ struct ti_sci_msg_req_get_clock_freq {
 struct ti_sci_msg_resp_get_clock_freq {
 	struct ti_sci_msg_hdr hdr;
 	u64 freq_hz;
+} __packed;
+
+/**
+ * struct tisci_msg_prepare_sleep_req - Request for TISCI_MSG_PREPARE_SLEEP.
+ *
+ * @hdr 			TISCI header to provide ACK/NAK flags to the host.
+ * @mode 			Low power mode to enter.
+ * @ctx_lo 			Low 32-bits of physical pointer to address to use for context save.
+ * @ctx_hi 			High 32-bits of physical pointer to address to use for context save.
+ * @debug_flags 	Flags that can be set to halt the sequence during suspend or
+ *                                    resume to allow JTAG connection and debug.
+ *
+ * This message is used as the first step of entering a low power mode. It
+ * allows configurable information, including which state to enter to be
+ * easily shared from the application, as this is a non-secure message and
+ * therefore can be sent by anyone.
+ */
+struct ti_sci_msg_req_prepare_sleep {
+	struct ti_sci_msg_hdr	hdr;
+	u8			mode;
+	u32			ctx_lo;
+	u32			ctx_hi;
+	u32			debug_flags;
 } __packed;
 
 #define TI_SCI_IRQ_SECONDARY_HOST_INVALID	0xff
