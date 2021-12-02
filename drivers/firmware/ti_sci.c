@@ -3409,6 +3409,55 @@ static int tisci_reboot_handler(struct notifier_block *nb, unsigned long mode,
 	return NOTIFY_BAD;
 }
 
+static int ti_sci_begin_suspend(suspend_state_t suspend_state)
+{
+	int ret = 0;
+	int mode;
+	u32 ctx_lo, ctx_hi;
+	struct ti_sci_info *info;
+	const struct ti_sci_handle *handle;
+
+	handle = ti_sci_get_susp_ctlr_handle();
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
+
+	info = handle_to_ti_sci_info(handle);
+
+	switch (suspend_state) {
+	case PM_SUSPEND_MEM:
+		/* Some condition here to detect MCU ONLY mode...*/
+		if (true)
+			mode = TISCI_MSG_VALUE_SLEEP_MODE_DEEP_SLEEP;
+		else
+			mode = TISCI_MSG_VALUE_SLEEP_MODE_MCU_ONLY;
+		break;
+	case PM_SUSPEND_STANDBY:
+		mode = TISCI_MSG_VALUE_SLEEP_MODE_STANDBY;
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
+	if (ret)
+		return ret;
+
+	ctx_lo = info->mem_ctx_lo;
+	ctx_hi = info->mem_ctx_hi;
+
+	ret = ti_sci_cmd_prepare_sleep(handle, mode, ctx_lo, ctx_hi, 0);
+
+	ret = ti_sci_put_susp_ctlr_handle(handle);
+
+	return ret;
+}
+
+static int ti_sci_init_suspend(void)
+{
+	psci_set_platform_begin_suspend(ti_sci_begin_suspend);
+
+	return 0;
+}
+
 /* Description for K2G */
 static const struct ti_sci_desc ti_sci_pmmc_k2g_desc = {
 	.default_host_id = 2,
@@ -3587,6 +3636,12 @@ static int ti_sci_probe(struct platform_device *pdev)
 
 		info->mem_ctx_lo = (rmem->base & 0xFFFFFFFF);
 		info->mem_ctx_hi = (rmem->base >> 32);
+
+		ret = ti_sci_init_suspend();
+		if (ret) {
+			dev_err(dev, "suspend init fail(%d)\n", ret);
+			goto out;
+		}
 	}
 
 	dev_info(dev, "ABI: %d.%d (firmware rev 0x%04x '%s')\n",
