@@ -16,6 +16,7 @@
 #include <linux/mailbox_client.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/psci.h>
 #include <linux/semaphore.h>
 #include <linux/slab.h>
@@ -127,6 +128,8 @@ struct ti_sci_info {
 	struct list_head node;
 	u8 host_id;
 	u8 flags;
+	u32 mem_ctx_lo;
+	u32 mem_ctx_hi;
 	/* protected by ti_sci_list_mutex */
 	int users;
 
@@ -3442,6 +3445,8 @@ static int ti_sci_probe(struct platform_device *pdev)
 	struct ti_sci_info *info = NULL;
 	struct ti_sci_xfers_info *minfo;
 	struct mbox_client *cl;
+	struct device_node *rmem_np;
+	struct reserved_mem *rmem;
 	int ret = -EINVAL;
 	int i;
 	int reboot = 0;
@@ -3564,6 +3569,24 @@ static int ti_sci_probe(struct platform_device *pdev)
 
 	if (suspend_controller) {
 		info->flags |= TI_SCI_INFO_FLAG_SUSPEND_CTLR;
+
+		rmem_np = of_parse_phandle(dev->of_node, "ti,ctx-memory-region", 0);
+		if (!rmem_np) {
+			ret = -EINVAL;
+			dev_err(dev, "Marked as suspend controller, ti,ctx-memory-region is required but not provided.\n");
+			goto out;
+		}
+
+		rmem = of_reserved_mem_lookup(rmem_np);
+		if (!rmem) {
+			of_node_put(rmem_np);
+			ret = -EINVAL;
+			goto out;
+		}
+		of_node_put(rmem_np);
+
+		info->mem_ctx_lo = (rmem->base & 0xFFFFFFFF);
+		info->mem_ctx_hi = (rmem->base >> 32);
 	}
 
 	dev_info(dev, "ABI: %d.%d (firmware rev 0x%04x '%s')\n",
