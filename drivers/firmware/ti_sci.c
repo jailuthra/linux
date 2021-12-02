@@ -16,13 +16,19 @@
 #include <linux/mailbox_client.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
+#include <linux/psci.h>
 #include <linux/semaphore.h>
 #include <linux/slab.h>
 #include <linux/soc/ti/ti-msgmgr.h>
 #include <linux/soc/ti/ti_sci_protocol.h>
 #include <linux/reboot.h>
+#include <linux/suspend.h>
 
 #include "ti_sci.h"
+
+#define TISCI_MSG_VALUE_SLEEP_MODE_DEEP_SLEEP              0x0
+#define TISCI_MSG_VALUE_SLEEP_MODE_MCU_ONLY                        0x1
+#define TISCI_MSG_VALUE_SLEEP_MODE_STANDBY                         0x2
 
 /* List of all TI SCI devices active in system */
 static LIST_HEAD(ti_sci_list);
@@ -80,6 +86,13 @@ struct ti_sci_desc {
 };
 
 /**
+ * Flags for ti_sci_info
+ *
+ * TI_SCI_INFO_FLAG_SUSPEND_CTLR - Marks instance as system suspend controller
+ */
+#define TI_SCI_INFO_FLAG_SUSPEND_CTLR		BIT (0)
+
+/**
  * struct ti_sci_info - Structure representing a TI SCI instance
  * @dev:	Device pointer
  * @desc:	SoC description for this instance
@@ -94,6 +107,7 @@ struct ti_sci_desc {
  * @chan_rx:	Receive mailbox channel
  * @minfo:	Message info
  * @node:	list head
+ * @flags:	Flags for this TISCI instance
  * @host_id:	Host ID
  * @users:	Number of users of this instance
  */
@@ -112,6 +126,7 @@ struct ti_sci_info {
 	struct ti_sci_xfers_info minfo;
 	struct list_head node;
 	u8 host_id;
+	u8 flags;
 	/* protected by ti_sci_list_mutex */
 	int users;
 
@@ -2918,6 +2933,70 @@ static void ti_sci_setup_ops(struct ti_sci_info *info)
 }
 
 /**
+ * ti_sci_get_susp_ctlr_handle() - Get the TI SCI handle for the suspend controller
+ *
+ * NOTE: The function does not track individual clients of the framework
+ * and is expected to be maintained by caller of TI SCI protocol library.
+ * ti_sci_put_handle must be balanced with successful ti_sci_get_handle
+ * Return: pointer to handle if successful, else:
+ * -EPROBE_DEFER if the instance is not ready
+ * -ENODEV if the required node handler is missing
+ * -EINVAL if invalid conditions are encountered.
+ */
+static const struct ti_sci_handle *ti_sci_get_susp_ctlr_handle(void)
+{
+	struct list_head *p;
+	struct ti_sci_handle *handle = NULL;
+	struct ti_sci_info *info;
+
+	mutex_lock(&ti_sci_list_mutex);
+	list_for_each(p, &ti_sci_list) {
+		info = list_entry(p, struct ti_sci_info, node);
+		if (info->flags && TI_SCI_INFO_FLAG_SUSPEND_CTLR) {
+			handle = &info->handle;
+			info->users++;
+			break;
+		}
+	}
+	mutex_unlock(&ti_sci_list_mutex);
+
+	if (!handle)
+		return ERR_PTR(-EPROBE_DEFER);
+
+	return handle;
+}
+
+/**
+ * ti_sci_put_handle() - Release the handle acquired by ti_sci_get_handle
+ * @handle:	Handle acquired by ti_sci_get_handle
+ *
+ * NOTE: The function does not track individual clients of the framework
+ * and is expected to be maintained by caller of TI SCI protocol library.
+ * ti_sci_put_handle must be balanced with successful ti_sci_get_handle
+ *
+ * Return: 0 is successfully released
+ * if an error pointer was passed, it returns the error value back,
+ * if null was passed, it returns -EINVAL;
+ */
+static int ti_sci_put_susp_ctlr_handle(const struct ti_sci_handle *handle)
+{
+	struct ti_sci_info *info;
+
+	if (IS_ERR(handle))
+		return PTR_ERR(handle);
+	if (!handle)
+		return -EINVAL;
+
+	info = handle_to_ti_sci_info(handle);
+	mutex_lock(&ti_sci_list_mutex);
+	if (!WARN_ON(!info->users))
+		info->users--;
+	mutex_unlock(&ti_sci_list_mutex);
+
+	return 0;
+}
+
+/**
  * ti_sci_get_handle() - Get the TI SCI handle for a device
  * @dev:	Pointer to device for which we want SCI handle
  *
@@ -3366,6 +3445,7 @@ static int ti_sci_probe(struct platform_device *pdev)
 	int ret = -EINVAL;
 	int i;
 	int reboot = 0;
+	int suspend_controller = 0;
 	u32 h_id;
 
 	of_id = of_match_device(ti_sci_of_match, dev);
@@ -3396,6 +3476,9 @@ static int ti_sci_probe(struct platform_device *pdev)
 
 	reboot = of_property_read_bool(dev->of_node,
 				       "ti,system-reboot-controller");
+
+	suspend_controller = of_property_read_bool(dev->of_node,
+				       		   "ti,system-suspend-controller");
 	INIT_LIST_HEAD(&info->node);
 	minfo = &info->minfo;
 
@@ -3477,6 +3560,10 @@ static int ti_sci_probe(struct platform_device *pdev)
 			dev_err(dev, "reboot registration fail(%d)\n", ret);
 			return ret;
 		}
+	}
+
+	if (suspend_controller) {
+		info->flags |= TI_SCI_INFO_FLAG_SUSPEND_CTLR;
 	}
 
 	dev_info(dev, "ABI: %d.%d (firmware rev 0x%04x '%s')\n",
