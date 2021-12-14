@@ -11,6 +11,7 @@
 #include <linux/bitmap.h>
 #include <linux/debugfs.h>
 #include <linux/export.h>
+#include <linux/firmware.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/mailbox_client.h>
@@ -3458,6 +3459,31 @@ static int ti_sci_init_suspend(void)
 	return 0;
 }
 
+static int HACK_ti_sci_load_fs_stub(struct device *dev)
+{
+		const struct firmware *fw_entry;
+		void *atcm;
+
+		dev_info(dev, "Loading FS Stub directly to ATCM\n");
+
+		if (request_firmware(&fw_entry, "fs_stub_signed.bin", dev) != 0) {
+			dev_err(dev, "Failed to load FS Stub\n");
+			return -EINVAL;
+		}
+
+		atcm = ioremap(0x78000000, SZ_1M);
+		if (atcm)
+		{
+			pr_info("loading %x from %x to %x\n", fw_entry->size, fw_entry->data, atcm);
+			memcpy_toio(atcm, fw_entry->data, fw_entry->size);
+			iounmap(atcm);
+		}
+
+		release_firmware(fw_entry);
+
+		return 0;
+}
+
 /* Description for K2G */
 static const struct ti_sci_desc ti_sci_pmmc_k2g_desc = {
 	.default_host_id = 2,
@@ -3636,6 +3662,12 @@ static int ti_sci_probe(struct platform_device *pdev)
 
 		info->mem_ctx_lo = (rmem->base & 0xFFFFFFFF);
 		info->mem_ctx_hi = (rmem->base >> 32);
+
+		ret = HACK_ti_sci_load_fs_stub(dev);
+		if (ret) {
+			dev_err(dev, "hack fs stub load failed(%d)\n", ret);
+			goto out;
+		}
 
 		ret = ti_sci_init_suspend();
 		if (ret) {
