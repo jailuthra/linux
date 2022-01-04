@@ -36,6 +36,12 @@
 			alignment = <0x1000>;
 			no-map;
 		};
+
+		main_r5fss0_core0_dma_memory_region: r5f-dma-memory@a0000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xa0000000 0x00 0x200000>;
+			no-map;
+		};
 	};
 };
 
