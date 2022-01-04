@@ -184,9 +184,11 @@
 };
 
 &mcu_gpio_intr {
+	status = "disabled";
 };
 
 &mcu_gpio0 {
+	status = "disabled";
 };
 
 /* WKUP periperhals */
