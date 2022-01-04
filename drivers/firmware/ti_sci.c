@@ -3459,27 +3459,32 @@ static int ti_sci_init_suspend(void)
 	return 0;
 }
 
+void load_fw(const struct firmware *fw_entry, void *context)
+{
+	void *atcm;
+
+	if (!fw_entry) {
+		pr_info("TISCI LPM firmware cannot be loaded, file missing.\n");
+		return;
+	}
+
+	atcm = ioremap(0x78000000, SZ_1M);
+	if (atcm)
+	{
+		pr_info("loading %x from %x to %x\n", fw_entry->size, fw_entry->data, atcm);
+		memcpy_toio(atcm, fw_entry->data, fw_entry->size);
+		iounmap(atcm);
+	}
+
+	release_firmware(fw_entry);
+}
+
 static int HACK_ti_sci_load_fs_stub(struct device *dev)
 {
-		const struct firmware *fw_entry;
-		void *atcm;
+		dev_info(dev, "Loading FS Stub directly to ATCM with no wait\n");
 
-		dev_info(dev, "Loading FS Stub directly to ATCM\n");
-
-		if (request_firmware(&fw_entry, "fs_stub_signed.bin", dev) != 0) {
-			dev_err(dev, "Failed to load FS Stub\n");
-			return -EINVAL;
-		}
-
-		atcm = ioremap(0x78000000, SZ_1M);
-		if (atcm)
-		{
-			pr_info("loading %x from %x to %x\n", fw_entry->size, fw_entry->data, atcm);
-			memcpy_toio(atcm, fw_entry->data, fw_entry->size);
-			iounmap(atcm);
-		}
-
-		release_firmware(fw_entry);
+		if (request_firmware_nowait(THIS_MODULE, FW_ACTION_UEVENT, "fs_stub_signed.bin", dev, GFP_KERNEL, NULL, load_fw) != 0)
+			dev_info(dev, "Could not load firmware, deferring to userspace helper\n");
 
 		return 0;
 }
