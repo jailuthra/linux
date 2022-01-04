@@ -12,3 +12,13 @@
 
 /* Start with Minimal dts */
 #include "k3-am625-minimal.dts"
+
+&dmsc {
+       ti,ctx-memory-region = <&lpm_ctx_ddr>;
+};
+
+&main_uart0 {
+	/delete-property/ power-domains;
+	/delete-property/ clock-names;
+	/delete-property/ clocks;
+};
