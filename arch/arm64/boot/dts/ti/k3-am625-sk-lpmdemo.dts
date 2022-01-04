@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * AM625 SK LPM dts file
+ * This file is intended to be a configuration for SK board which
+ * has just the peripherals that work with LPM alone. As each peripheral is
+ * enabled and functional for LPM, it is enabled here as well.
+ *
+ * Eventually this file should disappear.
+ *
+ * Copyright (C) 2021-2022 Texas Instruments Incorporated - https://www.ti.com/
+ */
+
+/* Start with Minimal dts */
+#include "k3-am625-minimal.dts"
