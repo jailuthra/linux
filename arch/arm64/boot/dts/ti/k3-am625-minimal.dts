@@ -231,3 +231,11 @@
 &wkup_i2c0 {
 	status = "disabled";
 };
+
+&usbss0 {
+	status = "disabled";
+};
+
+&usbss1 {
+	status = "disabled";
+};
