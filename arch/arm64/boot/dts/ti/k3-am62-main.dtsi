@@ -384,6 +384,7 @@
 		ti,otap-del-sel-sdr104 = <0x6>;
 		ti,otap-del-sel-ddr50 = <0x9>;
 		ti,clkbuf-sel = <0x7>;
+		bus-width = <4>;
 	};
 
 	sdhci2: mmc@fa20000 {
