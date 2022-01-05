@@ -174,6 +174,26 @@
 	status = "disabled";
 };
 
+&main_conf {
+	status = "disabled";
+};
+
+&inta_main_dmss {
+	status = "disabled";
+};
+
+&main_bcdma {
+	status = "disabled";
+};
+
+&main_pktdma {
+	status = "disabled";
+};
+
+&cpsw3g {
+	status = "disabled";
+};
+
 /* MCU periperhals */
 &mcu_uart0 {
 	status = "disabled";
