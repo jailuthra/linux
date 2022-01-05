@@ -4327,20 +4327,12 @@ static const struct of_device_id bcdma_of_match[] = {
 		.compatible = "ti,am64-dmss-bcdma",
 		.data = &am64_bcdma_data,
 	},
-	{
-		.compatible = "ti,am62-dmss-bcdma",
-		.data = &am64_bcdma_data,
-	},
 	{ /* Sentinel */ },
 };
 
 static const struct of_device_id pktdma_of_match[] = {
 	{
 		.compatible = "ti,am64-dmss-pktdma",
-		.data = &am64_pktdma_data,
-	},
-	{
-		.compatible = "ti,am62-dmss-pktdma",
 		.data = &am64_pktdma_data,
 	},
 	{ /* Sentinel */ },
