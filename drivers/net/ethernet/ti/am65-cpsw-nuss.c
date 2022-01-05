@@ -1823,6 +1823,10 @@ static int am65_cpsw_nuss_init_rx_chns(struct am65_cpsw_common *common)
 			ret = -ENXIO;
 			goto err;
 		}
+
+		//HACK: DM firmware fails to setup RX FLOW CFG Regs
+		//correctly
+		writel(0x60000000, ioremap(0x484304C0,4));
 	}
 
 err:
