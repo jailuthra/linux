@@ -139,4 +139,12 @@ config USB_DWC3_QCOM
 	  for peripheral mode support.
 	  Say 'Y' or 'M' if you have one such device.
 
+
+config USB_DWC3_AM62
+	tristate "Texas Instruments AM62 Platforms"
+	depends on ARCH_K3 || COMPILE_TEST
+	default USB_DWC3
+	help
+	  Support of USB2/3 functionality in TI's AM62 platforms
+	  Say 'Y' or 'M' here if you have one such device
 endif
