@@ -14,6 +14,7 @@
 #include "k3-am625-minimal.dts"
 
 &dmsc {
+	ti,system-suspend-controller;
        ti,ctx-memory-region = <&lpm_ctx_ddr>;
 };
 

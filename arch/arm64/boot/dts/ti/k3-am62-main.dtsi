@@ -144,7 +144,6 @@
 			<&secure_proxy_main 13>;
 		reg-names = "debug_messages";
 		reg = <0x00 0x44043000 0x00 0xfe0>;
-		ti,system-suspend-controller;
 
 		k3_pds: power-controller {
 			compatible = "ti,sci-pm-domain";
