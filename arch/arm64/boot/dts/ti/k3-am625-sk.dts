@@ -242,6 +242,12 @@
 		>;
 	};
 
+	main_usb1_gpio_id_pins_default: main-usb1-gpio-id-pins-default {
+		pinctrl-single,pins = <
+			AM62X_IOPAD(0x258, PIN_INPUT, 7) /* (F18) USB1_DRVVBUS.GPIO1_51 */
+		>;
+	};
+
 	pru1_pins_default: pru1-pins-default {
 		pinctrl-single,pins = <
 			AM62X_IOPAD(0x03c, PIN_OUTPUT, 5) /* (M25) GPMC0_AD0.PR0_PRU0_GPI0 */
@@ -387,12 +393,6 @@
 			AM62X_IOPAD(0x024, PIN_INPUT, 0) /* (H25) OSPI0_D6 */
 			AM62X_IOPAD(0x028, PIN_INPUT, 0) /* (J22) OSPI0_D7 */
 			AM62X_IOPAD(0x008, PIN_INPUT, 0) /* (J24) OSPI0_DQS */
-		>;
-	};
-
-	main_usb1_gpio_id_pins_default: main-usb1-gpio-id-pins-default {
-		pinctrl-single,pins = <
-			AM62X_IOPAD(0x258, PIN_INPUT, 7) /* (F18) USB1_DRVVBUS.GPIO1_51 */
 		>;
 	};
 
