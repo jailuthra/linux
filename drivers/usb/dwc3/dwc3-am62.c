@@ -21,7 +21,6 @@
 #include <linux/pm_runtime.h>
 #include <linux/clk.h>
 #include <linux/regmap.h>
-#include <linux/devm-helpers.h>
 #include <linux/pinctrl/consumer.h>
 
 /* USB WRAPPER register offsets */
@@ -466,9 +465,7 @@ static int dwc3_ti_probe(struct platform_device *pdev)
 		goto err_clk_disable;
 
 	// Initialize a work queue
-	ret = devm_delayed_work_autocancel(dev, &data->work, role_detect_work);
-	if (ret)
-		goto err_clk_disable;
+	INIT_DELAYED_WORK(&data->work, role_detect_work);
 
 	// Get struct gpio and irq for ID pin
 	ret = dwc3_ti_get_id_gpio(data);
@@ -508,7 +505,9 @@ err:
 static int dwc3_ti_remove_core(struct device *dev, void *c)
 {
 	struct platform_device *pdev = to_platform_device(dev);
+	struct dwc3_data *data = dev_get_drvdata(dev);
 
+	cancel_delayed_work_sync(&data->work);
 	platform_device_unregister(pdev);
 
 	return 0;
