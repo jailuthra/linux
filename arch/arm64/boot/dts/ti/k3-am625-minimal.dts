@@ -255,3 +255,7 @@
 &gpu {
 	status = "disabled";
 };
+
+&dss {
+	status = "disabled";
+};
