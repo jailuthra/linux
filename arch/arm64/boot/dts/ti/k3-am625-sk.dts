@@ -722,7 +722,6 @@
 	usb-role-switch;
 };
 
-<<<<<<< HEAD
 &dss {
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_dss0_pins_default>;
