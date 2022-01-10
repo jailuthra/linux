@@ -259,3 +259,15 @@
 &dss {
 	status = "disabled";
 };
+
+&mcu_m4fss {
+	status = "disabled";
+};
+
+&hwspinlock {
+	status = "disabled";
+};
+
+&mailbox0_cluster0 {
+	status = "disabled";
+};
