@@ -594,7 +594,7 @@
 		 clock-names = "mclk";
 
 		 interrupt-parent = <&exp1>;
-		 interrupts = <16 IRQ_TYPE_LEVEL_LOW>;
+		 interrupts = <16 IRQ_TYPE_EDGE_FALLING>;
 
 		ports {
 			#address-cells = <1>;
