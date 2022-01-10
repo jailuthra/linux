@@ -65,6 +65,7 @@
 		clocks = <&k3_clks 79 0>;
 		clock-names = "gpio";
 	};
+
 	mcu_m4fss: m4fss@5000000 {
 		compatible = "ti,am64-m4fss";
 		reg = <0x00 0x5000000 0x00 0x30000>,
