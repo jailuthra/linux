@@ -722,6 +722,7 @@
 		cdns,read-delay-dtr = <10>;
 		#address-cells = <1>;
 		#size-cells = <1>;
+		cdns,phy-mode;
 
 		partitions {
 			compatible = "fixed-partitions";
