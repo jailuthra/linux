@@ -594,4 +594,20 @@
 			#size-cells = <0>;
 		};
 	};
+	
+	hwspinlock: spinlock@2a000000 {
+		compatible = "ti,am64-hwspinlock";
+		reg = <0x00 0x2a000000 0x00 0x1000>;
+		#hwlock-cells = <1>;
+	};
+
+	mailbox0_cluster0: mailbox@29000000 {
+		compatible = "ti,am64-mailbox";
+		reg = <0x00 0x29000000 0x00 0x200>;
+		interrupts = <GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
+		#mbox-cells = <1>;
+		ti,mbox-num-users = <4>;
+		ti,mbox-num-fifos = <16>;
+	};
 };
