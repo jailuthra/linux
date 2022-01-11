@@ -594,7 +594,7 @@
 			#size-cells = <0>;
 		};
 	};
-	
+
 	hwspinlock: spinlock@2a000000 {
 		compatible = "ti,am64-hwspinlock";
 		reg = <0x00 0x2a000000 0x00 0x1000>;
