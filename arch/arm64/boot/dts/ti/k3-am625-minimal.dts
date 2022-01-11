@@ -271,3 +271,7 @@
 &mailbox0_cluster0 {
 	status = "disabled";
 };
+
+&pruss {
+	status = "disabled";
+};
