@@ -5,8 +5,6 @@
  * Copyright (C) 2021-2022 Texas Instruments Incorporated - https://www.ti.com/
  */
 
-#define dev_fmt(fmt) "%s: " fmt, __func__
-
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/io.h>
