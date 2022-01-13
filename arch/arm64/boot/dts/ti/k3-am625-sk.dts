@@ -588,7 +588,6 @@
 &wkup_i2c0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&wkup_i2c0_pins_default>;
-	status = "okay";
 
 	tpic2810: tpic2810@60 {
 		compatible = "ti,tpic2810";
