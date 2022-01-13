@@ -616,11 +616,11 @@ static int ti_k3_rtc_probe(struct platform_device *pdev)
 	else
 		device_set_wakeup_capable(dev, true);
 
-	ret = devm_rtc_register_device(priv->rtc_dev);
+	ret = rtc_register_device(priv->rtc_dev);
 	if (ret)
 		return ret;
 
-	ret = devm_rtc_nvmem_register(priv->rtc_dev, &ti_k3_rtc_nvmem_config);
+	ret = rtc_nvmem_register(priv->rtc_dev, &ti_k3_rtc_nvmem_config);
 	return ret;
 }
 
