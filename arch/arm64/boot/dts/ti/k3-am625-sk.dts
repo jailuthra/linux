@@ -144,7 +144,6 @@
 	};
 
 	leds-iio {
-		status = "disabled";
 		compatible = "gpio-leds";
 		led-out0 {
 			label = "out0";
