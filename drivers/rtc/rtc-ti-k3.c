@@ -156,6 +156,14 @@ static int k3rtc_configure(struct device *dev)
 	u32 ctl;
 	struct ti_k3_rtc *priv = dev_get_drvdata(dev);
 
+	/* TBD: Introduce proper erratum check for SR revision */
+	ret = k3rtc_check_unlocked(priv);
+	/* If there is an error OR if we are locked, return error */
+	if (ret) {
+		dev_err(dev, HW_ERR "Erratum unlock QUIRK! Cannot operate!!\n");
+		return -EFAULT;
+	}
+
 	/* May Need to explicitly unlock first time */
 	ret = k3rtc_unlock_rtc(priv);
 	if (ret) {
