@@ -94,8 +94,8 @@
 #define PHY_PLL_REFCLK_MASK	GENMASK(3, 0)
 
 enum role {
-	HOST,
 	DEVICE,
+	HOST,
 };
 
 struct id_gpio_data {
