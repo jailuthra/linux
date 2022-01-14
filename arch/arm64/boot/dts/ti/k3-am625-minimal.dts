@@ -303,3 +303,11 @@
 &ecap2 {
 	status = "disabled";
 };
+
+&main_rti0 {
+	status = "disabled";
+};
+
+&main_rti1 {
+	status = "disabled";
+};
