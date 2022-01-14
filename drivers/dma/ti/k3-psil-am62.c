@@ -70,6 +70,14 @@
 		},					\
 	}
 
+#define PSIL_CSI2RX(x)					\
+	{						\
+		.thread_id = x,				\
+		.ep_config = {				\
+			.ep_type = PSIL_EP_NATIVE,	\
+		},					\
+	}
+
 /* PSI-L source thread IDs, used for RX (DMA_DEV_TO_MEM) */
 static struct psil_ep am62_src_ep_map[] = {
 	/* SAUL */
@@ -104,6 +112,39 @@ static struct psil_ep am62_src_ep_map[] = {
 	PSIL_PDMA_MCASP(0x4502),
 	/* CPSW3G */
 	PSIL_ETHERNET(0x4600, 19, 19, 16),
+	/* CSI2RX */
+	PSIL_CSI2RX(0x4700),
+	PSIL_CSI2RX(0x4701),
+	PSIL_CSI2RX(0x4702),
+	PSIL_CSI2RX(0x4703),
+	PSIL_CSI2RX(0x4704),
+	PSIL_CSI2RX(0x4705),
+	PSIL_CSI2RX(0x4706),
+	PSIL_CSI2RX(0x4707),
+	PSIL_CSI2RX(0x4708),
+	PSIL_CSI2RX(0x4709),
+	PSIL_CSI2RX(0x470a),
+	PSIL_CSI2RX(0x470b),
+	PSIL_CSI2RX(0x470c),
+	PSIL_CSI2RX(0x470d),
+	PSIL_CSI2RX(0x470e),
+	PSIL_CSI2RX(0x470f),
+	PSIL_CSI2RX(0x4710),
+	PSIL_CSI2RX(0x4711),
+	PSIL_CSI2RX(0x4712),
+	PSIL_CSI2RX(0x4713),
+	PSIL_CSI2RX(0x4714),
+	PSIL_CSI2RX(0x4715),
+	PSIL_CSI2RX(0x4716),
+	PSIL_CSI2RX(0x4717),
+	PSIL_CSI2RX(0x4718),
+	PSIL_CSI2RX(0x4719),
+	PSIL_CSI2RX(0x471a),
+	PSIL_CSI2RX(0x471b),
+	PSIL_CSI2RX(0x471c),
+	PSIL_CSI2RX(0x471d),
+	PSIL_CSI2RX(0x471e),
+	PSIL_CSI2RX(0x471f),
 };
 
 /* PSI-L destination thread IDs, used for TX (DMA_MEM_TO_DEV) */
