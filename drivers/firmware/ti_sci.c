@@ -3471,7 +3471,7 @@ void load_fw(const struct firmware *fw_entry, void *context)
 	atcm = ioremap(0x78000000, SZ_1M);
 	if (atcm)
 	{
-		pr_info("loading %x from %x to %x\n", fw_entry->size, fw_entry->data, atcm);
+		pr_info("loading 0x%08x from %p to %p\n", (u32)fw_entry->size, fw_entry->data, atcm);
 		memcpy_toio(atcm, fw_entry->data, fw_entry->size);
 		iounmap(atcm);
 	}
