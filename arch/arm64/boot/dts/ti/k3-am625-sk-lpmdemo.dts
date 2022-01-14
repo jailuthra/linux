@@ -23,3 +23,11 @@
 	/delete-property/ clock-names;
 	/delete-property/ clocks;
 };
+
+&rtc0 {
+	status = "okay";
+	ti,noclk-32768;
+	/delete-property/ power-domains;
+	/delete-property/ clock-names;
+	/delete-property/ clocks;
+};
