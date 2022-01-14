@@ -311,3 +311,11 @@
 &main_rti1 {
 	status = "disabled";
 };
+
+&ti_csi2rx0 {
+	status = "disabled";
+};
+
+&dphy0 {
+	status = "disabled";
+};
