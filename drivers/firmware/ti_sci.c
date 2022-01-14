@@ -3483,7 +3483,7 @@ static int HACK_ti_sci_load_fs_stub(struct device *dev)
 {
 		dev_info(dev, "Loading FS Stub directly to ATCM with no wait\n");
 
-		if (request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG, "fs_stub_signed.bin", dev, GFP_KERNEL, NULL, load_fw) != 0)
+		if (request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG, "ti-sysfw/ti-fs-stub-firmware-am62x-gp.signed.bin", dev, GFP_KERNEL, NULL, load_fw) != 0)
 			dev_info(dev, "Could not load firmware, deferring to userspace helper\n");
 
 		return 0;
