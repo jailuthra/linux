@@ -13,6 +13,8 @@
 #include <linux/property.h>
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
+#include <linux/of_address.h>
+#include <linux/of_device.h>
 
 /* Registers */
 #define REG_K3RTC_MOD_VER		0x00
@@ -510,6 +512,13 @@ static int k3rtc_get_32kclk(struct device *dev, struct ti_k3_rtc *priv)
 	int ret;
 	struct clk *clk;
 
+	if (of_property_read_bool(dev->of_node, "ti,noclk-32768")) {
+		dev_info(dev, "HACKING: Assuming 32768 clock\n");
+		priv->rate_32k = 32768;
+		ret = 0;
+		goto no_32k_clk;
+	}
+
 	clk = devm_clk_get(dev, "osc32k");
 	if (IS_ERR(clk)) {
 		dev_err(dev, "No input reference 32k clock\n");
@@ -532,6 +541,8 @@ static int k3rtc_get_32kclk(struct device *dev, struct ti_k3_rtc *priv)
 	if (priv->rate_32k != 32768)
 		dev_warn(dev, "Clock rate %ld is not 32768! Could misbehave!\n", priv->rate_32k);
 
+no_32k_clk:
+
 	/* Max sync timeout will be two 32k clk sync cycles = ~61uS */
 	priv->sync_timeout_us = (u32)(DIV_ROUND_UP_ULL(1000000, priv->rate_32k) * 2);
 
@@ -543,6 +554,8 @@ static int k3rtc_get_vbusclk(struct device *dev, struct ti_k3_rtc *priv)
 	int ret;
 	struct clk *clk;
 
+	if (of_property_read_bool(dev->of_node, "ti,noclk-32768"))
+		return 0;
 	clk = devm_clk_get(dev, "vbus");
 	if (IS_ERR(clk)) {
 		dev_err(dev, "No input vbus clock\n");
