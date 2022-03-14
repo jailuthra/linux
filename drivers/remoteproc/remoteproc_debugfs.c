@@ -133,7 +133,7 @@ static ssize_t rproc_trace_read(struct file *filp, char __user *userbuf,
 	int len;
 
 	if (!va) {
-		va = rproc_da_to_va(data->rproc, trace->da, trace->len);
+		va = rproc_da_to_va(data->rproc, trace->da, trace->len, NULL);
 		trace->va = va;
 	}
 
