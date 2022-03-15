@@ -845,9 +845,6 @@ struct fuse_conn {
 
 	/** Protects passthrough_req */
 	spinlock_t passthrough_req_lock;
-
-	/** task_struct for fd lookups in fuse-bpf */
-	struct task_struct *task;
 };
 
 /*
@@ -953,7 +950,6 @@ struct inode *fuse_iget(struct super_block *sb, u64 nodeid,
 
 int fuse_lookup_name(struct super_block *sb, u64 nodeid, const struct qstr *name,
 		     struct fuse_entry_out *outarg,
-		     struct fuse_entry_bpf_out *bpf_outarg,
 		     struct dentry *entry, struct inode **inode);
 
 /**
@@ -1299,6 +1295,7 @@ bool fuse_dax_check_alignment(struct fuse_conn *fc, unsigned int map_alignment);
 void fuse_dax_cancel_work(struct fuse_conn *fc);
 
 /* passthrough.c */
+void fuse_copyattr(struct file *dst_file, struct file *src_file);
 int fuse_passthrough_open(struct fuse_dev *fud, u32 lower_fd);
 int fuse_passthrough_setup(struct fuse_conn *fc, struct fuse_file *ff,
 			   struct fuse_open_out *openarg);
@@ -1309,8 +1306,7 @@ ssize_t fuse_passthrough_mmap(struct file *file, struct vm_area_struct *vma);
 
 /* backing.c */
 
-struct file *fuse_fget(struct fuse_conn *fc, unsigned int fd);
-struct bpf_prog *fuse_get_bpf_prog(struct fuse_conn *fc, unsigned int fd);
+struct bpf_prog *fuse_get_bpf_prog(struct file *file);
 
 /*
  * Dummy io passed to fuse_bpf_backing when io operation needs no scratch space
@@ -1524,7 +1520,7 @@ void *fuse_file_fallocate_finalize(struct fuse_args *fa,
 
 struct fuse_lookup_io {
 	struct fuse_entry_out feo;
-	struct fuse_entry_bpf_out febo;
+	struct fuse_entry_bpf feb;
 };
 
 int fuse_lookup_initialize(struct fuse_args *fa, struct fuse_lookup_io *feo,
@@ -1849,12 +1845,12 @@ struct fuse_err_ret {
 			ERR_PTR(backing(&fa, args)),			\
 			true,						\
 		};							\
+		if (IS_ERR(fer.result))					\
+			fa.error_in = PTR_ERR(fer.result);		\
 		if (!(ext_flags & FUSE_BPF_POST_FILTER))		\
 			break;						\
 									\
 		fa.opcode |= FUSE_POSTFILTER;				\
-		if (IS_ERR(fer.result))					\
-			fa.error_in = PTR_ERR(fer.result);		\
 		for (i = 0; i < fa.out_numargs; ++i)			\
 			fa.in_args[fa.in_numargs++] =			\
 				(struct fuse_in_arg) {			\
