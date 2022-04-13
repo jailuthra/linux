@@ -27,6 +27,7 @@
 MODULE_AUTHOR("Miklos Szeredi <miklos@szeredi.hu>");
 MODULE_DESCRIPTION("Filesystem in Userspace");
 MODULE_LICENSE("GPL");
+MODULE_IMPORT_NS(ANDROID_GKI_VFS_EXPORT_ONLY);
 
 static struct kmem_cache *fuse_inode_cachep;
 struct list_head fuse_conn_list;
@@ -313,8 +314,7 @@ static void fuse_init_inode(struct inode *inode, struct fuse_attr *attr)
 	else if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode) ||
 		 S_ISFIFO(inode->i_mode) || S_ISSOCK(inode->i_mode)) {
 		fuse_init_common(inode);
-		init_special_inode(inode, inode->i_mode,
-				   new_decode_dev(attr->rdev));
+		init_special_inode(inode, inode->i_mode, attr->rdev);
 	} else
 		BUG();
 }
