@@ -70,7 +70,6 @@ required:
   - reg
   - reg-names
   - interrupts
-  - interrupt-names
 
 additionalProperties: false
 
