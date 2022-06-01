@@ -66,3 +66,4 @@ dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-0.dtbo
 dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-1.dtbo
 dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-2.dtbo
 dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-imx390-rcm-1-3.dtbo
+dtb-$(CONFIG_ARCH_K3) += k3-j721e-fpdlink-ov2312-0-0.dtbo
