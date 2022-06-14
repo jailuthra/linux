@@ -844,10 +844,6 @@
 	idle-states = <1>; /* USB0 to SERDES lane 1 */
 };
 
-&edp_serdes_mux {
-	idle-states = <1>; /* EDP0 to SERDES lane 2/3 */
-};
-
 &usbss0 {
 	pinctrl-0 = <&main_usbss0_pins_default>;
 	pinctrl-names = "default";
@@ -916,14 +912,14 @@
 	 * VP3 - DPI1
 	 */
 
-	assigned-clocks = <&k3_clks 218 35>,
-			  <&k3_clks 218 17>,
-			  <&k3_clks 218 26>,
-			  <&k3_clks 218 0>;
-	assigned-clock-parents = <&k3_clks 218 36>,
-				 <&k3_clks 218 19>,
-				 <&k3_clks 218 28>,
-				 <&k3_clks 218 4>;
+	assigned-clocks = <&k3_clks 218 2>,
+			  <&k3_clks 218 5>,
+			  <&k3_clks 218 14>,
+			  <&k3_clks 218 18>;
+	assigned-clock-parents = <&k3_clks 218 3>,
+				 <&k3_clks 218 7>,
+				 <&k3_clks 218 16>,
+				 <&k3_clks 218 22>;
 };
 
 /*
