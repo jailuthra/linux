@@ -38,6 +38,9 @@ struct ov2312 {
 	struct v4l2_ctrl_handler ctrls;
 	struct v4l2_ctrl *exposure;
 	struct v4l2_ctrl *again;
+	struct v4l2_ctrl *dgain;
+	struct v4l2_ctrl *h_flip;
+	struct v4l2_ctrl *v_flip;
 
 	u32 fps;
 
@@ -60,9 +63,6 @@ static int ov2312_read(struct ov2312 *ov2312, u16 addr, u32 *val, size_t nbytes)
 		dev_err(ov2312->dev, "%s: failed to read reg 0x%04x: %d\n",
 			__func__, addr, ret);
 		return ret;
-	} else {
-		/*dev_info(ov2312->dev, "%s: read reg 0x%04x => 0x%04x\n",
-			 __func__, addr, val_le);*/
 	}
 
 	*val = le32_to_cpu(val_le);
@@ -86,23 +86,8 @@ static int ov2312_write_table(struct ov2312 *ov2312,
 			      unsigned int nr_regs)
 {
 	int ret, i;
-	unsigned int val = 0;
-
-	/*ret = regmap_multi_reg_write(ov2312->regmap, regs, nr_regs);
-	if (ret < 0)
-		dev_err(ov2312->dev,
-			"%s: failed to write reg table (%d)!\n", __func__, ret);*/
 
 	for (i = 0; i < nr_regs; i++) {
-		/*ret = ov2312_read(ov2312, regs[i].reg, &val, 1);
-		if (ret < 0) {
-			dev_err(ov2312->dev,
-				"%s: failed to read reg[%d] 0x%04x (%d)!\n",
-				__func__, i, regs[i].reg, ret);
-		} else {
-			dev_info(ov2312->dev, "%s: read reg[%d] 0x%04x => 0x%04x\n",
-				 __func__, i, regs[i].reg, val);
-		}*/
 		ret = regmap_write(ov2312->regmap, regs[i].reg, regs[i].def);
 		if (ret < 0) {
 			dev_err(ov2312->dev,
@@ -117,13 +102,16 @@ static int ov2312_write_table(struct ov2312 *ov2312,
 static void ov2312_init_formats(struct v4l2_subdev_state *state)
 {
 	struct v4l2_mbus_framefmt *format;
+	int i;
 
-	format = v4l2_state_get_stream_format(state, 0, 0);
-	format->code = ov2312_mbus_formats[0];
-	format->width = ov2312_framesizes[0].width;
-	format->height = ov2312_framesizes[0].height;
-	format->field = V4L2_FIELD_NONE;
-	format->colorspace = V4L2_COLORSPACE_DEFAULT;
+	for (i = 0; i < 2; ++i) {
+		format = v4l2_state_get_stream_format(state, 0, i);
+		format->code = ov2312_mbus_formats[0];
+		format->width = ov2312_framesizes[0].width;
+		format->height = ov2312_framesizes[0].height;
+		format->field = V4L2_FIELD_NONE;
+		format->colorspace = V4L2_COLORSPACE_DEFAULT;
+	}
 }
 
 
@@ -189,8 +177,9 @@ static int _ov2312_set_routing(struct v4l2_subdev *sd,
 			.source_pad = 0,
 			.source_stream = 1,
 			.flags = V4L2_SUBDEV_ROUTE_FL_IMMUTABLE |
-				 V4L2_SUBDEV_ROUTE_FL_SOURCE,
-		}
+				 V4L2_SUBDEV_ROUTE_FL_SOURCE |
+				 V4L2_SUBDEV_ROUTE_FL_ACTIVE,
+		},
 	};
 
 	struct v4l2_subdev_krouting routing = {
@@ -214,13 +203,16 @@ static int ov2312_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 {
 	struct v4l2_subdev_state *state;
 	struct v4l2_mbus_framefmt *fmt;
+	const struct v4l2_subdev_krouting *routing;
 	u32 bpp;
 	int ret = 0;
+	unsigned int i;
 
 	if (pad != 0)
 		return -EINVAL;
 
 	state = v4l2_subdev_lock_active_state(sd);
+	routing = &state->routing;
 
 	fmt = v4l2_state_get_stream_format(state, 0, 0);
 	if (!fmt) {
@@ -232,19 +224,21 @@ static int ov2312_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 
 	fd->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
 
-	/* pixel stream */
+	/* pixel stream - 2 virtual channels */
 
 	bpp = 10;
 
-	fd->entry[fd->num_entries].stream = 0;
+	for (i = 0; i < 2; ++i) {
+		fd->entry[fd->num_entries].stream = i;
 
-	fd->entry[fd->num_entries].flags = V4L2_MBUS_FRAME_DESC_FL_LEN_MAX;
-	fd->entry[fd->num_entries].length = fmt->width * fmt->height * bpp / 8;
-	fd->entry[fd->num_entries].pixelcode = fmt->code;
-	fd->entry[fd->num_entries].bus.csi2.vc = 0;
-	fd->entry[fd->num_entries].bus.csi2.dt = 0x2b; /* SRGGB10 */
+		fd->entry[fd->num_entries].flags = V4L2_MBUS_FRAME_DESC_FL_LEN_MAX;
+		fd->entry[fd->num_entries].length = fmt->width * fmt->height * bpp / 8;
+		fd->entry[fd->num_entries].pixelcode = fmt->code;
+		fd->entry[fd->num_entries].bus.csi2.vc = i;
+		fd->entry[fd->num_entries].bus.csi2.dt = 0x2b; /* SRGGB10 */
 
-	fd->num_entries++;
+		fd->num_entries++;
+	}
 
 out:
 	v4l2_subdev_unlock_state(state);
@@ -259,7 +253,7 @@ static int ov2312_set_routing(struct v4l2_subdev *sd,
 {
 	int ret;
 
-	if (routing->num_routes == 0 || routing->num_routes > 1)
+	if (routing->num_routes == 0 || routing->num_routes > 2)
 		return -EINVAL;
 
 	v4l2_subdev_lock_state(state);
@@ -329,9 +323,7 @@ static int ov2312_get_frame_interval(struct v4l2_subdev *sd,
 	struct ov2312 *ov2312 = to_ov2312(sd);
 
 	fi->interval.numerator = 1;
-	fi->interval.denominator = ov2312->fps;
-
-	dev_info(ov2312->dev, "%s: Framerate is %dfps\n", __func__, ov2312->fps);
+	fi->interval.denominator = ov2312->fps/2;
 
 	return 0;
 }
@@ -341,9 +333,11 @@ static int ov2312_set_frame_interval(struct v4l2_subdev *sd,
 {
 	struct ov2312 *ov2312 = to_ov2312(sd);
 
-	dev_info(ov2312->dev, "%s: Set framereate %dfps\n", __func__,
+	dev_dbg(ov2312->dev, "%s: Set framerate %dfps\n", __func__,
 		 fi->interval.denominator/fi->interval.numerator);
 	if (fi->interval.denominator/fi->interval.numerator != ov2312->fps) {
+		dev_err(ov2312->dev, "%s: Framerate can only be %dfps\n",
+			__func__, ov2312->fps);
 		return -EINVAL;
 	}
 	return 0;
@@ -354,7 +348,7 @@ static int ov2312_detect(struct ov2312 *ov2312)
 	int ret;
 	u32 id;
 
-	ret = ov2312_read(ov2312, OV2312_SC_CHIP_ID_HIGH, &id, 2);
+	ret = ov2312_read(ov2312, OV2312_SC_CHIP_ID_HI, &id, 2);
 	if (ret < 0)
 		return ret;
 
@@ -366,10 +360,104 @@ static int ov2312_detect(struct ov2312 *ov2312)
 		return -ENODEV;
 	}
 
-	dev_info(ov2312->dev, "%s: detected chip ID 0x%04x\n", __func__, id);
-	/*ret = ov2312_read(ov2312, 0x0103, &id, 1);
-	ret = ov2312_read(ov2312, 0x0109, &id, 1);*/
+	dev_dbg(ov2312->dev, "%s: detected chip ID 0x%04x\n", __func__, id);
 	return 0;
+}
+
+static int ov2312_set_AB_mode(struct ov2312 *ov2312)
+{
+	int i, ret;
+	u32 exposure = ov2312->exposure->val;
+	u32 again = ov2312->again->val;
+	u32 dgain = ov2312->dgain->val;
+	struct reg_sequence ov2312_groupB[] = {
+		{0x3208, 0x00},/* Group A (IR Dominant VC0) */
+		{OV2312_AEC_PK_EXPO_HI, 0x00},
+		{OV2312_AEC_PK_EXPO_LO, 0x10},
+		{OV2312_AEC_PK_AGAIN_HI, 0x01},
+		{OV2312_AEC_PK_AGAIN_LO, 0x00},
+		{0x3920, 0xff},/* IR Strobe duty cycle */
+		{0x3927, 0x00},
+		{0x3928, 0x10},
+		{0x3929, 0x05},
+		{0x392a, 0x71},
+		{0x4813, 0x01},/* VC=1. This register takes effect from next frame */
+		{0x3208, 0x10},
+		{0x3208, 0x01},/* Group B (RGB Dominant VC1) */
+		{OV2312_AEC_PK_EXPO_HI, (exposure >> 8) & 0xff},
+		{OV2312_AEC_PK_EXPO_LO, exposure & 0xff},
+		{OV2312_AEC_PK_AGAIN_HI, (again >> 4) & 0xff},
+		{OV2312_AEC_PK_AGAIN_LO, (again & 0x0f) << 4},
+		{OV2312_AEC_PK_DGAIN_HI, (dgain >> 8) & 0xff},
+		{OV2312_AEC_PK_DGAIN_LO, dgain & 0xff},
+		{0x3920, 0x00},
+		{0x3927, 0x00},
+		{0x3928, 0x10},
+		{0x3929, 0x05},
+		{0x392a, 0x71},
+		{0x4813, 0x00},/* VC=0. This register takes effect from next frame */
+		{0x3208, 0x11},
+		{0x320D, 0x00},/* Auto mode switch between group0 and group1 ;setting to switch */
+		{0x320D, 0x31},
+		{0x3208, 0xA0},
+	};
+
+	for (i = 0; i < ARRAY_SIZE(ov2312_groupB); i++) {
+		ret = regmap_write(ov2312->regmap, ov2312_groupB[i].reg, ov2312_groupB[i].def);
+		if (ret < 0) {
+			dev_err(ov2312->dev,
+				"%s: failed to write reg[%d] 0x%04x = 0x%02x (%d)!\n",
+				__func__, i, ov2312_groupB[i].reg, ov2312_groupB[i].def, ret);
+			return ret;
+		}
+	}
+
+	msleep(100);
+	return 0;
+}
+
+static int ov2312_set_orientation(struct ov2312 *ov2312)
+{
+	bool v_flip = ov2312->v_flip->val;
+	bool h_flip = ov2312->h_flip->val;
+	u32 reg = (v_flip ? 0x4400 : 0) | (h_flip ? 0x0004 : 0);
+
+	return ov2312_write(ov2312, OV2312_TIMING_VFLIP, be16_to_cpu(reg), 2);
+}
+
+static int ov2312_set_ctrl(struct v4l2_ctrl *ctrl)
+{
+	struct ov2312 *ov2312 = container_of(ctrl->handler,
+					     struct ov2312, ctrls);
+	int ret;
+
+	dev_dbg(ov2312->dev, "%s: %s, value: %d\n", __func__,
+		ctrl->name, ctrl->val);
+
+	/*
+	 * If the device is not powered up by the host driver do
+	 * not apply any controls to H/W at this time. Instead
+	 * the controls will be restored right after power-up.
+	 */
+	if (pm_runtime_suspended(ov2312->dev))
+		return 0;
+
+	switch (ctrl->id) {
+	case V4L2_CID_EXPOSURE:
+	case V4L2_CID_ANALOGUE_GAIN:
+		ret = ov2312_set_AB_mode(ov2312);
+		break;
+
+	case V4L2_CID_HFLIP:
+	case V4L2_CID_VFLIP:
+		ret = ov2312_set_orientation(ov2312);
+		break;
+
+	default:
+		ret = -EINVAL;
+	}
+
+	return ret;
 }
 
 static int ov2312_power_on(struct ov2312 *ov2312)
@@ -421,8 +509,17 @@ static int ov2312_suspend(struct device *dev)
 static int ov2312_start_stream(struct ov2312 *ov2312)
 {
 	int ret;
-	ret = ov2312_write_table(ov2312, ov2312_1600x1300_30fps,
-				 ARRAY_SIZE(ov2312_1600x1300_30fps));
+	ret = ov2312_write_table(ov2312, ov2312_1600x1300_30fps_AB,
+				 ARRAY_SIZE(ov2312_1600x1300_30fps_AB));
+	if (ret < 0)
+		return ret;
+
+	/* Update controls on wake up */
+	ret = ov2312_set_orientation(ov2312);
+	if (ret < 0)
+		return ret;
+
+	ret = ov2312_set_AB_mode(ov2312);
 	if (ret < 0)
 		return ret;
 
@@ -457,18 +554,17 @@ static int ov2312_set_stream(struct v4l2_subdev *sd, int enable)
 	struct ov2312 *ov2312 = to_ov2312(sd);
 	int ret;
 
-	/*mutex_lock(&ov2312->lock);*/
+	mutex_lock(&ov2312->lock);
 	if (ov2312->streaming == enable) {
-		/*mutex_unlock(&ov2312->lock);*/
+		mutex_unlock(&ov2312->lock);
 		return 0;
 	}
 
 	if (enable) {
-		/*ret = pm_runtime_get_sync(ov2312->dev);
+		ret = pm_runtime_resume_and_get(ov2312->dev);
 		if (ret < 0) {
-			pm_runtime_put_noidle(ov2312->dev);
 			goto err_unlock;
-		}*/
+		}
 
 		ret = ov2312_start_stream(ov2312);
 		if (ret < 0)
@@ -477,25 +573,18 @@ static int ov2312_set_stream(struct v4l2_subdev *sd, int enable)
 		ret = ov2312_stop_stream(ov2312);
 		if (ret < 0)
 			goto err_runtime_put;
-		/*pm_runtime_mark_last_busy(ov2312->dev);*/
-		/*pm_runtime_put_autosuspend(ov2312->dev);*/
+		pm_runtime_put(ov2312->dev);
 	}
 
 	ov2312->streaming = enable;
-	/* WDR, HFLIP, VFLIP, TEST PATTERN cannot change during streaming */
-	/*__v4l2_ctrl_grab(ov2312->ctrl.wdr, enable);
-	__v4l2_ctrl_grab(ov2312->ctrl.h_flip, enable);
-	__v4l2_ctrl_grab(ov2312->ctrl.v_flip, enable);
-	__v4l2_ctrl_grab(ov2312->ctrl.pg_mode, enable);*/
-
-	/*mutex_unlock(&ov2312->lock);*/
+	mutex_unlock(&ov2312->lock);
 	return 0;
 
 err_runtime_put:
-	/*pm_runtime_put(ov2312->dev);*/
+	pm_runtime_put(ov2312->dev);
 
 err_unlock:
-	/*mutex_unlock(&ov2312->lock);*/
+	mutex_unlock(&ov2312->lock);
 	dev_err(ov2312->dev,
 		"%s: failed to setup streaming %d\n", __func__, ret);
 	return ret;
@@ -506,10 +595,6 @@ static struct v4l2_subdev_video_ops ov2312_subdev_video_ops = {
 	.g_frame_interval = ov2312_get_frame_interval,
 	.s_frame_interval = ov2312_set_frame_interval,
 };
-
-/*static struct v4l2_subdev_core_ops ov2312_subdev_core_ops = {
-	.s_power	= ,
-};*/
 
 static struct v4l2_subdev_pad_ops ov2312_subdev_pad_ops = {
 	.init_cfg = ov2312_init_cfg,
@@ -522,9 +607,12 @@ static struct v4l2_subdev_pad_ops ov2312_subdev_pad_ops = {
 };
 
 static struct v4l2_subdev_ops ov2312_subdev_ops = {
-	//.core	= &ov2312_subdev_core_ops,
 	.video	= &ov2312_subdev_video_ops,
 	.pad	= &ov2312_subdev_pad_ops,
+};
+
+static const struct v4l2_ctrl_ops ov2312_ctrl_ops = {
+	.s_ctrl	= ov2312_set_ctrl,
 };
 
 static const struct dev_pm_ops ov2312_pm_ops = {
@@ -583,10 +671,11 @@ static int ov2312_probe(struct i2c_client *client)
 	v4l2_i2c_subdev_init(sd, client, &ov2312_subdev_ops);
 
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
-		     V4L2_SUBDEV_FL_HAS_EVENTS;
+		     V4L2_SUBDEV_FL_HAS_EVENTS | V4L2_SUBDEV_FL_MULTIPLEXED;
 
 	/* Initialize the media entity. */
 	ov2312->pad.flags = MEDIA_PAD_FL_SOURCE;
+	ov2312->pad.stream_count = 2;
 	sd->entity.function = MEDIA_ENT_F_CAM_SENSOR;
 	ret = media_entity_pads_init(&sd->entity, 1, &ov2312->pad);
 	if (ret < 0) {
@@ -596,29 +685,40 @@ static int ov2312_probe(struct i2c_client *client)
 	}
 
 	ov2312->fps = OV2312_FRAMERATE_DEFAULT;
+	mutex_init(&ov2312->lock);
 
-	/*[> Initialize controls <]
+	/* Initialize controls */
 	ctrl_hdr = &ov2312->ctrls;
-	ret = v4l2_ctrl_handler_init(ctrl_hdr, 2);
+	ret = v4l2_ctrl_handler_init(ctrl_hdr, 5);
 	if (ret < 0) {
 		dev_err(ov2312->dev,
 			"%s: ctrl handler init failed: %d\n", __func__, ret);
 		goto err_media_cleanup;
 	}
 
-	mutex_init(&ov2312->lock);
 	ov2312->ctrls.lock = &ov2312->lock;
 
-	[> Add new controls <]
+	/* Add new controls */
 	ov2312->exposure = v4l2_ctrl_new_std(ctrl_hdr, &ov2312_ctrl_ops,
-					     V4L2_CID_EXPOSURE, 0,
-					     IMX390_EXPOSURE_MAX(ov2312->fps),
-					     1, IMX390_EXPOSURE_DEFAULT);
+					     V4L2_CID_EXPOSURE, 1,
+					     OV2312_EXPOSURE_MAX,
+					     1, OV2312_EXPOSURE_DEFAULT);
 
 	ov2312->again = v4l2_ctrl_new_std(ctrl_hdr, &ov2312_ctrl_ops,
 					  V4L2_CID_ANALOGUE_GAIN, 0,
-					  IMX390_ANALOG_GAIN_MAX, 1,
-					  IMX390_ANALOG_GAIN_DEFAULT);
+					  OV2312_AGAIN_MAX, 1,
+					  OV2312_AGAIN_DEFAULT);
+
+	ov2312->dgain = v4l2_ctrl_new_std(ctrl_hdr, &ov2312_ctrl_ops,
+					  V4L2_CID_DIGITAL_GAIN, 0,
+					  OV2312_DGAIN_MAX, 1,
+					  OV2312_DGAIN_DEFAULT);
+
+	ov2312->h_flip = v4l2_ctrl_new_std(ctrl_hdr, &ov2312_ctrl_ops,
+					   V4L2_CID_HFLIP, 0, 1, 1, 0);
+
+	ov2312->v_flip = v4l2_ctrl_new_std(ctrl_hdr, &ov2312_ctrl_ops,
+					   V4L2_CID_VFLIP, 0, 1, 1, 0);
 
 	ov2312->sd.ctrl_handler = ctrl_hdr;
 	if (ov2312->ctrls.error) {
@@ -626,11 +726,11 @@ static int ov2312_probe(struct i2c_client *client)
 		dev_err(ov2312->dev,
 			"%s: failed to add the ctrls: %d\n", __func__, ret);
 		goto err_ctrl_free;
-	}*/
+	}
 
 	/* PM Runtime */
-	/*pm_runtime_set_active(ov2312->dev);*/
-	/*pm_runtime_enable(ov2312->dev);*/
+	pm_runtime_enable(ov2312->dev);
+	pm_runtime_set_suspended(ov2312->dev);
 
 	ret = v4l2_subdev_init_finalize(sd);
 	if (ret < 0)
@@ -651,12 +751,11 @@ err_subdev_cleanup:
 	v4l2_subdev_cleanup(&ov2312->sd);
 
 err_pm_disable:
-	/*pm_runtime_disable(ov2312->dev);
-	pm_runtime_set_suspended(ov2312->dev);*/
+	pm_runtime_disable(ov2312->dev);
 
 err_ctrl_free:
-	//v4l2_ctrl_handler_free(ctrl_hdr);
-	//mutex_destroy(&ov2312->lock);
+	v4l2_ctrl_handler_free(ctrl_hdr);
+	mutex_destroy(&ov2312->lock);
 
 err_media_cleanup:
 	media_entity_cleanup(&ov2312->sd.entity);
@@ -670,13 +769,12 @@ static int ov2312_remove(struct i2c_client *client)
 	struct ov2312 *ov2312 = to_ov2312(sd);
 
 	v4l2_async_unregister_subdev(sd);
-	//v4l2_ctrl_handler_free(&ov2312->ctrl.handler);
+	v4l2_ctrl_handler_free(&ov2312->ctrls);
 	v4l2_subdev_cleanup(&ov2312->sd);
 	media_entity_cleanup(&sd->entity);
-	//mutex_destroy(&ov2312->lock);
+	mutex_destroy(&ov2312->lock);
 
-	/*pm_runtime_disable(ov2312->dev);
-	pm_runtime_set_suspended(ov2312->dev);*/
+	pm_runtime_disable(ov2312->dev);
 
 	return 0;
 }
