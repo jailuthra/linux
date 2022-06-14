@@ -176,7 +176,7 @@
 		      <0x00 0x40500000 0x00 0x8000>;
 		reg-names = "m_can", "message_ram";
 		power-domains = <&k3_pds 263 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 263 0>, <&k3_clks 263 1>;
+		clocks = <&k3_clks 263 6>, <&k3_clks 263 1>;
 		clock-names = "hclk", "cclk";
 		interrupts = <GIC_SPI 832 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 833 IRQ_TYPE_LEVEL_HIGH>;
@@ -190,7 +190,7 @@
 		      <0x00 0x40540000 0x00 0x8000>;
 		reg-names = "m_can", "message_ram";
 		power-domains = <&k3_pds 264 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 264 0>, <&k3_clks 264 1>;
+		clocks = <&k3_clks 264 6>, <&k3_clks 264 1>;
 		clock-names = "hclk", "cclk";
 		interrupts = <GIC_SPI 835 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 836 IRQ_TYPE_LEVEL_HIGH>;
@@ -334,7 +334,7 @@
 			cdns,fifo-depth = <256>;
 			cdns,fifo-width = <4>;
 			cdns,trigger-address = <0x0>;
-			clocks = <&k3_clks 162 2>;
+			clocks = <&k3_clks 162 7>;
 			power-domains = <&k3_pds 162 TI_SCI_PD_EXCLUSIVE>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -360,7 +360,7 @@
 			ti,sci-dev-id = <346>;
 			ti,sci-proc-ids = <0x01 0xff>;
 			resets = <&k3_reset 346 1>;
-			firmware-name = "j721s2-mcu-r5f0_0-fw";
+			firmware-name = "j784s4-mcu-r5f0_0-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
 			ti,loczrama = <1>;
@@ -375,7 +375,7 @@
 			ti,sci-dev-id = <347>;
 			ti,sci-proc-ids = <0x02 0xff>;
 			resets = <&k3_reset 347 1>;
-			firmware-name = "j721s2-mcu-r5f0_1-fw";
+			firmware-name = "j784s4-mcu-r5f0_1-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
 			ti,loczrama = <1>;
