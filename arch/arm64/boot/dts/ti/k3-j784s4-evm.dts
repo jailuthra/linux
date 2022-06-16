@@ -930,10 +930,18 @@
 &serdes0 {
 	serdes0_pcie_link: phy@0 {
 		reg = <0>;
-		cdns,num-lanes = <1>;
+		cdns,num-lanes = <2>;
 		#phy-cells = <0>;
 		cdns,phy-type = <PHY_TYPE_PCIE>;
-		resets = <&serdes_wiz0 1>;
+		resets = <&serdes_wiz0 1>, <&serdes_wiz0 2>;
+	};
+
+	serdes0_usb_link: phy@2 {
+		reg = <2>;
+		cdns,num-lanes = <2>;
+		#phy-cells = <0>;
+		cdns,phy-type = <PHY_TYPE_USB3>;
+		resets = <&serdes_wiz0 3>, <&serdes_wiz0 4>;
 	};
 };
 
@@ -945,12 +953,13 @@
 	pinctrl-0 = <&main_usbss0_pins_default>;
 	pinctrl-names = "default";
 	ti,vbus-divider;
-	ti,usb2-only;
 };
 
 &usb0 {
 	dr_mode = "otg";
-	maximum-speed = "high-speed";
+	maximum-speed = "super-speed";
+	phys = <&serdes0_usb_link>;
+	phy-names = "cdns3,usb3-phy";
 };
 
 &pcie1_rc {
