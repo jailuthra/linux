@@ -952,6 +952,17 @@
 	};
 };
 
+&serdes1 {
+	serdes1_pcie_link: phy@0 {
+		reg = <0>;
+		cdns,num-lanes = <4>;
+		#phy-cells = <0>;
+		cdns,phy-type = <PHY_TYPE_PCIE>;
+		resets = <&serdes_wiz1 1>, <&serdes_wiz1 2>,
+			 <&serdes_wiz1 3>, <&serdes_wiz1 4>;
+	};
+};
+
 &serdes2 {
 	serdes2_sgmii_link: phy@0 {
 		reg = <0>;
@@ -978,20 +989,6 @@
 	maximum-speed = "super-speed";
 	phys = <&serdes0_usb_link>;
 	phy-names = "cdns3,usb3-phy";
-};
-
-&pcie1_rc {
-	reset-gpios = <&exp1 2 GPIO_ACTIVE_HIGH>;
-	phys = <&serdes0_pcie_link>;
-	phy-names = "pcie-phy";
-	num-lanes = <1>;
-};
-
-&pcie1_ep {
-	phys = <&serdes0_pcie_link>;
-	phy-names = "pcie-phy";
-	num-lanes = <1>;
-	status = "disabled";
 };
 
 &ospi1 {
@@ -1219,4 +1216,48 @@
 &main_cpsw1_port1 {
 	phy-mode = "rgmii-rxid";
 	phy-handle = <&main_cpsw1_phy0>;
+};
+
+&pcie0_rc {
+	reset-gpios = <&exp1 6 GPIO_ACTIVE_HIGH>;
+	phys = <&serdes1_pcie_link>;
+	phy-names = "pcie-phy";
+	num-lanes = <4>;
+};
+
+&pcie0_ep {
+	status = "disabled";
+	phys = <&serdes1_pcie_link>;
+	phy-names = "pcie-phy";
+	num-lanes = <4>;
+};
+
+&pcie1_rc {
+	reset-gpios = <&exp1 2 GPIO_ACTIVE_HIGH>;
+	phys = <&serdes1_pcie_link>;
+	phy-names = "pcie-phy";
+	num-lanes = <2>;
+};
+
+&pcie1_ep {
+	status = "disabled";
+	phys = <&serdes1_pcie_link>;
+	phy-names = "pcie-phy";
+	num-lanes = <4>;
+};
+
+&pcie2_rc {
+	status = "disabled";
+};
+
+&pcie2_ep {
+	status = "disabled";
+};
+
+&pcie3_rc {
+	status = "disabled";
+};
+
+&pcie3_ep {
+	status = "disabled";
 };
