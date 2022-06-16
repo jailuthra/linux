@@ -32,7 +32,12 @@
 		can2 = &mcu_mcan1;
 		can3 = &main_mcan3;
 		can4 = &main_mcan5;
-		ethernet1 = &main_cpsw_port1;
+		ethernet0 = &mcu_cpsw;
+		ethernet1 = &main_cpsw1_port1;
+		ethernet2 = &main_cspw0_port1;
+		ethernet3 = &main_cspw0_port2;
+		ethernet4 = &main_cspw0_port3;
+		ethernet5 = &main_cspw0_port4;
 	};
 
 	memory@80000000 {
@@ -905,7 +910,7 @@
 };
 
 &davinci_mdio {
-	phy0: ethernet-phy@0 {
+	mcu_phy0: ethernet-phy@0 {
 		reg = <0>;
 		ti,rx-internal-delay = <DP83867_RGMIIDCTL_2_00_NS>;
 		ti,fifo-depth = <DP83867_PHYCR_FIFO_DEPTH_4_B_NIB>;
@@ -913,14 +918,16 @@
 	};
 };
 
-&cpsw_port1 {
+&mcu_cpsw_port1 {
 	phy-mode = "rgmii-rxid";
-	phy-handle = <&phy0>;
+	phy-handle = <&mcu_phy0>;
 };
 
 &serdes_ln_ctrl {
 	idle-states = <J784S4_SERDES0_LANE0_PCIE1_LANE0>, <J784S4_SERDES0_LANE1_PCIE1_LANE1>,
-		      <J784S4_SERDES0_LANE2_IP3_UNUSED>, <J784S4_SERDES0_LANE3_USB>;
+		      <J784S4_SERDES0_LANE2_IP3_UNUSED>, <J784S4_SERDES0_LANE3_USB>,
+		      <J784S4_SERDES2_LANE0_QSGMII_LANE5>, <J784S4_SERDES2_LANE1_QSGMII_LANE6>,
+		      <J784S4_SERDES2_LANE2_QSGMII_LANE7>, <J784S4_SERDES2_LANE3_QSGMII_LANE8>;
 };
 
 &serdes_refclk {
@@ -942,6 +949,17 @@
 		#phy-cells = <0>;
 		cdns,phy-type = <PHY_TYPE_USB3>;
 		resets = <&serdes_wiz0 3>, <&serdes_wiz0 4>;
+	};
+};
+
+&serdes2 {
+	serdes2_sgmii_link: phy@0 {
+		reg = <0>;
+		cdns,num-lanes = <4>;
+		#phy-cells = <0>;
+		cdns,phy-type = <PHY_TYPE_SGMII>;
+		resets = <&serdes_wiz2 1>, <&serdes_wiz2 2>,
+			 <&serdes_wiz2 3>, <&serdes_wiz2 4>;
 	};
 };
 
@@ -1131,6 +1149,74 @@
 	status = "disabled";
 };
 
-&main_cpsw {
-	status = "disabled";
+&main_cspw0_port1 {
+	phy-handle = <&main_cpsw0_phy0>;
+	phy-mode = "sgmii";
+	mac-address = [00 00 00 00 00 00];
+	phys = <&phy_gmii_sel_cpsw0 1>, <&serdes2_sgmii_link>;
+	phy-names = "portmode", "serdes-phy";
+};
+
+&main_cspw0_port2 {
+	phy-handle = <&main_cpsw0_phy1>;
+	phy-mode = "sgmii";
+	mac-address = [00 00 00 00 00 00];
+	phys = <&phy_gmii_sel_cpsw0 2>, <&serdes2_sgmii_link>;
+	phy-names = "portmode", "serdes-phy";
+};
+
+&main_cspw0_port3 {
+	phy-handle = <&main_cpsw0_phy2>;
+	phy-mode = "sgmii";
+	mac-address = [00 00 00 00 00 00];
+	phys = <&phy_gmii_sel_cpsw0 3>, <&serdes2_sgmii_link>;
+	phy-names = "portmode", "serdes-phy";
+};
+
+&main_cspw0_port4 {
+	phy-handle = <&main_cpsw0_phy3>;
+	phy-mode = "sgmii";
+	mac-address = [00 00 00 00 00 00];
+	phys = <&phy_gmii_sel_cpsw0 4>, <&serdes2_sgmii_link>;
+	phy-names = "portmode", "serdes-phy";
+};
+
+&main_cpsw1_mdio {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	main_cpsw1_phy0: ethernet-phy@0 {
+		reg = <0>;
+		ti,rx-internal-delay = <DP83867_RGMIIDCTL_2_00_NS>;
+		ti,fifo-depth = <DP83867_PHYCR_FIFO_DEPTH_4_B_NIB>;
+		ti,min-output-impedance;
+	};
+};
+
+&main_cpsw0_mdio {
+	bus_freq = <1000000>;
+	reset-gpios = <&exp1 21 GPIO_ACTIVE_LOW>, <&exp2 21 GPIO_ACTIVE_LOW>;
+	reset-post-delay-us = <120000>;
+
+	// TODO: Check PHY Addressing on Expansion Boards
+	main_cpsw0_phy0: ethernet-phy@16 {
+		reg = <16>;
+	};
+
+	main_cpsw0_phy1: ethernet-phy@17 {
+		reg = <17>;
+	};
+
+	main_cpsw0_phy2: ethernet-phy@18 {
+		reg = <18>;
+	};
+
+	main_cpsw0_phy3: ethernet-phy@19 {
+		reg = <19>;
+	};
+};
+
+&main_cpsw1_port1 {
+	phy-mode = "rgmii-rxid";
+	phy-handle = <&main_cpsw1_phy0>;
 };

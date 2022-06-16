@@ -55,7 +55,9 @@
 			compatible = "mmio-mux";
 			#mux-control-cells = <1>;
 			mux-reg-masks = <0x80 0x3>, <0x84 0x3>, /* SERDES0 lane0/1 select */
-					<0x88 0x3>, <0x8c 0x3>; /* SERDES0 lane2/3 select */
+					<0x88 0x3>, <0x8c 0x3>, /* SERDES0 lane2/3 select */
+					<0xa0 0x3>, <0xa4 0x3>, /* SERDES2 lane0/1 select */
+					<0xa8 0x3>, <0xac 0x3>; /* SERDES2 lane2/3 select */
 		};
 
 		usb_serdes_mux: mux-controller1 {
@@ -64,7 +66,13 @@
 			mux-reg-masks = <0x0 0x8000000>; /* USB0 to SERDES0 lane 1/3 mux */
 		};
 
-		phy_gmii_sel_cpsw: phy@34 {
+		phy_gmii_sel_cpsw0: phy@44 {
+			compatible = "ti,am654-phy-gmii-sel";
+			reg = <0x44 0x8>;
+			#phy-cells = <1>;
+		};
+
+		phy_gmii_sel_cpsw1: phy@34 {
 			compatible = "ti,am654-phy-gmii-sel";
 			reg = <0x34 0x4>;
 			#phy-cells = <1>;
@@ -749,7 +757,107 @@
 		};
 	};
 
-	main_cpsw: ethernet@c200000 {
+	main_cpsw0: ethernet@c000000 {
+		compatible = "ti,j721e-cpsw-nuss";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		reg = <0x0 0xc000000 0x0 0x200000>;
+		reg-names = "cpsw_nuss";
+		ranges = <0x0 0x0 0x0 0xc000000 0x0 0x200000>;
+		dma-coherent;
+		clocks = <&k3_clks 64 0>;
+		clock-names = "fck";
+		power-domains = <&k3_pds 64 TI_SCI_PD_EXCLUSIVE>;
+
+		dmas = <&main_udmap 0xca00>,
+		       <&main_udmap 0xca01>,
+		       <&main_udmap 0xca02>,
+		       <&main_udmap 0xca03>,
+		       <&main_udmap 0xca04>,
+		       <&main_udmap 0xca05>,
+		       <&main_udmap 0xca06>,
+		       <&main_udmap 0xca07>,
+		       <&main_udmap 0x4a00>;
+		dma-names = "tx0", "tx1", "tx2", "tx3",
+			    "tx4", "tx5", "tx6", "tx7",
+			    "rx";
+
+		ethernet-ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			main_cspw0_port1: port@1 {
+				reg = <1>;
+				label = "port1";
+				ti,mac-only;
+			};
+
+			main_cspw0_port2: port@2 {
+				reg = <2>;
+				label = "port2";
+				ti,mac-only;
+			};
+
+			main_cspw0_port3: port@3 {
+				reg = <3>;
+				label = "port3";
+				ti,mac-only;
+			};
+
+			main_cspw0_port4: port@4 {
+				reg = <4>;
+				label = "port4";
+				ti,mac-only;
+			};
+
+			main_cspw0_port5: port@5 {
+				reg = <5>;
+				label = "port5";
+				status = "disabled";
+			};
+
+			main_cspw0_port6: port@6 {
+				reg = <6>;
+				label = "port6";
+				status = "disabled";
+			};
+
+			main_cspw0_port7: port@7 {
+				reg = <7>;
+				label = "port7";
+				status = "disabled";
+			};
+
+			main_cspw0_port8: port@8 {
+				reg = <8>;
+				label = "port8";
+				status = "disabled";
+			};
+		};
+
+		main_cpsw0_mdio: mdio@f00 {
+			compatible = "ti,cpsw-mdio","ti,davinci_mdio";
+			reg = <0x0 0xf00 0x0 0x100>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clocks = <&k3_clks 64 0>;
+			clock-names = "fck";
+			bus_freq = <1000000>;
+		};
+
+		cpts@3d000 {
+			compatible = "ti,am65-cpts";
+			reg = <0x0 0x3d000 0x0 0x400>;
+			clocks = <&k3_clks 64 3>;
+			clock-names = "cpts";
+			interrupts-extended = <&gic500 GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "cpts";
+			ti,cpts-ext-ts-inputs = <4>;
+			ti,cpts-periodic-outputs = <2>;
+		};
+	};
+
+	main_cpsw1: ethernet@c200000 {
 		compatible = "ti,j721e-cpsw-nuss";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -778,15 +886,15 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 
-			main_cpsw_port1: port@1 {
+			main_cpsw1_port1: port@1 {
 				reg = <1>;
-				ti,mac-only;
 				label = "port1";
-				phys = <&phy_gmii_sel_cpsw 1>;
+				phys = <&phy_gmii_sel_cpsw1 1>;
+				ti,mac-only;
 			};
 		};
 
-		main_cpsw_mdio: mdio@f00 {
+		main_cpsw1_mdio: mdio@f00 {
 			compatible = "ti,cpsw-mdio","ti,davinci_mdio";
 			reg = <0x0 0xf00 0x0 0x100>;
 			#address-cells = <1>;
@@ -801,7 +909,7 @@
 			reg = <0x0 0x3d000 0x0 0x400>;
 			clocks = <&k3_clks 62 3>;
 			clock-names = "cpts";
-			interrupts-extended = <&gic500 GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&gic500 GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cpts";
 			ti,cpts-ext-ts-inputs = <4>;
 			ti,cpts-periodic-outputs = <2>;
@@ -866,6 +974,42 @@
 			assigned-clock-parents = <&k3_clks 404 6>,
 						 <&k3_clks 404 6>,
 						 <&k3_clks 404 6>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			#clock-cells = <1>;
+		};
+	};
+
+	serdes_wiz2: wiz@5020000 {
+		compatible = "ti,j784s4-wiz-10g";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		power-domains = <&k3_pds 406 TI_SCI_PD_EXCLUSIVE>;
+		clocks = <&k3_clks 406 2>, <&k3_clks 406 6>, <&k3_clks 406 10>, <&serdes_refclk>;
+		clock-names = "fck", "core_ref_clk", "core_ref1_clk", "ext_ref_clk";
+		num-lanes = <4>;
+		#reset-cells = <1>;
+		#clock-cells = <1>;
+		ranges = <0x05020000 0x0 0x05020000 0x00010000>;
+
+		assigned-clocks = <&k3_clks 406 6>;
+		assigned-clock-parents = <&k3_clks 406 10>;
+
+		serdes2: serdes@5020000 {
+			compatible = "ti,j721e-serdes-10g";
+			reg = <0x05020000 0x00010000>;
+			reg-names = "torrent_phy";
+			resets = <&serdes_wiz2 0>;
+			reset-names = "torrent_reset";
+			clocks = <&serdes_wiz2 TI_WIZ_PLL0_REFCLK>,
+				 <&serdes_wiz2 TI_WIZ_PHY_EN_REFCLK>;
+			clock-names = "refclk", "phy_en_refclk";
+			assigned-clocks = <&serdes_wiz2 TI_WIZ_PLL0_REFCLK>,
+					  <&serdes_wiz2 TI_WIZ_PLL1_REFCLK>,
+					  <&serdes_wiz2 TI_WIZ_REFCLK_DIG>;
+			assigned-clock-parents = <&k3_clks 406 6>,
+						 <&k3_clks 406 6>,
+						 <&k3_clks 406 6>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			#clock-cells = <1>;
