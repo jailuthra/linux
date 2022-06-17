@@ -1007,9 +1007,9 @@
 			      <0x5e10000 0x00010000>;
 			reg-names = "atcm", "btcm";
 			ti,sci = <&sms>;
-			ti,sci-dev-id = <241>;
+			ti,sci-dev-id = <341>;
 			ti,sci-proc-ids = <0x08 0xff>;
-			resets = <&k3_reset 241 1>;
+			resets = <&k3_reset 341 1>;
 			firmware-name = "j784s4-main-r5f1_0-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
@@ -1022,10 +1022,50 @@
 			      <0x5f10000 0x00010000>;
 			reg-names = "atcm", "btcm";
 			ti,sci = <&sms>;
-			ti,sci-dev-id = <242>;
+			ti,sci-dev-id = <342>;
 			ti,sci-proc-ids = <0x09 0xff>;
-			resets = <&k3_reset 242 1>;
+			resets = <&k3_reset 342 1>;
 			firmware-name = "j784s4-main-r5f1_1-fw";
+			ti,atcm-enable = <1>;
+			ti,btcm-enable = <1>;
+			ti,loczrama = <1>;
+		};
+	};
+	
+	main_r5fss2: r5fss@5900000 {
+		compatible = "ti,j721s2-r5fss";
+		ti,cluster-mode = <0>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0x5900000 0x00 0x5900000 0x20000>,
+			 <0x5a00000 0x00 0x5a00000 0x20000>;
+		power-domains = <&k3_pds 338 TI_SCI_PD_EXCLUSIVE>;
+
+		main_r5fss2_core0: r5f@5900000 {
+			compatible = "ti,j721s2-r5f";
+			reg = <0x5900000 0x00010000>,
+			      <0x5910000 0x00010000>;
+			reg-names = "atcm", "btcm";
+			ti,sci = <&sms>;
+			ti,sci-dev-id = <343>;
+			ti,sci-proc-ids = <0x0a 0xff>;
+			resets = <&k3_reset 343 1>;
+			firmware-name = "j784s4-main-r5f2_0-fw";
+			ti,atcm-enable = <1>;
+			ti,btcm-enable = <1>;
+			ti,loczrama = <1>;
+		};
+
+		main_r5fss2_core1: r5f@5a00000 {
+			compatible = "ti,j721s2-r5f";
+			reg = <0x5a00000 0x00010000>,
+			      <0x5a10000 0x00010000>;
+			reg-names = "atcm", "btcm";
+			ti,sci = <&sms>;
+			ti,sci-dev-id = <344>;
+			ti,sci-proc-ids = <0x0b 0xff>;
+			resets = <&k3_reset 344 1>;
+			firmware-name = "j784s4-main-r5f2_1-fw";
 			ti,atcm-enable = <1>;
 			ti,btcm-enable = <1>;
 			ti,loczrama = <1>;
@@ -1034,8 +1074,8 @@
 
 	c71_0: dsp@64800000 {
 		compatible = "ti,j721s2-c71-dsp";
-		reg = <0x00 0x64800000 0x00 0x00080000>,
-		      <0x00 0x64e00000 0x00 0x0000c000>;
+		reg = <0x00 0x64800000 0x00 0x00070000>,
+		      <0x00 0x64e00000 0x00 0x00004000>;
 		reg-names = "l2sram", "l1dram";
 		ti,sci = <&sms>;
 		ti,sci-dev-id = <30>;
@@ -1046,14 +1086,38 @@
 
 	c71_1: dsp@65800000 {
 		compatible = "ti,j721s2-c71-dsp";
-		reg = <0x00 0x65800000 0x00 0x00080000>,
-		      <0x00 0x65e00000 0x00 0x0000c000>;
+		reg = <0x00 0x65800000 0x00 0x00070000>,
+		      <0x00 0x65e00000 0x00 0x00004000>;
 		reg-names = "l2sram", "l1dram";
 		ti,sci = <&sms>;
 		ti,sci-dev-id = <33>;
 		ti,sci-proc-ids = <0x31 0xff>;
 		resets = <&k3_reset 33 1>;
 		firmware-name = "j784s4-c71_1-fw";
+	};
+	
+	c71_2: dsp@66800000 {
+		compatible = "ti,j721s2-c71-dsp";
+		reg = <0x00 0x66800000 0x00 0x00070000>,
+		      <0x00 0x66e00000 0x00 0x00004000>;
+		reg-names = "l2sram", "l1dram";
+		ti,sci = <&sms>;
+		ti,sci-dev-id = <37>;
+		ti,sci-proc-ids = <0x32 0xff>;
+		resets = <&k3_reset 33 1>;
+		firmware-name = "j784s4-c71_2-fw";
+	};
+	
+	c71_3: dsp@67800000 {
+		compatible = "ti,j721s2-c71-dsp";
+		reg = <0x00 0x67800000 0x00 0x00070000>,
+		      <0x00 0x67e00000 0x00 0x00004000>;
+		reg-names = "l2sram", "l1dram";
+		ti,sci = <&sms>;
+		ti,sci-dev-id = <40>;
+		ti,sci-proc-ids = <0x33 0xff>;
+		resets = <&k3_reset 33 1>;
+		firmware-name = "j784s4-c71_3-fw";
 	};
 
 	main_mcan0: can@2701000 {

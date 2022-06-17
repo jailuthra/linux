@@ -126,37 +126,91 @@
 			no-map;
 		};
 
-		c71_0_dma_memory_region: c71-dma-memory@a6000000 {
+		main_r5fss2_core0_dma_memory_region: r5f-dma-memory@a6000000 {
 			compatible = "shared-dma-pool";
 			reg = <0x00 0xa6000000 0x00 0x100000>;
 			no-map;
 		};
 
-		c71_0_memory_region: c71-memory@a6100000 {
+		main_r5fss2_core0_memory_region: r5f-memory@a6100000 {
 			compatible = "shared-dma-pool";
 			reg = <0x00 0xa6100000 0x00 0xf00000>;
 			no-map;
 		};
 
-		c71_1_dma_memory_region: c71-dma-memory@a7000000 {
+		main_r5fss2_core1_dma_memory_region: r5f-dma-memory@a7000000 {
 			compatible = "shared-dma-pool";
 			reg = <0x00 0xa7000000 0x00 0x100000>;
 			no-map;
 		};
 
-		c71_1_memory_region: c71-memory@a7100000 {
+		main_r5fss2_core1_memory_region: r5f-memory@a7100000 {
 			compatible = "shared-dma-pool";
 			reg = <0x00 0xa7100000 0x00 0xf00000>;
 			no-map;
 		};
 
-		rtos_ipc_memory_region: ipc-memories@a8000000 {
+		c71_0_dma_memory_region: c71-dma-memory@a8000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xa8000000 0x00 0x100000>;
+			no-map;
+		};
+
+		c71_0_memory_region: c71-memory@a6100000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xa8100000 0x00 0xf00000>;
+			no-map;
+		};
+
+		c71_1_dma_memory_region: c71-dma-memory@a9000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xa9000000 0x00 0x100000>;
+			no-map;
+		};
+
+		c71_1_memory_region: c71-memory@a9100000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xa9100000 0x00 0xf00000>;
+			no-map;
+		};
+
+		c71_2_dma_memory_region: c71-dma-memory@aa000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xaa000000 0x00 0x100000>;
+			no-map;
+		};
+
+		c71_2_memory_region: c71-memory@aa100000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xaa100000 0x00 0xf00000>;
+			no-map;
+		};
+
+		c71_3_dma_memory_region: c71-dma-memory@ab000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xab000000 0x00 0x100000>;
+			no-map;
+		};
+
+		c71_3_memory_region: c71-memory@ab100000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xab100000 0x00 0xf00000>;
+			no-map;
+		};
+
+		rtos_ipc_memory_region: ipc-memories@ac000000 {
 			reg = <0x00 0xa8000000 0x00 0x01c00000>;
 			alignment = <0x1000>;
 			no-map;
 		};
-	};
-
+		
+		eth_multicast_memory_region: eth-multicast-memories@adc00000 {
+			reg = <0x00 0xadc00000 0x00 0x2000000>;
+			alignment = <0x1000>;
+			no-map;
+		};
+	}; 
+	
 	transceiver0: can-phy0 {
 		/* standby pin has been grounded by default */
 		compatible = "ti,tcan1042";
@@ -264,7 +318,7 @@
 		regulator-name = "dp0-pwr";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
-		/* gpio = <&exp4 0 0>;	TODO -check */ /* P0 - DP0_PWR_SW_EN */
+		gpio = <&exp4 0 0>;	/* TODO -check */ /* P0 - DP0_PWR_SW_EN */
 		enable-active-high;
 	};
 
@@ -276,13 +330,12 @@
 
 		port {
 			dp0_connector_in: endpoint {
-			/* 	remote-endpoint = <&dp0_out>; TODO - check */
+			/* remote-endpoint = <&dp0_out>;  TODO - check */
 			};
 		};
 	};
 };
 
-/*
 &main_i2c4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_i2c4_pins_default>;
@@ -295,7 +348,7 @@
 		#gpio-cells = <2>;
 	};
 };
-*/
+
 &main_pmx0 {
 	main_uart8_pins_default: main-uart8-pins-default {
 		pinctrl-single,pins = <
@@ -351,6 +404,13 @@
 			J784S4_IOPAD(0x0ec, PIN_OUTPUT, 6) /* (AN37) TIMER_IO1.USB0_DRVVBUS */
 		>;
 	};
+
+       main_i2c4_pins_default: main-i2c4-pins-default {
+                pinctrl-single,pins = <
+                        J784S4_IOPAD(0x014, PIN_INPUT, 8) /* (AG33) MCAN14_TX.I2C4_SCL */
+                        J784S4_IOPAD(0x010, PIN_INPUT, 8) /* (AH33) MCAN13_RX.I2C4_SDA */
+                >;
+        };
 };
 
 &wkup_pmx0 {
@@ -492,14 +552,13 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_uart8_pins_default>;
 	/* Shared with TFA on this platform */
-	power-domains = <&k3_pds 388 TI_SCI_PD_SHARED>;
+	power-domains = <&k3_pds 395 TI_SCI_PD_SHARED>;
 };
 
 &main_uart9 {
 	status = "disabled";
 };
 
-/*
 &main_i2c0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_i2c0_pins_default>;
@@ -586,7 +645,17 @@
 };
 
 &mailbox0_cluster3 {
-	status = "disabled";
+	interrupts = <424>;
+	
+	mbox_main_r5fss2_core0: mbox-main-r5fss2-core0 {
+		ti,mbox-rx = <0 0 0>;
+		ti,mbox-tx = <1 0 0>;
+	};
+
+	mbox_main_r5fss2_core1: mbox-main-r5fss2-core1 {
+		ti,mbox-rx = <2 0 0>;
+		ti,mbox-tx = <3 0 0>;
+	};
 };
 
 &mailbox0_cluster4 {
@@ -604,7 +673,17 @@
 };
 
 &mailbox0_cluster5 {
-	status = "disabled";
+	interrupts = <416>;
+
+	mbox_c71_2: mbox-c71-2 {
+		ti,mbox-rx = <0 0 0>;
+		ti,mbox-tx = <1 0 0>;
+	};
+
+	mbox_c71_3: mbox-c71-3 {
+		ti,mbox-rx = <2 0 0>;
+		ti,mbox-tx = <3 0 0>;
+	};
 };
 
 &mailbox0_cluster6 {
@@ -715,6 +794,18 @@
 			<&main_r5fss1_core1_memory_region>;
 };
 
+&main_r5fss2_core0 {
+	mboxes = <&mailbox0_cluster3 &mbox_main_r5fss2_core0>;
+	memory-region = <&main_r5fss2_core0_dma_memory_region>,
+			<&main_r5fss2_core0_memory_region>;
+};
+
+&main_r5fss2_core1 {
+	mboxes = <&mailbox0_cluster3 &mbox_main_r5fss2_core1>;
+	memory-region = <&main_r5fss2_core1_dma_memory_region>,
+			<&main_r5fss2_core1_memory_region>;
+};
+
 &c71_0 {
 	mboxes = <&mailbox0_cluster4 &mbox_c71_0>;
 	memory-region = <&c71_0_dma_memory_region>,
@@ -726,7 +817,18 @@
 	memory-region = <&c71_1_dma_memory_region>,
 			<&c71_1_memory_region>;
 };
-*/
+
+&c71_2 {
+	mboxes = <&mailbox0_cluster5 &mbox_c71_2>;
+	memory-region = <&c71_2_dma_memory_region>,
+			<&c71_2_memory_region>;
+};
+
+&c71_3 {
+	mboxes = <&mailbox0_cluster5 &mbox_c71_3>;
+	memory-region = <&c71_3_dma_memory_region>,
+			<&c71_3_memory_region>;
+};
 
 &main_i2c0 {
 	clock-frequency = <400000>;
@@ -918,7 +1020,6 @@
 };
 
 /*
-
 &dss_ports {
 	port {
 		dpi0_out: endpoint {
