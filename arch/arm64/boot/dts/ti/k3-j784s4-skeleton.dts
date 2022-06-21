@@ -33,13 +33,13 @@
 	};
 
 	cpus {
-		/delete-node/ cpu@1;
-		/delete-node/ cpu@2;
-		/delete-node/ cpu@3;
-		/delete-node/ cpu@4;
-		/delete-node/ cpu@5;
-		/delete-node/ cpu@6;
-		/delete-node/ cpu@7;
+		/delete-node/ cpu1;
+		/delete-node/ cpu2;
+		/delete-node/ cpu3;
+		/delete-node/ cpu4;
+		/delete-node/ cpu5;
+		/delete-node/ cpu6;
+		/delete-node/ cpu7;
 	};
 
 	/* Reserving memory regions still pending */
@@ -110,8 +110,13 @@
 &main_uart8 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_uart8_pins_default>;
-	/* Shared with TFA on this platform */
-	power-domains = <&k3_pds 395 TI_SCI_PD_SHARED>;
+	/* We have disabled DM comm in this dts */
+	/delete-property/ power-domains;
+	/delete-property/ clocks;
+	/delete-property/ clock-names;
+	clock-frequency = <48000000>;
+	current-speed = <115200>;
+
 };
 
 &main_gpio0 {
