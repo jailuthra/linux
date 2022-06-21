@@ -1,0 +1,415 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2021 Texas Instruments Incorporated - https://www.ti.com/
+ *
+ * Common Processor Board: https://www.ti.com/tool/J721EXCPXEVM
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/net/ti-dp83867.h>
+#include <dt-bindings/phy/phy-cadence.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/mux/ti-serdes.h>
+#include <dt-bindings/gpio/gpio.h>
+#include "k3-j784s4.dtsi"
+
+/ {
+	compatible = "ti,j784s4-evm", "ti,j784s4";
+	model = "Texas Instruments J784S4 EVM";
+
+	chosen {
+		stdout-path = "serial2:115200n8";
+		bootargs = "console=ttyS2,115200n8 earlycon=ns16550a,mmio32,0x2880000";
+	};
+
+	aliases {
+		serial2 = &main_uart8;
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		/* 32G RAM */
+		reg = <0x00 0x80000000 0x00 0x80000000>,
+		      <0x08 0x80000000 0x07 0x80000000>;
+	};
+
+	cpus {
+		/delete-node/ cpu1;
+		/delete-node/ cpu2;
+		/delete-node/ cpu3;
+		/delete-node/ cpu4;
+		/delete-node/ cpu5;
+		/delete-node/ cpu6;
+		/delete-node/ cpu7;
+	};
+
+	/* Reserving memory regions still pending */
+	reserved_memory: reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		secure_ddr: optee@9e800000 {
+			reg = <0x00 0x9e800000 0x00 0x01800000>;
+			alignment = <0x1000>;
+			no-map;
+		};
+
+		mcu_r5fss0_core0_dma_memory_region: r5f-dma-memory@a0000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xa0000000 0x00 0x100000>;
+			no-map;
+		};
+	};
+};
+
+&main_pmx0 {
+	main_uart8_pins_default: main-uart8-pins-default {
+		pinctrl-single,pins = <
+			J784S4_IOPAD(0x040, PIN_INPUT, 14) /* (AF37) MCASP0_AXR0.UART8_CTSn */
+			J784S4_IOPAD(0x044, PIN_OUTPUT, 14) /* (AG37) MCASP0_AXR1.UART8_RTSn */
+			J784S4_IOPAD(0x0d0, PIN_INPUT, 11) /* (AP38) SPI0_CS1.UART8_RXD */
+			J784S4_IOPAD(0x0d4, PIN_OUTPUT, 11) /* (AN38) SPI0_CLK.UART8_TXD */
+		>;
+	};
+
+};
+
+&main_uart0 {
+	status = "disabled";
+};
+
+&main_uart1 {
+	status = "disabled";
+};
+
+&main_uart2 {
+	status = "disabled";
+};
+
+&main_uart3 {
+	status = "disabled";
+};
+
+&main_uart4 {
+	status = "disabled";
+};
+
+&main_uart5 {
+	status = "disabled";
+};
+
+&main_uart6 {
+	status = "disabled";
+};
+
+&main_uart7 {
+	status = "disabled";
+};
+
+&main_uart8 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&main_uart8_pins_default>;
+	/delete-property/ power-domains;
+	/delete-property/ clocks;
+	/delete-property/ clock-names;
+	clock-frequency = <48000000>;
+	current-speed = <115200>;
+};
+
+&main_gpio0 {
+	status = "disabled";
+};
+
+&main_gpio2 {
+	status = "disabled";
+};
+
+&main_gpio4 {
+	status = "disabled";
+};
+
+&main_gpio6 {
+	status = "disabled";
+};
+
+&main_i2c0 {
+	status = "disabled";
+};
+
+&main_i2c1 {
+	status = "disabled";
+};
+
+&main_i2c2 {
+	status = "disabled";
+};
+
+&main_i2c3 {
+	status = "disabled";
+};
+
+&main_i2c4 {
+	status = "disabled";
+};
+
+&main_i2c5 {
+	status = "disabled";
+};
+
+&main_i2c6 {
+	status = "disabled";
+};
+
+&vpu {
+	status = "disabled";
+};
+
+&main_sdhci0 {
+	status = "disabled";
+};
+
+&main_sdhci1 {
+	status = "disabled";
+};
+
+&main_navss {
+	status = "disabled";
+};
+
+&main_cpsw0 {
+	status = "disabled";
+};
+
+&main_cpsw1 {
+	status = "disabled";
+};
+
+&usbss0 {
+	status = "disabled";
+};
+
+&serdes_wiz0 {
+	status = "disabled";
+};
+
+&serdes_wiz1 {
+	status = "disabled";
+};
+
+&serdes_wiz2 {
+	status = "disabled";
+};
+
+&serdes_wiz4 {
+	status = "disabled";
+};
+
+&pcie0_ep {
+	status = "disabled";
+};
+
+&pcie0_rc {
+	status = "disabled";
+};
+
+&pcie1_ep {
+	status = "disabled";
+};
+
+&pcie1_rc {
+	status = "disabled";
+};
+
+&pcie2_ep {
+	status = "disabled";
+};
+
+&pcie2_rc {
+	status = "disabled";
+};
+
+&pcie3_ep {
+	status = "disabled";
+};
+
+&pcie3_rc {
+	status = "disabled";
+};
+
+&main_r5fss0 {
+	status = "disabled";
+};
+
+&main_r5fss1 {
+	status = "disabled";
+};
+
+&main_r5fss2 {
+	status = "disabled";
+};
+
+&c71_0 {
+	status = "disabled";
+};
+
+&c71_1 {
+	status = "disabled";
+};
+
+&c71_2 {
+	status = "disabled";
+};
+
+&c71_3 {
+	status = "disabled";
+};
+
+&main_mcan0 {
+	status = "disabled";
+};
+
+&main_mcan1 {
+	status = "disabled";
+};
+
+&main_mcan2 {
+	status = "disabled";
+};
+
+&main_mcan3 {
+	status = "disabled";
+};
+
+&main_mcan4 {
+	status = "disabled";
+};
+
+&main_mcan5 {
+	status = "disabled";
+};
+
+&main_mcan6 {
+	status = "disabled";
+};
+
+&main_mcan7 {
+	status = "disabled";
+};
+
+&main_mcan8 {
+	status = "disabled";
+};
+
+&main_mcan9 {
+	status = "disabled";
+};
+
+&main_mcan10 {
+	status = "disabled";
+};
+
+&main_mcan11 {
+	status = "disabled";
+};
+
+&main_mcan12 {
+	status = "disabled";
+};
+
+&main_mcan13 {
+	status = "disabled";
+};
+
+&main_mcan14 {
+	status = "disabled";
+};
+
+&main_mcan15 {
+	status = "disabled";
+};
+
+&main_mcan16 {
+	status = "disabled";
+};
+
+&main_mcan17 {
+	status = "disabled";
+};
+
+&mhdp {
+	status = "disabled";
+};
+
+&dss {
+	status = "disabled";
+};
+
+&sms {
+	status = "disabled";
+};
+
+&mcu_ram {
+	status = "disabled";
+};
+
+&wkup_gpio_intr {
+	status = "disabled";
+};
+
+&wkup_gpio0 {
+	status = "disabled";
+};
+
+&wkup_gpio1 {
+	status = "disabled";
+};
+
+&wkup_i2c0 {
+	status = "disabled";
+};
+
+&mcu_conf {
+	status = "disabled";
+};
+
+&wkup_uart0 {
+	status = "disabled";
+};
+
+&mcu_uart0 {
+	status = "disabled";
+};
+
+&mcu_i2c0 {
+	status = "disabled";
+};
+
+&mcu_i2c1 {
+	status = "disabled";
+};
+
+&mcu_mcan0 {
+	status = "disabled";
+};
+
+&mcu_mcan1 {
+	status = "disabled";
+};
+
+&mcu_navss {
+	status = "disabled";
+};
+
+&mcu_cpsw {
+	status = "disabled";
+};
+
+&fss {
+	status = "disabled";
+};
+
+&mcu_r5fss0 {
+	status = "disabled";
+};
