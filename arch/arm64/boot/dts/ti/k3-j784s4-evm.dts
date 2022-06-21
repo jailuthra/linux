@@ -34,16 +34,6 @@
 		      <0x08 0x80000000 0x07 0x80000000>;
 	};
 
-	cpus {
-		/delete-node/ cpu1;
-		/delete-node/ cpu2;
-		/delete-node/ cpu3;
-		/delete-node/ cpu4;
-		/delete-node/ cpu5;
-		/delete-node/ cpu6;
-		/delete-node/ cpu7;
-	};
-
 	/* Reserving memory regions still pending */
 	reserved_memory: reserved-memory {
 		#address-cells = <2>;
