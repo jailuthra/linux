@@ -281,8 +281,6 @@
 	disable-wp;
 	vmmc-supply = <&vdd_mmc1>;
 	//vqmmc-supply = <&vdd_sd_dv>;
-	bus-width = <1>;
-	sdhci-caps-mask = <0x80000007 0x00200000>;
 	ti,driver-strength-ohm = <50>;
 	no-1-8-v;
 	disable-wp;
