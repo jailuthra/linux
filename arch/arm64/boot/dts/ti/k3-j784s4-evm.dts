@@ -307,6 +307,12 @@
 			J784S4_IOPAD(0x0ec, PIN_OUTPUT, 6) /* (AN37) TIMER_IO1.USB0_DRVVBUS */
 		>;
 	};
+
+	dp0_pins_default: dp0-pins-default {
+		pinctrl-single,pins = <
+			J784S4_IOPAD(0x0cc, PIN_INPUT, 12) /* (AM37) SPI0_CS0.DP0_HPD */
+		>;
+	};
 };
 
 &wkup_pmx0 {
@@ -783,6 +789,24 @@
 	// phy-names = "cdns3,usb3-phy";
 };
 
+&serdes4 {
+	serdes4_dp_link: phy@0 {
+		reg = <0>;
+		cdns,num-lanes = <4>;
+		#phy-cells = <0>;
+		cdns,phy-type = <PHY_TYPE_DP>;
+		resets = <&serdes_wiz4 1>, <&serdes_wiz4 2>,
+			 <&serdes_wiz4 3>, <&serdes_wiz4 4>;
+	};
+};
+
+&mhdp {
+	pinctrl-names = "default";
+	pinctrl-0 = <&dp0_pins_default>;
+	phys = <&serdes4_dp_link>;
+	phy-names = "dpphy";
+};
+
 &serdes_wiz0 {
 	status = "disabled";
 };
@@ -792,10 +816,6 @@
 };
 
 &serdes_wiz2 {
-	status = "disabled";
-};
-
-&serdes_wiz4 {
 	status = "disabled";
 };
 
@@ -900,10 +920,6 @@
 };
 
 &main_mcan17 {
-	status = "disabled";
-};
-
-&mhdp {
 	status = "disabled";
 };
 
