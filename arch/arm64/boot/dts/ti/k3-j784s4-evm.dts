@@ -279,6 +279,12 @@
 		label = "DP0";
 		type = "full-size";
 		dp-pwr-supply = <&dp0_pwr_3v3>;
+
+		port {
+			dp0_connector_in: endpoint {
+				remote-endpoint = <&dp0_out>;
+			};
+		};
 	};
 };
 
@@ -848,6 +854,33 @@
 	pinctrl-0 = <&dp0_pins_default>;
 	phys = <&serdes4_dp_link>;
 	phy-names = "dpphy";
+};
+
+&dss_ports {
+	port {
+		dpi0_out: endpoint {
+			remote-endpoint = <&dp0_in>;
+		};
+	};
+};
+
+&dp0_ports {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	port@0 {
+		reg = <0>;
+		dp0_in: endpoint {
+			remote-endpoint = <&dpi0_out>;
+		};
+	};
+
+	port@4 {
+		reg = <4>;
+		dp0_out: endpoint {
+			remote-endpoint = <&dp0_connector_in>;
+		};
+	};
 };
 
 &serdes_wiz0 {
