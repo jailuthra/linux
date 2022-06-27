@@ -441,15 +441,7 @@
 	disable-wp;
 };
 
-&main_navss_intr {
-	status = "disabled";
-};
-
 &main_gpio_intr {
-	status = "disabled";
-};
-
-&main_udmass_inta {
 	status = "disabled";
 };
 
@@ -685,14 +677,6 @@
 			<&c71_3_memory_region>;
 };
 
-&main_ringacc {
-	status = "disabled";
-};
-
-&main_udmap {
-	status = "disabled";
-};
-
 &main_cpsw0 {
 	status = "disabled";
 };
@@ -892,10 +876,6 @@
 };
 
 &mcu_mcan1 {
-	status = "disabled";
-};
-
-&mcu_navss {
 	status = "disabled";
 };
 
