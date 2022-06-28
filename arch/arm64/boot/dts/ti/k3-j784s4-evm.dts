@@ -525,10 +525,6 @@
 	};
 };
 
-&main_gpio_intr {
-	status = "disabled";
-};
-
 &hwspinlock {
 	status = "disabled";
 };
