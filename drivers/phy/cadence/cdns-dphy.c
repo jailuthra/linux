@@ -551,6 +551,11 @@ static const struct soc_device_attribute cdns_dphy_socinfo[] = {
 		.revision = "SR1.0",
 		.data = &j721e_soc_data,
 	},
+	{
+		.family = "J784S4",
+		.revision = "SR1.0",
+		.data = &j721e_soc_data,
+	},
 	{/* sentinel */}
 };
 
