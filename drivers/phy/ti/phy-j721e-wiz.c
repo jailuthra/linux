@@ -76,11 +76,11 @@ static const struct reg_field phy_en_refclk = REG_FIELD(WIZ_SERDES_RST, 30, 30);
 static const struct reg_field pll1_refclk_mux_sel =
 					REG_FIELD(WIZ_SERDES_RST, 29, 29);
 static const struct reg_field pll1_refclk_mux_sel_2 =
-					REG_FIELD(WIZ_SERDES_RST, 23, 22);
+					REG_FIELD(WIZ_SERDES_RST, 22, 23);
 static const struct reg_field pll0_refclk_mux_sel =
 					REG_FIELD(WIZ_SERDES_RST, 28, 28);
 static const struct reg_field pll0_refclk_mux_sel_2 =
-					REG_FIELD(WIZ_SERDES_RST, 29, 28);
+					REG_FIELD(WIZ_SERDES_RST, 28, 29);
 static const struct reg_field refclk_dig_sel_16g =
 					REG_FIELD(WIZ_SERDES_RST, 24, 25);
 static const struct reg_field refclk_dig_sel_10g =
