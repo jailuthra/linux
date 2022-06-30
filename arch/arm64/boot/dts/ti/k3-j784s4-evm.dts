@@ -894,6 +894,10 @@
 		      <J784S4_SERDES2_LANE2_QSGMII_LANE7>, <J784S4_SERDES2_LANE3_QSGMII_LANE8>;
 };
 
+&serdes_refclk {
+	clock-frequency = <100000000>;
+};
+
 &usb_serdes_mux {
 	idle-states = <1>; /* USB0 to SERDES lane 1 */
 };
@@ -1009,12 +1013,26 @@
 	};
 };
 
-&serdes_wiz0 {
-	status = "disabled";
+
+&serdes0 {
+	serdes0_pcie_link: phy@0 {
+		reg = <0>;
+		cdns,num-lanes = <2>;
+		#phy-cells = <0>;
+		cdns,phy-type = <PHY_TYPE_PCIE>;
+		resets = <&serdes_wiz0 1>,  <&serdes_wiz0 2>;
+	};
 };
 
-&serdes_wiz1 {
-	status = "disabled";
+&serdes1 {
+	serdes1_pcie_link: phy@0 {
+		reg = <0>;
+		cdns,num-lanes = <4>;
+		#phy-cells = <0>;
+		cdns,phy-type = <PHY_TYPE_PCIE>;
+		resets = <&serdes_wiz1 1>, <&serdes_wiz1 2>,
+			 <&serdes_wiz1 3>, <&serdes_wiz1 4>;
+	};
 };
 
 &serdes_wiz2 {
@@ -1030,7 +1048,11 @@
 };
 
 &pcie0_rc {
-	status = "disabled";
+	status = "okay";
+	reset-gpios = <&exp1 6 GPIO_ACTIVE_HIGH>;
+	phys = <&serdes1_pcie_link>;
+	phy-names = "pcie-phy";
+	num-lanes = <4>;
 };
 
 &pcie1_ep {
@@ -1038,7 +1060,11 @@
 };
 
 &pcie1_rc {
-	status = "disabled";
+	status = "okay";
+	reset-gpios = <&exp1 2 GPIO_ACTIVE_HIGH>;
+	phys = <&serdes0_pcie_link>;
+	phy-names = "pcie-phy";
+	num-lanes = <2>;
 };
 
 &pcie2_ep {
