@@ -951,7 +951,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		power-domains = <&k3_pds 404 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 404 2>, <&k3_clks 404 6>, <&k3_clks 404 10>, <&serdes_refclk>;
+		clocks = <&k3_clks 404 2>, <&k3_clks 404 6>, <&k3_clks 404 5>, <&serdes_refclk>;
 		clock-names = "fck", "core_ref_clk", "core_ref1_clk", "ext_ref_clk";
 		num-lanes = <4>;
 		#reset-cells = <1>;
@@ -987,7 +987,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		power-domains = <&k3_pds 405 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 405 2>, <&k3_clks 405 6>, <&k3_clks 405 10>, <&serdes_refclk>;
+		clocks = <&k3_clks 405 2>, <&k3_clks 405 6>, <&k3_clks 405 5>, <&serdes_refclk>;
 		clock-names = "fck", "core_ref_clk", "core_ref1_clk", "ext_ref_clk";
 		num-lanes = <4>;
 		#reset-cells = <1>;
@@ -1023,7 +1023,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		power-domains = <&k3_pds 406 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 406 2>, <&k3_clks 406 6>, <&k3_clks 406 10>, <&serdes_refclk>;
+		clocks = <&k3_clks 406 2>, <&k3_clks 406 6>, <&k3_clks 406 5>, <&serdes_refclk>;
 		clock-names = "fck", "core_ref_clk", "core_ref1_clk", "ext_ref_clk";
 		num-lanes = <4>;
 		#reset-cells = <1>;
@@ -1059,7 +1059,7 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		power-domains = <&k3_pds 407 TI_SCI_PD_EXCLUSIVE>;
-		clocks = <&k3_clks 407 2>, <&k3_clks 407 6>, <&k3_clks 407 10>, <&serdes_refclk>;
+		clocks = <&k3_clks 407 2>, <&k3_clks 407 6>, <&k3_clks 407 5>, <&serdes_refclk>;
 		clock-names = "fck", "core_ref_clk", "core_ref1_clk", "ext_ref_clk";
 		num-lanes = <4>;
 		#reset-cells = <1>;
