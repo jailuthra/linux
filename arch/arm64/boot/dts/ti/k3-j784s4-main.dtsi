@@ -1116,6 +1116,20 @@
 		ranges = <0x01000000 0x0 0x10001000 0x0 0x10001000 0x0 0x0010000>,
 			 <0x02000000 0x0 0x10011000 0x0 0x10011000 0x0 0x7fef000>;
 		dma-ranges = <0x02000000 0x0 0x0 0x0 0x0 0x10000 0x0>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 7>;
+		interrupt-map = <0 0 0 1 &pcie0_intc 0>,
+				<0 0 0 2 &pcie0_intc 0>,
+				<0 0 0 3 &pcie0_intc 0>,
+				<0 0 0 4 &pcie0_intc 0>;
+
+		pcie0_intc: interrupt-controller {
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			interrupt-parent = <&gic500>;
+			interrupts = <GIC_SPI 312 IRQ_TYPE_EDGE_RISING>;
+		};
+
 	};
 
 	pcie0_ep: pcie-ep@2900000 {
@@ -1136,19 +1150,6 @@
 		max-functions = /bits/ 8 <6>;
 		max-virtual-functions = /bits/ 8 <4 4 4 4 0 0>;
 		dma-coherent;
-		#interrupt-cells = <1>;
-		interrupt-map-mask = <0 0 0 7>;
-		interrupt-map = <0 0 0 1 &pcie0_intc 0>,
-				<0 0 0 2 &pcie0_intc 0>,
-				<0 0 0 3 &pcie0_intc 0>,
-				<0 0 0 4 &pcie0_intc 0>;
-
-		pcie0_intc: interrupt-controller {
-			interrupt-controller;
-			#interrupt-cells = <1>;
-			interrupt-parent = <&gic500>;
-			interrupts = <GIC_SPI 312 IRQ_TYPE_EDGE_RISING>;
-		};
 	};
 
 	pcie1_rc: pcie@2910000 {
