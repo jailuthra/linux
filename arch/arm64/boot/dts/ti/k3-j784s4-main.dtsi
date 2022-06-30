@@ -1108,7 +1108,7 @@
 		device_type = "pci";
 		ti,syscon-pcie-ctrl = <&scm_conf 0x070>;
 		max-link-speed = <3>;
-		num-lanes = <2>;
+		num-lanes = <4>;
 		power-domains = <&k3_pds 332 TI_SCI_PD_EXCLUSIVE>;
 		clocks = <&k3_clks 332 0>;
 		clock-names = "fck";
@@ -1149,7 +1149,7 @@
 		interrupts = <GIC_SPI 318 IRQ_TYPE_EDGE_RISING>;
 		ti,syscon-pcie-ctrl = <&scm_conf 0x070>;
 		max-link-speed = <3>;
-		num-lanes = <2>;
+		num-lanes = <4>;
 		power-domains = <&k3_pds 332 TI_SCI_PD_EXCLUSIVE>;
 		clocks = <&k3_clks 332 0>;
 		clock-names = "fck";
@@ -1159,7 +1159,7 @@
 	};
 
 	pcie1_rc: pcie@2910000 {
-		compatible = "ti,j7200-pcie-host", "ti,j721e-pcie-host";
+		compatible = "ti,j721e-pcie-host";
 		reg = <0x00 0x02910000 0x00 0x1000>,
 		      <0x00 0x02917000 0x00 0x400>,
 		      <0x00 0x0d800000 0x00 0x00800000>,
@@ -1170,7 +1170,7 @@
 		device_type = "pci";
 		ti,syscon-pcie-ctrl = <&scm_conf 0x074>;
 		max-link-speed = <3>;
-		num-lanes = <4>;
+		num-lanes = <2>;
 		power-domains = <&k3_pds 333 TI_SCI_PD_EXCLUSIVE>;
 		clocks = <&k3_clks 333 0>;
 		clock-names = "fck";
@@ -1200,7 +1200,7 @@
 	};
 
 	pcie1_ep: pcie-ep@2910000 {
-		compatible = "ti,j7200-pcie-ep", "ti,j721e-pcie-ep";
+		compatible = "ti,j721e-pcie-ep";
 		reg = <0x00 0x02910000 0x00 0x1000>,
 		      <0x00 0x02917000 0x00 0x400>,
 		      <0x00 0x0d800000 0x00 0x00800000>,
@@ -1210,7 +1210,7 @@
 		interrupts = <GIC_SPI 330 IRQ_TYPE_EDGE_RISING>;
 		ti,syscon-pcie-ctrl = <&scm_conf 0x074>;
 		max-link-speed = <3>;
-		num-lanes = <4>;
+		num-lanes = <2>;
 		power-domains = <&k3_pds 333 TI_SCI_PD_EXCLUSIVE>;
 		clocks = <&k3_clks 333 0>;
 		clock-names = "fck";
@@ -1220,7 +1220,7 @@
 	};
 
 	pcie2_rc: pcie@2920000 {
-		compatible = "ti,j7200-pcie-host", "ti,j721e-pcie-host";
+		compatible = "ti,j721e-pcie-host";
 		reg = <0x00 0x02920000 0x00 0x1000>,
 		      <0x00 0x02927000 0x00 0x400>,
 		      <0x00 0x0e000000 0x00 0x00800000>,
@@ -1261,7 +1261,7 @@
 	};
 
 	pcie2_ep: pcie-ep@2920000 {
-		compatible = "ti,j7200-pcie-ep", "ti,j721e-pcie-ep";
+		compatible = "ti,j721e-pcie-ep";
 		reg = <0x00 0x02920000 0x00 0x1000>,
 		      <0x00 0x02927000 0x00 0x400>,
 		      <0x00 0x0e000000 0x00 0x00800000>,
@@ -1281,7 +1281,7 @@
 	};
 
 	pcie3_rc: pcie@2930000 {
-		compatible = "ti,j7200-pcie-host", "ti,j721e-pcie-host";
+		compatible = "ti,j721e-pcie-host";
 		reg = <0x00 0x02930000 0x00 0x1000>,
 		      <0x00 0x02937000 0x00 0x400>,
 		      <0x00 0x0e800000 0x00 0x00800000>,

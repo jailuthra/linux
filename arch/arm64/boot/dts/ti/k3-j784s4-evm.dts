@@ -1047,7 +1047,6 @@
 	reset-gpios = <&exp1 6 GPIO_ACTIVE_HIGH>;
 	phys = <&serdes1_pcie_link>;
 	phy-names = "pcie-phy";
-	num-lanes = <4>;
 };
 
 &pcie1_ep {
@@ -1059,7 +1058,6 @@
 	reset-gpios = <&exp1 2 GPIO_ACTIVE_HIGH>;
 	phys = <&serdes0_pcie_link>;
 	phy-names = "pcie-phy";
-	num-lanes = <2>;
 };
 
 &pcie2_ep {
