@@ -939,7 +939,6 @@
 };
 
 &mhdp {
-	status = "disabled";
 	pinctrl-names = "default";
 	pinctrl-0 = <&dp0_pins_default>;
 	phys = <&serdes4_dp_link>;
@@ -1036,10 +1035,6 @@
 };
 
 &serdes_wiz2 {
-	status = "disabled";
-};
-
-&serdes_wiz4 {
 	status = "disabled";
 };
 
