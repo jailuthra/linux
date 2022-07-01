@@ -62,12 +62,12 @@ enum eoi_reg {
 };
 
 #define J721E_MODE_RC			BIT(7)
-#define LANE_COUNT_MASK			BIT(8)
+#define LANE_COUNT_MASK			GENMASK(9, 8)
 #define LANE_COUNT(n)			((n) << 8)
 
 #define GENERATION_SEL_MASK		GENMASK(1, 0)
 
-#define MAX_LANES			2
+#define MAX_LANES			4
 
 struct j721e_pcie {
 	struct device		*dev;
@@ -350,6 +350,7 @@ static int j721e_pcie_set_lane_count(struct j721e_pcie *pcie,
 	int ret;
 
 	val = LANE_COUNT(lanes - 1);
+
 	ret = regmap_update_bits(syscon, offset, LANE_COUNT_MASK, val);
 	if (ret)
 		dev_err(dev, "failed to set link count\n");
