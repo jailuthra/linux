@@ -1064,14 +1064,20 @@
 		num-lanes = <4>;
 		#reset-cells = <1>;
 		#clock-cells = <1>;
-		ranges = <0x05050000 0x0 0x05050000 0x00010000>;
+		ranges = <0x05050000 0x0 0x05050000 0x00010000>,
+                 <0xa030a00 0x0 0xa030a00 0x40>; /* DPTX PHY */
 
 		assigned-clocks = <&k3_clks 407 6>;
 		assigned-clock-parents = <&k3_clks 407 10>;
 
 		serdes4: serdes@5050000 {
+			/*
+			 * Note: we also map DPTX PHY registers as the Torrent
+			 * needs to manage those.
+			 */
 			compatible = "ti,j721e-serdes-10g";
-			reg = <0x05050000 0x00010000>;
+			reg = <0x05050000 0x00010000>,
+			      <0xa030a00 0x40>; /* DPTX PHY */
 			reg-names = "torrent_phy";
 			resets = <&serdes_wiz4 0>;
 			reset-names = "torrent_reset";
