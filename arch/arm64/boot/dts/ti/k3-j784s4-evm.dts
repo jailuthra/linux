@@ -586,10 +586,6 @@
 	status = "disabled";
 };
 
-&vpu {
-	status = "disabled";
-};
-
 &main_sdhci0 {
 	/* eMMC */
 	non-removable;
