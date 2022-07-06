@@ -590,6 +590,9 @@
 	/* eMMC */
 	non-removable;
 	ti,driver-strength-ohm = <50>;
+	/* Disabling all the UHS modes by adding no-1-8-v property.
+	 * To re-enable UHS modes, remove the no-1-8-v property. */
+	no-1-8-v;
 	disable-wp;
 };
 
@@ -599,10 +602,10 @@
 	pinctrl-names = "default";
 	disable-wp;
 	vmmc-supply = <&vdd_mmc1>;
-	//vqmmc-supply = <&vdd_sd_dv>;
-	ti,driver-strength-ohm = <50>;
+	vqmmc-supply = <&vdd_sd_dv>;
+	/* Disabling all the UHS modes by adding no-1-8-v property.
+	 * To re-enable UHS modes, remove the no-1-8-v property. */
 	no-1-8-v;
-	disable-wp;
 };
 
 &mcu_cpsw {
