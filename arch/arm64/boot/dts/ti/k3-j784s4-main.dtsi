@@ -2,10 +2,8 @@
 /*
  * Device Tree Source for J784S4 SoC Family Main Domain peripherals
  *
- * Copyright (C) 2021 Texas Instruments Incorporated - https://www.ti.com/
+ * Copyright (C) 2022 Texas Instruments Incorporated - https://www.ti.com/
  */
-
-/* TODO : Check for j784s4 */
 
 #include <dt-bindings/mux/mux.h>
 #include <dt-bindings/phy/phy.h>
@@ -212,8 +210,6 @@
 		compatible = "ti,j721e-uart", "ti,am654-uart";
 		reg = <0x00 0x02880000 0x00 0x200>;
 		interrupts = <GIC_SPI 248 IRQ_TYPE_LEVEL_HIGH>;
-		/* HACK -- TODO */
-		// clock-frequency = <3686400>;	
 		current-speed = <115200>;
 		clocks = <&k3_clks 395 0>;
 		clock-names = "fclk";
@@ -751,13 +747,13 @@
 			ti,sci-dev-id = <319>;
 			ti,ringacc = <&main_ringacc>;
 
-			ti,sci-rm-range-tchan = <0x0d>,
-						<0x0f>,
-						<0x10>;
-			ti,sci-rm-range-rchan = <0x0a>,
-						<0x0b>,
-						<0x0c>;
-			ti,sci-rm-range-rflow = <0x00>;
+			ti,sci-rm-range-tchan = <0x0d>, /* TX_CHAN */
+						<0x0f>, /* TX_HCHAN */
+						<0x10>; /* TX_UHCHAN */
+			ti,sci-rm-range-rchan = <0x0a>, /* RX_CHAN */
+						<0x0b>, /* RX_HCHAN */
+						<0x0c>; /* RX_UHCHAN */
+			ti,sci-rm-range-rflow = <0x00>; /* GP RFLOW */
 		};
 
 		cpts@310d0000 {

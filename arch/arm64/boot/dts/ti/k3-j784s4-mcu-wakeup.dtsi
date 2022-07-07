@@ -2,10 +2,8 @@
 /*
  * Device Tree Source for J784S4 SoC Family MCU/WAKEUP Domain peripherals
  *
- * Copyright (C) 2021 Texas Instruments Incorporated - https://www.ti.com/
+ * Copyright (C) 2022 Texas Instruments Incorporated - https://www.ti.com/
  */
-
-/* TODO : check for j784s4 */
 
 &cbass_mcu_wakeup {
 	sms: system-controller@44083000 {
@@ -234,11 +232,11 @@
 			ti,sci = <&sms>;
 			ti,sci-dev-id = <329>;
 			ti,ringacc = <&mcu_ringacc>;
-			ti,sci-rm-range-tchan = <0x0d>, 
-						<0x0f>;
-			ti,sci-rm-range-rchan = <0x0a>,
-						<0x0b>;
-			ti,sci-rm-range-rflow = <0x00>;
+			ti,sci-rm-range-tchan = <0x0d>, /* TX_CHAN */
+						<0x0f>; /* TX_HCHAN */
+			ti,sci-rm-range-rchan = <0x0a>, /* RX_CHAN */
+						<0x0b>; /* RX_HCHAN */
+			ti,sci-rm-range-rflow = <0x00>; /* GP RFLOW */
 		};
 	};
 	
