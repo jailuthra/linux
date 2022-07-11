@@ -119,6 +119,20 @@ else:
         items:
           - const: l2sram
           - const: l1dram
+else:
+  if:
+    properties:
+      compatible:
+        enum:
+          - ti,am62a-c7xv-dsp
+  then:
+    properties:
+      reg:
+        items:
+          - description: Address and Size of the main L2 SRAM internal memory region
+      reg-names:
+        items:
+          - const: l2sram
 
 required:
   - compatible
