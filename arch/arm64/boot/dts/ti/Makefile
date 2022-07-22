@@ -35,7 +35,6 @@ dtb-$(CONFIG_ARCH_K3) += k3-j721s2-gesi-exp-board.dtbo
 
 dtb-$(CONFIG_ARCH_K3) += k3-j784s4-evm.dtb
 dtb-$(CONFIG_ARCH_K3) += k3-j784s4-skeleton.dtb
-dtb-$(CONFIG_ARCH_K3) += k3-j784s4-evm-reference.dtb
 dtb-$(CONFIG_ARCH_K3) += k3-j784s4-fpdlink-fusion.dtbo
 
 dtb-$(CONFIG_ARCH_K3) += k3-am642-evm.dtb
