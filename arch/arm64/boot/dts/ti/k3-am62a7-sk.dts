@@ -360,10 +360,12 @@
 		ti,mbox-rx = <0 0 0>;
 		ti,mbox-tx = <1 0 0>;
 	};
+};
 
+&mailbox0_cluster1 {
 	mbox_c7x_0: mbox-c7x-0 {
-		ti,mbox-rx = <2 0 0>;
-		ti,mbox-tx = <3 0 0>;
+		ti,mbox-rx = <0 0 0>;
+		ti,mbox-tx = <1 0 0>;
 	};
 };
 
