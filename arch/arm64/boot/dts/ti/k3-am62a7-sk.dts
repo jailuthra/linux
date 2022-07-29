@@ -247,16 +247,6 @@
 	status = "disabled";
 };
 
-/* dmss */
-
-&main_pktdma {
-	status = "disabled";
-};
-
-&main_bcdma {
-	status = "disabled";
-};
-
 /* inta_main_dmss */
 /* secure_proxy_main */
 
