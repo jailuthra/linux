@@ -50,6 +50,10 @@
 		};
 
 
+		dma_buf_phys {
+			compatible = "ti,dma_buf_phys";
+		};
+
 		wkup_r5fss0_core0_dma_memory_region: r5f-dma-memory@9c800000 {
 			compatible = "shared-dma-pool";
 			reg = <0x00 0x9c800000 0x00 0x100000>;
