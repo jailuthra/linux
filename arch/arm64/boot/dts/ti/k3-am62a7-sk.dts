@@ -358,6 +358,13 @@
 		#gpio-cells = <2>;
 	};
 
+	exp2: gpio@23 {
+		compatible = "ti,tca6424";
+		reg = <0x23>;
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
 	sii9022: sii9022@3b {
 		compatible = "sil,sii9022";
 		reg = <0x3b>;
@@ -463,11 +470,6 @@
 	status = "disabled";
 };
 
-&dphy0 {
-	status = "disabled";
-};
-
-
 &epwm0 {
 	status = "disabled";
 };
@@ -558,10 +560,6 @@
 /* epwm_tbclk */
 /* phy_gmii_sel */
 /* dmsc */
-
-&ti_csi2rx0 {
-	status = "disabled";
-};
 
 &dss {
 	pinctrl-names = "default";

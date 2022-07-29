@@ -668,8 +668,8 @@
 
 	ti_csi2rx0: ticsi2rx@30102000 {
 		compatible = "ti,j721e-csi2rx";
-		dmas = <&main_bcdma 0 0x4700 0>, <&main_bcdma 0 0x4701 0>, <&main_bcdma 0 0x4702 0>,
-			<&main_bcdma 0 0x4703 0>;
+		dmas = <&main_bcdma_csi 0 0x5000 0>, <&main_bcdma_csi 0 0x5001 0>,
+			<&main_bcdma_csi 0 0x5002 0>, <&main_bcdma_csi 0 0x5003 0>;
 		dma-names = "rx0", "rx1", "rx2", "rx3";
 		reg = <0x00 0x30102000 0x00 0x1000>;
 		power-domains = <&k3_pds 182 TI_SCI_PD_EXCLUSIVE>;
