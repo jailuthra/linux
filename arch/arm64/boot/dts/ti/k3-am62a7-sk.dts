@@ -49,6 +49,12 @@
 			no-map;
 		};
 
+		wkup_r5fss0_core0_memory_region: r5f-dma-memory@9c900000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0x9bc00000 0x00 0xf00000>;
+			no-map;
+		};
+
 		wkup_r5fss0_core0_dma_memory_region: r5f-dma-memory@9db00000 {
 			compatible = "shared-dma-pool";
 			reg = <0x00 0x9db00000 0x00 0xc00000>;
@@ -301,6 +307,19 @@
 /* gic500 */
 /* gic_its */
 /* main_gpio_intr */
+
+&mailbox0_cluster0 {
+	mbox_r5_0: mbox-r5-0 {
+		ti,mbox-rx = <0 0 0>;
+		ti,mbox-tx = <1 0 0>;
+	};
+};
+
+&wkup_r5fss0_core0 {
+    mboxes = <&mailbox0_cluster0 &mbox_r5_0>;
+    memory-region = <&wkup_r5fss0_core0_dma_memory_region>,
+            <&wkup_r5fss0_core0_memory_region>;
+};
 
 &mcasp0 {
 	status = "disabled";
