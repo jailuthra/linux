@@ -551,6 +551,11 @@ static const struct soc_device_attribute cdns_dphy_socinfo[] = {
 		.revision = "SR1.0",
 		.data = &j721e_soc_data,
 	},
+	{
+		.family = "AM62AX",
+		.revision = "SR1.0",
+		.data = &j721e_soc_data,
+	},
 	{/* sentinel */}
 };
 
