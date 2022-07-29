@@ -2,7 +2,7 @@
 /*
  * Device Tree Source for AM62A SoC Family
  *
- * Copyright (C) 2020-2022 Texas Instruments Incorporated - https://www.ti.com/
+ * Copyright (C) 2022 Texas Instruments Incorporated - https://www.ti.com/
  */
 
 #include <dt-bindings/gpio/gpio.h>
@@ -13,7 +13,7 @@
 
 / {
 	model = "Texas Instruments K3 AM62A SoC";
-	compatible = "ti,am62a";
+	compatible = "ti,am62a7";
 	interrupt-parent = <&gic500>;
 	#address-cells = <2>;
 	#size-cells = <2>;

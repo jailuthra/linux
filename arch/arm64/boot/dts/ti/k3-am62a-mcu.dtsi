@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Device Tree Source for AM625 SoC Family MCU Domain peripherals
+ * Device Tree Source for AM62A SoC Family MCU Domain peripherals
  *
- * Copyright (C) 2020-2022 Texas Instruments Incorporated - https://www.ti.com/
+ * Copyright (C) 2022 Texas Instruments Incorporated - https://www.ti.com/
  */
 
 &cbass_mcu {
@@ -68,7 +68,7 @@
 
 	mcu_gpio0: gpio@4201000 {
 		compatible = "ti,am64-gpio", "ti,keystone-gpio";
-		reg = <0x0 0x4201000 0x0 0x100>;
+		reg = <0x00 0x4201000 0x00 0x100>;
 		gpio-controller;
 		#gpio-cells = <2>;
 		interrupt-parent = <&mcu_gpio_intr>;
