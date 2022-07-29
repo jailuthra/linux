@@ -49,27 +49,34 @@
 			no-map;
 		};
 
+
+		wkup_r5fss0_core0_dma_memory_region: r5f-dma-memory@9c800000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0x9c800000 0x00 0x100000>;
+			no-map;
+		};
+
 		wkup_r5fss0_core0_memory_region: r5f-dma-memory@9c900000 {
 			compatible = "shared-dma-pool";
-			reg = <0x00 0x9bc00000 0x00 0xf00000>;
+			reg = <0x00 0x9c900000 0x00 0x01e00000>;
 			no-map;
 		};
 
-		wkup_r5fss0_core0_dma_memory_region: r5f-dma-memory@9db00000 {
-			compatible = "shared-dma-pool";
-			reg = <0x00 0x9db00000 0x00 0xc00000>;
+		lpm_ctx_ddr: lpm-memory@9e700000 {
+			reg = <0x00 0x9e700000 0x00 0x80000>;
+			alignment = <0x1000>;
 			no-map;
 		};
 
-		c7x_0_dma_memory_region: c7x-dma-memory@a8000000 {
+		c7x_0_dma_memory_region: c7x-dma-memory@99800000 {
 			compatible = "shared-dma-pool";
-			reg = <0x00 0xa8000000 0x00 0x100000>;
+			reg = <0x00 0x99800000 0x00 0x100000>;
 			no-map;
 		};
 
-		c7x_0_memory_region: c7x-memory@a8100000 {
+		c7x_0_memory_region: c7x-memory@99900000 {
 			compatible = "shared-dma-pool";
-			reg = <0x00 0xa8100000 0x00 0xf00000>;
+			reg = <0x00 0x99900000 0x00 0x01efffff>;
 			no-map;
 		};
 	};
