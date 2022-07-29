@@ -27,15 +27,9 @@
 		bootargs = "console=ttyS2,115200n8 earlycon=ns16550a,mmio32,0x02800000";
 	};
 
-	cpus {
-		/delete-node/ cpu@1;
-		/delete-node/ cpu@2;
-		/delete-node/ cpu@3;
-	};
-
 	memory@80000000 {
 		device_type = "memory";
-		reg = <0x00000000 0x80000000 0x00000000 0x20000000>; /* 512M RAM */
+		reg = <0x00000000 0x80000000 0x00000000 0x40000000>; /* 1G RAM */
 	};
 
 	reserved-memory {
@@ -336,12 +330,6 @@
 
 &ti_csi2rx0 {
 	status = "disabled";
-};
-
-&cluster0 {
-	/delete-node/ core1;
-	/delete-node/ core2;
-	/delete-node/ core3;
 };
 
 /* L2_0 */
