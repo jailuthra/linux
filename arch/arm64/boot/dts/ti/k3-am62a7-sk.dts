@@ -60,6 +60,18 @@
 			reg = <0x00 0x9db00000 0x00 0xc00000>;
 			no-map;
 		};
+
+		c7x_0_dma_memory_region: c7x-dma-memory@a8000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xa8000000 0x00 0x100000>;
+			no-map;
+		};
+
+		c7x_0_memory_region: c7x-memory@a8100000 {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xa8100000 0x00 0xf00000>;
+			no-map;
+		};
 	};
 
 	vdd_mmc1: regulator-1 {
@@ -313,6 +325,17 @@
 		ti,mbox-rx = <0 0 0>;
 		ti,mbox-tx = <1 0 0>;
 	};
+
+	mbox_c7x_0: mbox-c7x-0 {
+		ti,mbox-rx = <2 0 0>;
+		ti,mbox-tx = <3 0 0>;
+	};
+};
+
+&c7x_0 {
+	mboxes = <&mailbox0_cluster0 &mbox_c7x_0>;
+	memory-region = <&c7x_0_dma_memory_region>,
+			<&c7x_0_memory_region>;
 };
 
 &wkup_r5fss0_core0 {
