@@ -226,6 +226,13 @@
 			AM62X_IOPAD(0x078, PIN_OUTPUT, 1) /* (T21) GPMC0_AD15.VOUT0_DATA23 */
 		>;
 	};
+
+	main_usb1_pins_default: main-usb1-pins-default {
+		pinctrl-single,pins = <
+			AM62X_IOPAD(0x0258, PIN_OUTPUT, 0) /* (F18) USB1_DRVVBUS */
+		>;
+	};
+
 };
 
 &wkup_i2c0 {
@@ -263,10 +270,6 @@
 };
 
 &usbss0 {
-	status = "disabled";
-};
-
-&usbss1 {
 	status = "disabled";
 };
 
@@ -497,6 +500,12 @@
 			remote-endpoint = <&sii9022_in>;
 		};
 	};
+};
+
+&usb1 {
+	dr_mode = "host";
+	pinctrl-names = "default";
+	pinctrl-0 = <&main_usb1_pins_default>;
 };
 
 /* L2_0 */
