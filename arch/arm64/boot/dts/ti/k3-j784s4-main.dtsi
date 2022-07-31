@@ -887,7 +887,7 @@
 			reg = <0x0 0x3d000 0x0 0x400>;
 			clocks = <&k3_clks 64 3>;
 			clock-names = "cpts";
-			interrupts-extended = <&gic500 GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&gic500 GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cpts";
 			ti,cpts-ext-ts-inputs = <4>;
 			ti,cpts-periodic-outputs = <2>;
@@ -932,7 +932,7 @@
 		};
 
 		main_cpsw1_mdio: mdio@f00 {
-			compatible = "ti,cpsw-mdio","ti,davinci_mdio";
+			compatible = "ti,cpsw-mdio", "ti,davinci_mdio";
 			reg = <0x0 0xf00 0x0 0x100>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -946,7 +946,7 @@
 			reg = <0x0 0x3d000 0x0 0x400>;
 			clocks = <&k3_clks 62 3>;
 			clock-names = "cpts";
-			interrupts-extended = <&gic500 GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts-extended = <&gic500 GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>;
 			interrupt-names = "cpts";
 			ti,cpts-ext-ts-inputs = <4>;
 			ti,cpts-periodic-outputs = <2>;
