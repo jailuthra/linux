@@ -4756,6 +4756,7 @@ static int bcdma_setup_resources(struct udma_dev *ud)
 		irq_res.sets += rm_res->sets * 2;
 	}
 
+	i = 0;
 	irq_res.desc = kcalloc(irq_res.sets, sizeof(*irq_res.desc), GFP_KERNEL);
 	if (ud->bchan_cnt) {
 		rm_res = tisci_rm->rm_ranges[RM_RANGE_BCHAN];
