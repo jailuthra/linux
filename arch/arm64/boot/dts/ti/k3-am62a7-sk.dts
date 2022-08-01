@@ -225,6 +225,22 @@
 			AM62X_IOPAD(0x074, PIN_OUTPUT, 1) /* (T20) GPMC0_AD14.VOUT0_DATA22 */
 			AM62X_IOPAD(0x078, PIN_OUTPUT, 1) /* (T21) GPMC0_AD15.VOUT0_DATA23 */
 		>;
+
+		ospi0_pins_default: ospi0-pins-default {
+			pinctrl-single,pins = <
+				AM62X_IOPAD(0x000, PIN_OUTPUT, 0) /* (H24) OSPI0_CLK */
+				AM62X_IOPAD(0x02c, PIN_OUTPUT, 0) /* (F23) OSPI0_CSn0 */
+				AM62X_IOPAD(0x00c, PIN_INPUT, 0) /* (E25) OSPI0_D0 */
+				AM62X_IOPAD(0x010, PIN_INPUT, 0) /* (G24) OSPI0_D1 */
+				AM62X_IOPAD(0x014, PIN_INPUT, 0) /* (F25) OSPI0_D2 */
+				AM62X_IOPAD(0x018, PIN_INPUT, 0) /* (F24) OSPI0_D3 */
+				AM62X_IOPAD(0x01c, PIN_INPUT, 0) /* (J23) OSPI0_D4 */
+				AM62X_IOPAD(0x020, PIN_INPUT, 0) /* (J25) OSPI0_D5 */
+				AM62X_IOPAD(0x024, PIN_INPUT, 0) /* (H25) OSPI0_D6 */
+				AM62X_IOPAD(0x028, PIN_INPUT, 0) /* (J22) OSPI0_D7 */
+				AM62X_IOPAD(0x008, PIN_INPUT, 0) /* (J24) OSPI0_DQS */
+			>;
+		};
 	};
 
 	main_usb1_pins_default: main-usb1-pins-default {
@@ -256,10 +272,6 @@
 
 /* inta_main_dmss */
 /* secure_proxy_main */
-
-&fss {
-	status = "disabled";
-};
 
 &main_mcan0 {
 	status = "disabled";
@@ -461,6 +473,24 @@
 
 &main_uart6 {
 	status = "disabled";
+};
+
+&ospi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&ospi0_pins_default>;
+	flash@0 {
+		compatible = "spi-nand";
+		reg = <0x0>;
+		spi-tx-bus-width = <0x8>;
+		spi-rx-bus-width = <0x8>;
+		spi-max-frequency = <0x17d7840>;
+		cdns,tshsl-ns = <0x3c>;
+		cdns,tsd2d-ns = <0x3c>;
+		cdns,tchsh-ns = <0x3c>;
+		cdns,tslch-ns = <0x3c>;
+		cdns,read-delay = <0x2>;
+		cdns,phy-mode;
+	};
 };
 
 &main_spi0 {
