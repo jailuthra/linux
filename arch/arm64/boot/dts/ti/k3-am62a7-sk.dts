@@ -136,6 +136,18 @@
 			};
 		};
 	};
+
+	clk_fusion_25M_fixed: fixed-clock-25M {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <25000000>;
+	};
+
+	clk_cam_24M: fixed-clock-0-24M {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
 };
 
 &main_pmx0 {
@@ -363,6 +375,14 @@
 		reg = <0x23>;
 		gpio-controller;
 		#gpio-cells = <2>;
+
+		p19-hog {
+			/* P19 - CSI_SEL2 */
+			gpio-hog;
+			gpios = <19 GPIO_ACTIVE_HIGH>;
+			output-low;
+			line-name = "CSI_SEL2";
+		};
 	};
 
 	sii9022: sii9022@3b {
@@ -399,7 +419,122 @@
 };
 
 &main_i2c2 {
-	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&main_i2c2_pins_default>;
+	clock-frequency = <400000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	i2c-switch@71 {
+		compatible = "nxp,pca9543";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x71>;
+
+		cam0_i2c: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <1>;
+
+			deser@3d {
+				compatible = "ti,ds90ub960-q1";
+
+				reg-names = "main", "ser0", "ser1", "ser2", "ser3";
+				reg       = <0x3d>, <0x44>, <0x45>, <0x46>, <0x47>;
+
+				clocks = <&clk_fusion_25M_fixed>;
+
+				i2c-alias-pool = /bits/ 16 <0x4a 0x4b 0x4c 0x4d 0x4e 0x4f>;
+
+				data-rate = <1600000000>;
+
+				ds90ub960_0_ports: ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					/* CSI-2 */
+					port@4 {
+						reg = <4>;
+						ds90ub960_0_csi_out: endpoint {
+							clock-lanes = <0>;
+							data-lanes = <1 2 3 4>;
+							remote-endpoint = <&csi2_phy0>;
+						};
+					};
+
+					/* FPDLink RX 0 */
+					port@0 {
+						reg = <0>;
+
+						ds90ub960_fpd3_in: endpoint {
+							remote-endpoint = <&ub953_out>;
+
+							mode = <3>;
+							bc-freq = <50000000>;
+
+							serializer: remote-chip {
+								compatible = "ti,ds90ub953-q1";
+
+								gpio-controller;
+								#gpio-cells = <2>;
+
+								i2c-1_8v;
+
+								ports {
+									#address-cells = <1>;
+									#size-cells = <0>;
+
+									port@0 {
+										reg = <0>;
+										ub953_in: endpoint {
+											remote-endpoint = <&sensor_out>;
+											data-lanes = <0 1>;
+											clock-noncontinuous;
+										};
+									};
+
+									port@1 {
+										reg = <1>;
+
+										ub953_out: endpoint {
+											remote-endpoint = <&ds90ub960_fpd3_in>;
+										};
+									};
+								};
+							};
+						};
+					};
+				};
+
+				ds90ub960_0_atr: i2c-atr {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					i2c@0 {
+						reg = <0>;
+						#address-cells = <1>;
+						#size-cells = <0>;
+
+						sensor@60 {
+							compatible = "ovti,ov2312";
+							reg = <0x60>;
+
+							clocks = <&clk_cam_24M>;
+							clock-names = "xvclk";
+
+							reset-gpios = <&serializer 2 GPIO_ACTIVE_HIGH>;
+
+							port {
+								sensor_out: endpoint {
+									remote-endpoint = <&ub953_in>;
+								};
+							};
+						};
+					};
+				};
+			};
+		};
+	};
 };
 
 &main_i2c3 {
@@ -604,3 +739,28 @@
 /* L2_0 */
 /* pmu */
 /* a53_timer0 */
+
+&csi0_port0 {
+	csi2_phy0: endpoint {
+		remote-endpoint = <&ds90ub960_0_csi_out>;
+		bus-type = <4>; /* CSI2 DPHY. */
+		clock-lanes = <0>;
+		data-lanes = <1 2 3 4>;
+	};
+};
+
+&csi0_port1 {
+	status = "disabled";
+};
+
+&csi0_port2 {
+	status = "disabled";
+};
+
+&csi0_port3 {
+	status = "disabled";
+};
+
+&csi0_port4 {
+	status = "disabled";
+};
