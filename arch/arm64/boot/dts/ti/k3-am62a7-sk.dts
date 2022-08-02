@@ -9,6 +9,7 @@
 
 #include <dt-bindings/leds/common.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
 #include <dt-bindings/net/ti-dp83867.h>
 #include "k3-am62a7.dtsi"
 
@@ -191,6 +192,20 @@
 			default-state = "off";
 		};
 	};
+
+	gpio_keys: gpio-keys {
+		compatible = "gpio-keys";
+		autorepeat;
+		pinctrl-names = "default";
+		pinctrl-0 = <&usr_int_btn_pins_default>;
+
+		sw5: sw5 {
+			label = "GPIO INT";
+			linux,code = <BTN_0>;
+			gpios = <&main_gpio1 23 GPIO_ACTIVE_LOW>;
+		};
+	};
+
 };
 
 &main_pmx0 {
@@ -364,6 +379,12 @@
 	usr_led_pins_default: usr-led-pins-default {
 		pinctrl-single,pins = <
 			AM62X_IOPAD(0x244, PIN_OUTPUT, 7) /* (D18) MMC1_SDWP.GPIO1_49 */
+		>;
+	};
+
+	usr_int_btn_pins_default: usr-int-btn-pins-default {
+		pinctrl-single,pins = <
+			AM62X_IOPAD(0x1d4, PIN_INPUT, 7) /* (C15) UART0_RTSn.GPIO1_23 */
 		>;
 	};
 };
