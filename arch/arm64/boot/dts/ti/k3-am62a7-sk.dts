@@ -112,6 +112,7 @@
 		edgeai_shared_region: edgeai_shared-memories {
 			compatible = "dma-heap-carveout";
 			reg = <0x00 0xa2300000 0x00 0x0c000000>;
+			no-map;
 		};
 
 		edgeai_core_heaps: edgeai-core-heap-memory@ae300000 {
