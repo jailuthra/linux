@@ -86,6 +86,23 @@ static irqreturn_t wave5_vpu_irq_thread(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+#define WAVE5_VPU_BUSY_POLL_INTERVAL (10 * NSEC_PER_MSEC)
+
+static enum hrtimer_restart wave5_vpu_timer_callback(struct hrtimer *timer)
+{
+	irqreturn_t ret;
+	struct vpu_device *dev =
+			container_of(timer, struct vpu_device, hrtimer);
+
+	ret = wave5_vpu_irq(0, dev);
+	if (ret == IRQ_WAKE_THREAD)
+		wave5_vpu_irq_thread(0, dev);
+
+	hrtimer_forward_now(timer, ns_to_ktime(WAVE5_VPU_BUSY_POLL_INTERVAL));
+
+	return HRTIMER_RESTART;
+}
+
 static void wave5_vpu_device_run(void *priv)
 {
 	struct vpu_instance *inst = priv;
@@ -266,22 +283,24 @@ static int wave5_vpu_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
-		dev_err(&pdev->dev, "failed to get irq resource\n");
-		ret = -ENXIO;
-		goto err_enc_unreg;
-	}
-	dev->irq = res->start;
+		dev_err(&pdev->dev, "failed to get irq resource, using poll mode\n");
+		hrtimer_init(&dev->hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL_PINNED);
+		dev->hrtimer.function = &wave5_vpu_timer_callback;
+	} else {
 
-	if (kfifo_alloc(&dev->irq_status, 16 * sizeof(int), GFP_KERNEL)) {
-		dev_err(&pdev->dev, "failed to allocate fifo\n");
-		goto err_enc_unreg;
-	}
+		dev->irq = res->start;
 
-	ret = devm_request_threaded_irq(&pdev->dev, dev->irq, wave5_vpu_irq,
-					wave5_vpu_irq_thread, 0, "vpu_irq", dev);
-	if (ret) {
-		dev_err(&pdev->dev, "fail to register interrupt handler: %d\n", ret);
-		goto err_kfifo_free;
+		if (kfifo_alloc(&dev->irq_status, 16 * sizeof(int), GFP_KERNEL)) {
+			dev_err(&pdev->dev, "failed to allocate fifo\n");
+			goto err_enc_unreg;
+		}
+
+		ret = devm_request_threaded_irq(&pdev->dev, dev->irq, wave5_vpu_irq,
+						wave5_vpu_irq_thread, 0, "vpu_irq", dev);
+		if (ret) {
+			dev_err(&pdev->dev, "fail to register interrupt handler: %d\n", ret);
+			goto err_kfifo_free;
+		}
 	}
 
 	ret = wave5_vpu_load_firmware(&pdev->dev, match_data->fw_name);

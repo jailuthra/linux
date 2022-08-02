@@ -1443,6 +1443,8 @@ static int wave5_vpu_open_enc(struct file *filp)
 	inst->xfer_func = V4L2_XFER_FUNC_DEFAULT;
 	inst->frame_rate = 30;
 
+	hrtimer_start(&dev->hrtimer, ns_to_ktime(0), HRTIMER_MODE_REL_PINNED);
+
 	return 0;
 
 free_inst:
@@ -1456,6 +1458,8 @@ static int wave5_vpu_enc_release(struct file *filp)
 	int retry_count = 10;
 	u32 fail_res;
 	int i, ret;
+
+	hrtimer_cancel(&inst->dev->hrtimer);
 
 	v4l2_m2m_ctx_release(inst->v4l2_fh.m2m_ctx);
 	if (inst->state != VPU_INST_STATE_NONE) {

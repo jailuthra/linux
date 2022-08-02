@@ -1028,6 +1028,7 @@ struct vpu_device {
 	struct kfifo irq_status;
 	int irq;
 	struct completion irq_done;
+	struct hrtimer hrtimer;
 	enum product_id	 product;
 	struct vpu_attr	 attr;
 	struct vpu_buf common_mem;
