@@ -372,7 +372,7 @@
 };
 
 &usbss0 {
-	status = "disabled";
+	ti,vbus-divider;
 };
 
 &cpsw3g {
@@ -394,6 +394,26 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_i2c0_pins_default>;
 	clock-frequency = <400000>;
+
+        typec_pd: usb-pd@3f {
+                compatible = "ti,tps6598x";
+                reg = <0x3f>;
+
+                connector {
+                        ports {
+                                #address-cells = <1>;
+                                #size-cells = <0>;
+
+                                port@1 {
+                                        reg = <1>;
+
+                                        usb_con_hs: endpoint {
+                                                remote-endpoint = <&typec_hs>;
+                                        };
+                                };
+                        };
+                };
+        };
 };
 
 &main_i2c1 {
@@ -793,6 +813,20 @@
 		ti,fifo-depth = <DP83867_PHYCR_FIFO_DEPTH_4_B_NIB>;
 		ti,min-output-impedance;
 	};
+};
+
+&usb0 {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        usb-role-switch;
+
+        port@1 {
+                reg = <1>;
+
+                typec_hs: endpoint {
+                        remote-endpoint = <&usb_con_hs>;
+                };
+        };
 };
 
 /* L2_0 */
