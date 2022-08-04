@@ -415,10 +415,6 @@
 	status = "disabled";
 };
 
-&crypto {
-	status = "disabled";
-};
-
 &usbss0 {
 	ti,vbus-divider;
 };
