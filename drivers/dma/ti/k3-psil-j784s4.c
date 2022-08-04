@@ -191,7 +191,9 @@ static struct psil_ep j784s4_src_ep_map[] = {
 	PSIL_CSI2RX(0x497d),
 	PSIL_CSI2RX(0x497e),
 	PSIL_CSI2RX(0x497f),
-	/* CPSW0 */
+	/* MAIN_CPSW9G */
+	PSIL_ETHERNET(0x4a00),
+	/* MCU_CPSW0 */
 	PSIL_ETHERNET(0x7000),
 	/* MCU_PDMA0 (MCU_PDMA_MISC_G0) - SPI0 */
 	PSIL_PDMA_XY_PKT(0x7100),
@@ -223,7 +225,7 @@ static struct psil_ep j784s4_src_ep_map[] = {
 
 /* PSI-L destination thread IDs, used for TX (DMA_MEM_TO_DEV) */
 static struct psil_ep j784s4_dst_ep_map[] = {
-	/* CPSW0 */
+	/* MCU_CPSW0 */
 	PSIL_ETHERNET(0xf000),
 	PSIL_ETHERNET(0xf001),
 	PSIL_ETHERNET(0xf002),
@@ -241,6 +243,15 @@ static struct psil_ep j784s4_dst_ep_map[] = {
 	PSIL_ETHERNET(0xc645),
 	PSIL_ETHERNET(0xc646),
 	PSIL_ETHERNET(0xc647),
+	/* MAIN_CPSW9G */
+	PSIL_ETHERNET(0xca00),
+	PSIL_ETHERNET(0xca01),
+	PSIL_ETHERNET(0xca02),
+	PSIL_ETHERNET(0xca03),
+	PSIL_ETHERNET(0xca04),
+	PSIL_ETHERNET(0xca05),
+	PSIL_ETHERNET(0xca06),
+	PSIL_ETHERNET(0xca07),
 	/* SA2UL */
 	PSIL_SA2UL(0xf500, 1),
 	PSIL_SA2UL(0xf501, 1),
