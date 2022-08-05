@@ -642,26 +642,6 @@
 				  "CDCI2_RSTZ", "USB2.0_MUX_SEL", "CANUART_MUX_SEL0", "CANUART_MUX2_SEL1",
 				  "CANUART_MUX1_SEL1", "ENET1_EXP_PWRDN", "ENET1_EXP_RESETZ", "ENET1_I2CMUX_SEL",
 				  "ENET1_EXP_SPARE2", "ENET2_EXP_RESETZ", "USER_INPUT1", "USER_LED1", "USER_LED2";
-		/* power-up ENET1 EXPANDER PHY */
-		qsgmii-line-hog {
-			gpio-hog;
-			gpios = <16 GPIO_ACTIVE_HIGH>;
-			output-low;
-		};
-		
-		/* Reset ENET1 EXPANDER PHY */
-		phy-reset-hog {
-			gpio-hog;
-			gpios = <17 GPIO_ACTIVE_HIGH>;
-			output-high;
-		};
-
-		/* Toggle MUX2 for Ethfw */
-		mux-sel-hog {
-			gpio-hog;
-			gpios = <13 GPIO_ACTIVE_HIGH>, <14 GPIO_ACTIVE_HIGH>, <15 GPIO_ACTIVE_HIGH>;
-			output-high;
-		};
 	};
 };
 
