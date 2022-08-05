@@ -29,6 +29,7 @@
 /* Exposure control */
 #define OV2312_EXPOSURE_MAX	(OV2312_VTS - 12)
 #define OV2312_EXPOSURE_DEFAULT 0x037c
+#define OV2312_IR_EXPOSURE	0x40
 
 /* Analog gain control */
 #define OV2312_AGAIN_MAX	0x1FF
