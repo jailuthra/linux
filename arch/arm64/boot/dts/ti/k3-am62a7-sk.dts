@@ -387,6 +387,12 @@
 			AM62X_IOPAD(0x1d4, PIN_INPUT, 7) /* (C15) UART0_RTSn.GPIO1_23 */
 		>;
 	};
+
+	main_epwm1_pins_default: main-epwm1-pins-default {
+		pinctrl-single,pins = <
+			AM62X_IOPAD(0x1a0, PIN_OUTPUT, 6) /* (B20) MCASP0_AXR0.GPIO1_10 */
+		>;
+	};
 };
 
 &wkup_i2c0 {
@@ -753,7 +759,9 @@
 };
 
 &epwm1 {
-	status = "disabled";
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&main_epwm1_pins_default>;
 };
 
 &epwm2 {
