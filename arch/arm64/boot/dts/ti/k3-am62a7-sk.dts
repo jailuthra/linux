@@ -121,6 +121,19 @@
 		gpio = <&exp1 3 GPIO_ACTIVE_HIGH>;
 	};
 
+	wlan_en: regulator-6 {
+		/* OUTPUT of SN74AVC2T244DQMR */
+		compatible = "regulator-fixed";
+		regulator-name = "wlan_en";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		regulator-always-on;
+		gpios = <&main_gpio0 71 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wlan_en_pins_default>;
+	};
+
 	hdmi_mstrclk: hdmi-mstrclk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -262,6 +275,30 @@
 			AM62X_IOPAD(0x228, PIN_INPUT, 0) /* (C21) MMC1_DAT2 */
 			AM62X_IOPAD(0x224, PIN_INPUT, 0) /* (D22) MMC1_DAT3 */
 			AM62X_IOPAD(0x240, PIN_INPUT, 0) /* (D17) MMC1_SDCD */
+		>;
+	};
+
+	wlan_en_pins_default: wlan-en-pins-default {
+		pinctrl-single,pins = <
+			AM62X_IOPAD(0x124, PIN_OUTPUT, 7) /* (A23) MMC2_SDCD.GPIO0_71 */
+		>;
+	};
+
+	main_mmc2_pins_default: main-mmc2-pins-default {
+		pinctrl-single,pins = <
+			AM62X_IOPAD(0x120, PIN_INPUT, 0) /* (C24) MMC2_CMD */
+			AM62X_IOPAD(0x118, PIN_INPUT, 0) /* (D25) MMC2_CLK */
+			AM62X_IOPAD(0x114, PIN_INPUT, 0) /* (B24) MMC2_DAT0 */
+			AM62X_IOPAD(0x110, PIN_INPUT, 0) /* (C25) MMC2_DAT1 */
+			AM62X_IOPAD(0x10c, PIN_INPUT, 0) /* (E23) MMC2_DAT2 */
+			AM62X_IOPAD(0x108, PIN_INPUT, 0) /* (D24) MMC2_DAT3 */
+			AM62X_IOPAD(0x11c, PIN_INPUT, 0) /* (#N/A) MMC2_CLKB */
+		>;
+	};
+
+	main_wlirq_pins_default: main-wlirq-pins-default {
+		pinctrl-single,pins = <
+			AM62X_IOPAD(0x128, PIN_INPUT, 7) /* (B23) MMC2_SDWP.GPIO0_72 */
 		>;
 	};
 
@@ -431,14 +468,6 @@
 	pinctrl-0 = <&main_mdio1_pins_default
 		     &main_rgmii1_pins_default
 		     &main_rgmii2_pins_default>;
-};
-
-&main_gpio0 {
-	status = "disabled";
-};
-
-&main_gpio1 {
-	status = "okay";
 };
 
 &main_i2c0 {
@@ -752,7 +781,28 @@
 };
 
 &sdhci2 {
-	status = "disabled";
+	vmmc-supply = <&wlan_en>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&main_mmc2_pins_default>;
+	bus-width = <4>;
+	non-removable;
+	ti,fails-without-test-cd;
+	cap-power-off-card;
+	keep-power-in-suspend;
+	ti,driver-strength-ohm = <50>;
+	pm-ignore-notify;
+	no-1-8-v;
+	assigned-clocks = <&k3_clks 157 159>, <&k3_clks 223 0>;
+	assigned-clock-parents = <&k3_clks 157 160>, <&k3_clks 223 5>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+	wlcore: wlcore@1 {
+		compatible = "brcm,bcm4329-fmac";
+		reg = <1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&main_wlirq_pins_default>;
+	};
 };
 
 &epwm0 {
