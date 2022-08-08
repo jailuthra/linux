@@ -373,15 +373,15 @@ static int ov2312_set_AB_mode(struct ov2312 *ov2312)
 	u32 strobe_start = OV2312_VTS - OV2312_IR_EXPOSURE - 7;
 	struct reg_sequence ov2312_groupB[] = {
 		{0x3208, 0x00},/* Group A (IR Dominant VC0) */
-		{OV2312_AEC_PK_EXPO_HI, 0x00},
-		{OV2312_AEC_PK_EXPO_LO, OV2312_IR_EXPOSURE},
+		{OV2312_AEC_PK_EXPO_HI, (OV2312_IR_EXPOSURE >> 8) & 0xff},
+		{OV2312_AEC_PK_EXPO_LO, OV2312_IR_EXPOSURE & 0xff},
 		{OV2312_AEC_PK_AGAIN_HI, 0x01},
 		{OV2312_AEC_PK_AGAIN_LO, 0x00},
 		{OV2312_AEC_PK_DGAIN_HI, 0x01},
 		{OV2312_AEC_PK_DGAIN_LO, 0x00},
 		{0x3920, 0xff},/* IR Strobe duty cycle */
-		{0x3927, 0x00},
-		{0x3928, OV2312_IR_EXPOSURE}, /* Strobe Width, same as Expo */
+		{0x3927, (OV2312_IR_STROBE >> 8) & 0xff},
+		{0x3928, OV2312_IR_STROBE & 0xff},
 		{0x3929, (strobe_start >> 8) & 0xff},
 		{0x392a, strobe_start & 0xff},
 		{0x4813, 0x01},/* VC=1. This register takes effect from next frame */
@@ -509,8 +509,8 @@ static int ov2312_suspend(struct device *dev)
 static int ov2312_start_stream(struct ov2312 *ov2312)
 {
 	int ret;
-	ret = ov2312_write_table(ov2312, ov2312_1600x1300_30fps_AB,
-				 ARRAY_SIZE(ov2312_1600x1300_30fps_AB));
+	ret = ov2312_write_table(ov2312, ov2312_1600x1300_60fps_AB,
+				 ARRAY_SIZE(ov2312_1600x1300_60fps_AB));
 	if (ret < 0)
 		return ret;
 

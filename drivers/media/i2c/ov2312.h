@@ -8,7 +8,7 @@
 #include <linux/types.h>
 
 #define OV2312_CHIP_ID	0x2311
-#define OV2312_FRAMERATE_DEFAULT 30
+#define OV2312_FRAMERATE_DEFAULT 60
 
 #define OV2312_OUT_WIDTH	1600
 #define OV2312_OUT_HEIGHT	1300
@@ -28,8 +28,9 @@
 
 /* Exposure control */
 #define OV2312_EXPOSURE_MAX	(OV2312_VTS - 12)
-#define OV2312_EXPOSURE_DEFAULT 0x037c
-#define OV2312_IR_EXPOSURE	0x40
+#define OV2312_EXPOSURE_DEFAULT 0x057c
+#define OV2312_IR_EXPOSURE	0x0090
+#define OV2312_IR_STROBE	OV2312_IR_EXPOSURE
 
 /* Analog gain control */
 #define OV2312_AGAIN_MAX	0x1FF
@@ -56,14 +57,14 @@ static const struct regmap_config ov2312_regmap_config = {
 	.val_bits = 8,
 };
 
-static const struct reg_sequence ov2312_1600x1300_30fps_AB[] = {
+static const struct reg_sequence ov2312_1600x1300_60fps_AB[] = {
 	{0x0103, 0x01},
 	{0x0100, 0x00},
 	{0x010c, 0x02},
 	{0x010b, 0x01},
 	{0x0300, 0x01},
 	{0x0302, 0x32},
-	{0x0303, 0x01},
+	{0x0303, 0x00},
 	{0x0304, 0x03},
 	{0x0305, 0x02},
 	{0x0306, 0x01},
@@ -123,8 +124,8 @@ static const struct reg_sequence ov2312_1600x1300_30fps_AB[] = {
 	{0x3809, 0x40},
 	{0x380a, 0x05},
 	{0x380b, 0x14},
-	{0x380c, 0x07},
-	{0x380d, 0x50},
+	{0x380c, 0x03},
+	{0x380d, 0xa8},
 	{0x380e, (OV2312_VTS >> 8) & 0xff},
 	{0x380f, OV2312_VTS & 0xff},
 	{0x3810, 0x00},
@@ -195,7 +196,7 @@ static const struct reg_sequence ov2312_1600x1300_30fps_AB[] = {
 	{0x4711, 0x00},
 	{0x4800, 0x00},
 	{0x481f, 0x30},
-	{0x4837, 0x28},
+	{0x4837, 0x14},
 	{0x4f00, 0x00},
 	{0x4f07, 0x00},
 	{0x4f08, 0x03},
