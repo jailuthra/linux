@@ -6,6 +6,7 @@
  */
 
 #include <linux/types.h>
+#include <linux/media-bus-format.h>
 
 #define OV2312_CHIP_ID	0x2311
 #define OV2312_FRAMERATE_DEFAULT 60
@@ -48,7 +49,7 @@ static const struct v4l2_area ov2312_framesizes[] = {
 };
 
 static const u32 ov2312_mbus_formats[] = {
-	MEDIA_BUS_FMT_SRGGB10_1X10,
+	MEDIA_BUS_FMT_SBGGI10_1x10,
 };
 
 

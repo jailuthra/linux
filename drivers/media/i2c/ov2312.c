@@ -235,7 +235,7 @@ static int ov2312_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 		fd->entry[fd->num_entries].length = fmt->width * fmt->height * bpp / 8;
 		fd->entry[fd->num_entries].pixelcode = fmt->code;
 		fd->entry[fd->num_entries].bus.csi2.vc = i;
-		fd->entry[fd->num_entries].bus.csi2.dt = 0x2b; /* SRGGB10 */
+		fd->entry[fd->num_entries].bus.csi2.dt = 0x2b; /* RAW10 */
 
 		fd->num_entries++;
 	}
