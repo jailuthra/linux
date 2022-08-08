@@ -813,8 +813,8 @@
 	ti,driver-strength-ohm = <50>;
 	pm-ignore-notify;
 	no-1-8-v;
-	assigned-clocks = <&k3_clks 157 159>, <&k3_clks 223 0>;
-	assigned-clock-parents = <&k3_clks 157 160>, <&k3_clks 223 5>;
+	assigned-clocks = <&k3_clks 157 159>, <&k3_clks 226 0>;
+	assigned-clock-parents = <&k3_clks 157 160>, <&k3_clks 226 5>;
 
 	#address-cells = <1>;
 	#size-cells = <0>;
