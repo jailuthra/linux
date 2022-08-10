@@ -153,7 +153,7 @@
 			no-map;
 		};
 
-		c71_0_memory_region: c71-memory@a6100000 {
+		c71_0_memory_region: c71-memory@a8100000 {
 			compatible = "shared-dma-pool";
 			reg = <0x00 0xa8100000 0x00 0xf00000>;
 			no-map;
@@ -201,7 +201,7 @@
 			no-map;
 		};
 
-		eth_multicast_memory_region: eth-multicast-memories@adc00000 {
+		eth_multicast_memory_region: eth-multicast-memories@af000000 {
 			reg = <0x00 0xaf000000 0x00 0x2000000>;
 			alignment = <0x1000>;
 			no-map;
