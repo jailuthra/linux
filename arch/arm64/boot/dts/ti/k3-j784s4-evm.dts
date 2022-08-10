@@ -1320,7 +1320,3 @@
 	pinctrl-0 = <&mcu_mcan1_pins_default>;
 	phys = <&transceiver2>;
 };
-
-&mcu_r5fss0 {
-	status = "disabled";
-};
