@@ -67,7 +67,7 @@
 		ti,sci-dev-id = <177>;
 		ti,interrupt-ranges = <16 928 16>;
 	};
-	
+
 	mcu_conf: syscon@40f00000 {
 		compatible = "syscon", "simple-mfd";
 		reg = <0x0 0x40f00000 0x0 0x20000>;
@@ -195,7 +195,7 @@
 		interrupt-names = "int0", "int1";
 		bosch,mram-cfg = <0x0 128 64 64 64 64 32 32>;
 	};
-	
+
 	mcu_navss: bus@28380000{
 		compatible = "simple-mfd";
 		#address-cells = <2>;
@@ -239,7 +239,7 @@
 			ti,sci-rm-range-rflow = <0x00>; /* GP RFLOW */
 		};
 	};
-	
+
 	mcu_cpsw: ethernet@46000000 {
 		compatible = "ti,j721e-cpsw-nuss";
 		#address-cells = <2>;
@@ -339,7 +339,7 @@
 		};
 
 	};
-	
+
 	mcu_r5fss0: r5fss@41000000 {
 		compatible = "ti,j721s2-r5fss";
 		ti,cluster-mode = <1>;
