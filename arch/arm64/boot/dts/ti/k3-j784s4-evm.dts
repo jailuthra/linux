@@ -56,8 +56,8 @@
 			reg = <0x00 0xa0000000 0x00 0x100000>;
 			no-map;
 		};
-		
-				mcu_r5fss0_core0_memory_region: r5f-memory@a0100000 {
+
+		mcu_r5fss0_core0_memory_region: r5f-memory@a0100000 {
 			compatible = "shared-dma-pool";
 			reg = <0x00 0xa0100000 0x00 0xf00000>;
 			no-map;
@@ -200,7 +200,7 @@
 			alignment = <0x1000>;
 			no-map;
 		};
-		
+
 		eth_multicast_memory_region: eth-multicast-memories@adc00000 {
 			reg = <0x00 0xaf000000 0x00 0x2000000>;
 			alignment = <0x1000>;
@@ -481,7 +481,7 @@
 			J784S4_IOPAD(0x09c, PIN_INPUT, 6) /* (AF35) MCASP0_AXR11.RGMII1_TX_CTL */
 		>;
 	};
-	
+
 	cpsw2g_mdio_pins_default: cpsw2g_mdio_pins_default {
 		pinctrl-single,pins = <
 			J784S4_IOPAD(0x0c0, PIN_INPUT, 6) /* (AD38) MCASP1_AXR0.MDIO0_MDC */
@@ -547,17 +547,17 @@
 		>;
 	};
 
-        mcu_mcan0_gpio_pins_default: mcu-mcan0-gpio-pins-default {
-                pinctrl-single,pins = <
+	mcu_mcan0_gpio_pins_default: mcu-mcan0-gpio-pins-default {
+		pinctrl-single,pins = <
 			J784S4_WKUP_IOPAD(0x0a8, PIN_INPUT, 7) /* (J38) MCU_SPI0_D1.WKUP_GPIO0_69 */
-                >;
-        };
+		>;
+	};
 
-        mcu_mcan1_gpio_pins_default: mcu-mcan1-gpio-pins-default {
-                pinctrl-single,pins = <
+	mcu_mcan1_gpio_pins_default: mcu-mcan1-gpio-pins-default {
+		pinctrl-single,pins = <
 			J784S4_WKUP_IOPAD(0x0c8, PIN_INPUT, 7) /* (J35) WKUP_GPIO0_2 */
-                >;
-        };
+		>;
+	};
 };
 
 &main_uart0 {
@@ -710,8 +710,10 @@
 	/* eMMC */
 	non-removable;
 	ti,driver-strength-ohm = <50>;
-	/* Disabling all the UHS modes by adding no-1-8-v property.
-	 * To re-enable UHS modes, remove the no-1-8-v property. */
+	/*
+	 * Disabling all the UHS modes by adding no-1-8-v property.
+	 * To re-enable UHS modes, remove the no-1-8-v property.
+	 */
 	no-1-8-v;
 	disable-wp;
 };
@@ -723,8 +725,10 @@
 	disable-wp;
 	vmmc-supply = <&vdd_mmc1>;
 	vqmmc-supply = <&vdd_sd_dv>;
-	/* Disabling all the UHS modes by adding no-1-8-v property.
-	 * To re-enable UHS modes, remove the no-1-8-v property. */
+	/*
+	 * Disabling all the UHS modes by adding no-1-8-v property.
+	 * To re-enable UHS modes, remove the no-1-8-v property.
+	 */
 	no-1-8-v;
 };
 
@@ -831,7 +835,7 @@
 
 &mailbox0_cluster3 {
 	interrupts = <424>;
-	
+
 	mbox_main_r5fss2_core0: mbox-main-r5fss2-core0 {
 		ti,mbox-rx = <0 0 0>;
 		ti,mbox-tx = <1 0 0>;
