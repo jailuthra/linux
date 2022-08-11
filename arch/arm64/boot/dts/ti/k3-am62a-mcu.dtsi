@@ -110,7 +110,7 @@
 				ti,sci-dev-id = <9>;
 				ti,sci-proc-ids = <0x03 0xff>;
 				resets = <&k3_reset 9 1>;
-				firmware-name = "am62-mcu-r5f0_0-fw";
+				firmware-name = "am62a-mcu-r5f0_0-fw";
 				ti,atcm-enable = <0>;
 				ti,btcm-enable = <1>;
 				ti,loczrama = <0>;
