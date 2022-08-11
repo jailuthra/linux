@@ -444,6 +444,13 @@
 			AM62AX_IOPAD(0x1a0, PIN_OUTPUT, 6) /* (B20) MCASP0_AXR0.GPIO1_10 */
 		>;
 	};
+
+	main_mcan0_pins_default: main-mcan0-pins-default {
+		pinctrl-single,pins = <
+			AM62AX_IOPAD(0x1d8, PIN_OUTPUT, 0) /* (B17) MCAN0_TX.UART5_RXD */
+			AM62AX_IOPAD(0x1dc, PIN_INPUT, 0) /* (C18) MCAN0_RX.UART5_TXD */
+		>;
+	};
 };
 
 &wkup_i2c0 {
@@ -465,7 +472,9 @@
 /* secure_proxy_main */
 
 &main_mcan0 {
-	status = "disabled";
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&main_mcan0_pins_default>;
 };
 
 &usbss0 {
