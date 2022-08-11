@@ -49,7 +49,7 @@ static const struct v4l2_area ov2312_framesizes[] = {
 };
 
 static const u32 ov2312_mbus_formats[] = {
-	MEDIA_BUS_FMT_SBGGI10_1x10,
+	MEDIA_BUS_FMT_SBGGI10_1X10,
 };
 
 
