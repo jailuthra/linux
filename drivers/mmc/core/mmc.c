@@ -1046,6 +1046,7 @@ static int mmc_select_bus_width(struct mmc_card *card)
 		else
 			err = mmc_bus_test(card, bus_width);
 
+		err = 0;
 		if (!err) {
 			err = bus_width;
 			break;
