@@ -220,7 +220,7 @@
 	};
 
 	gpio_keys: gpio-keys {
-		status = "disabled"
+		status = "disabled";
 		compatible = "gpio-keys";
 		autorepeat;
 		pinctrl-names = "default";
