@@ -27,10 +27,6 @@
 	};
 };
 
-&dmsc {
-	ti,ctx-memory-region = <&lpm_ctx_ddr>;
-};
-
 &crypto {
 	status = "disabled";
 };
@@ -39,31 +35,6 @@
 	/delete-property/ power-domains;
 	/delete-property/ clock-names;
 	/delete-property/ clocks;
-};
-
-&main_spi0 {
-	status = "disabled";
-};
-
-&main_spi1 {
-	status = "disabled";
-};
-
-&main_spi2 {
-	status = "disabled";
-};
-
-&sdhci2 {
-	status = "disabled";
-};
-
-/*
- * FIXME: Check explicitly if this is still needed.
- * Regular SK dts does not have this, while the
- * LPMDEMO seems to be adding it for some reason
- */
-&usbss1 {
-	ti,vbus-divider;
 };
 
 &dss {
@@ -78,38 +49,7 @@
 	status = "disabled";
 };
 
-&main_rti0 {
-	status = "disabled";
-};
-
-&main_rti1 {
-	status = "disabled";
-};
-
-&main_rti2 {
-	status = "disabled";
-};
-
-&main_rti3 {
-	status = "disabled";
-};
-
-&main_rti15 {
-	status = "disabled";
-};
-
 &cbass_mcu {
-	status = "disabled";
-};
-
-
-/* regulator-5 */
-&wlan_lten {
-	status = "disabled";
-};
-
-/* regulator-6 */
-&wlan_en {
 	status = "disabled";
 };
 
