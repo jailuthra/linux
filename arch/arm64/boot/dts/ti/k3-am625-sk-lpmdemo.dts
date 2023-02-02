@@ -41,14 +41,6 @@
 	status = "disabled";
 };
 
-&ti_csi2rx0 {
-	status = "disabled";
-};
-
-&dphy0 {
-	status = "disabled";
-};
-
 &cbass_mcu {
 	status = "disabled";
 };
