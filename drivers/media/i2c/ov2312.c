@@ -371,7 +371,7 @@ static int ov2312_set_AB_mode(struct ov2312 *ov2312)
 	u32 again = ov2312->again->val;
 	u32 dgain = ov2312->dgain->val;
 	struct reg_sequence ov2312_groupB[] = {
-		{0x3208, 0x00},/* Group B (RGB Dominant VC1) */
+		{0x3208, 0x01},/* Group B (RGB Dominant VC1) */
 		{OV2312_AEC_PK_EXPO_HI, (exposure >> 8) & 0xff},
 		{OV2312_AEC_PK_EXPO_LO, exposure & 0xff},
 		{OV2312_AEC_PK_AGAIN_HI, (again >> 4) & 0xff},
@@ -379,8 +379,8 @@ static int ov2312_set_AB_mode(struct ov2312 *ov2312)
 		{OV2312_AEC_PK_DGAIN_HI, (dgain >> 8) & 0xff},
 		{OV2312_AEC_PK_DGAIN_LO, dgain & 0xff},
 		{0x3920, 0x00},
-		{0x4813, 0x00},/* VC=0. This register takes effect from next frame */
-		{0x3208, 0x10},
+		{0x4813, 0x01},/* VC=1. This register takes effect from next frame */
+		{0x3208, 0x11},
 		{0x320D, 0x00},/* Auto mode switch between group0 and group1 ;setting to switch */
 		{0x320D, 0x31},
 		{0x3208, 0xA0},
