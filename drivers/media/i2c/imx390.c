@@ -131,11 +131,7 @@ static int imx390_init_cfg(struct v4l2_subdev *sd,
 {
 	int ret;
 
-	v4l2_subdev_lock_state(state);
-
 	ret = _imx390_set_routing(sd, state);
-
-	v4l2_subdev_unlock_state(state);
 
 	return ret;
 }
@@ -289,11 +285,7 @@ static int imx390_set_routing(struct v4l2_subdev *sd,
 	if (routing->num_routes == 0 || routing->num_routes > 1)
 		return -EINVAL;
 
-	v4l2_subdev_lock_state(state);
-
 	ret = _imx390_set_routing(sd, state);
-
-	v4l2_subdev_unlock_state(state);
 
 	return ret;
 }
