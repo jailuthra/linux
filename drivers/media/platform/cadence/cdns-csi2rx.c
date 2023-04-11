@@ -123,6 +123,10 @@ static const struct csi2rx_fmt formats[] = {
 		.code	= MEDIA_BUS_FMT_SRGGB10_1X10,
 		.bpp	= 10,
 	},
+	{
+		.code	= MEDIA_BUS_FMT_SRGGB12_1X12,
+		.bpp	= 12,
+	},
 };
 
 static const struct csi2rx_fmt *csi2rx_get_fmt_by_code(u32 code)
