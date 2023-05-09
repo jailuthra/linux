@@ -339,64 +339,39 @@ out:
 	return ret;
 }
 
-static struct v4l2_mbus_framefmt *
-csi2rx_get_pad_format(struct csi2rx_priv *csi2rx,
-		      struct v4l2_subdev_state *state,
-		      unsigned int pad, u32 which)
-{
-	switch (which) {
-	case V4L2_SUBDEV_FORMAT_TRY:
-		return v4l2_subdev_get_try_format(&csi2rx->subdev, state, pad);
-	case V4L2_SUBDEV_FORMAT_ACTIVE:
-		return &csi2rx->fmt;
-	default:
-		return NULL;
-	}
-}
-
-static int csi2rx_get_fmt(struct v4l2_subdev *subdev,
-			  struct v4l2_subdev_state *state,
-			  struct v4l2_subdev_format *format)
-{
-	struct csi2rx_priv *csi2rx = v4l2_subdev_to_csi2rx(subdev);
-	struct v4l2_mbus_framefmt *framefmt;
-
-	framefmt = csi2rx_get_pad_format(csi2rx, state, format->pad,
-					 format->which);
-	if (!framefmt)
-		return -EINVAL;
-
-	mutex_lock(&csi2rx->lock);
-	format->format = *framefmt;
-	mutex_unlock(&csi2rx->lock);
-
-	return 0;
-}
-
 static int csi2rx_set_fmt(struct v4l2_subdev *subdev,
 			  struct v4l2_subdev_state *state,
 			  struct v4l2_subdev_format *format)
 {
 	struct csi2rx_priv *csi2rx = v4l2_subdev_to_csi2rx(subdev);
-	struct v4l2_mbus_framefmt *framefmt;
+	struct v4l2_mbus_framefmt *fmt;
+	unsigned int i;
 
 	/* No transcoding, source and sink formats must match. */
 	if (format->pad != CSI2RX_PAD_SINK)
-		return csi2rx_get_fmt(subdev, state, format);
+		return v4l2_subdev_get_fmt(subdev, state, format);
 
 	if (!csi2rx_get_fmt_by_code(format->format.code))
 		format->format.code = formats[0].code;
 
 	format->format.field = V4L2_FIELD_NONE;
 
-	framefmt = csi2rx_get_pad_format(csi2rx, state, format->pad,
-					 format->which);
-	if (!framefmt)
+	/* Set sink format */
+	fmt = v4l2_subdev_get_pad_format(subdev, state, format->pad);
+	if (!fmt)
 		return -EINVAL;
 
-	mutex_lock(&csi2rx->lock);
-	*framefmt = format->format;
-	mutex_unlock(&csi2rx->lock);
+	*fmt = format->format;
+
+	/* Propagate to source formats */
+	for (i = CSI2RX_PAD_SOURCE_STREAM0; i < CSI2RX_PAD_MAX; i++) {
+		fmt = v4l2_subdev_get_pad_format(subdev, state, i);
+		if (!fmt)
+			return -EINVAL;
+		*fmt = format->format;
+	}
+
+	csi2rx->fmt = format->format;
 
 	return 0;
 }
@@ -424,7 +399,7 @@ static int csi2rx_init_cfg(struct v4l2_subdev *subdev,
 }
 
 static const struct v4l2_subdev_pad_ops csi2rx_pad_ops = {
-	.get_fmt	= csi2rx_get_fmt,
+	.get_fmt	= v4l2_subdev_get_fmt,
 	.set_fmt	= csi2rx_set_fmt,
 	.init_cfg	= csi2rx_init_cfg,
 };
@@ -659,13 +634,13 @@ static int csi2rx_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_cleanup;
 
-	ret = csi2rx_init_cfg(&csi2rx->subdev, NULL);
+	ret = v4l2_subdev_init_finalize(&csi2rx->subdev);
 	if (ret)
 		goto err_cleanup;
 
 	ret = v4l2_async_register_subdev(&csi2rx->subdev);
 	if (ret < 0)
-		goto err_cleanup;
+		goto err_free_state;
 
 	dev_info(&pdev->dev,
 		 "Probed CSI2RX with %u/%u lanes, %u streams, %s D-PHY\n",
@@ -675,6 +650,8 @@ static int csi2rx_probe(struct platform_device *pdev)
 
 	return 0;
 
+err_free_state:
+	v4l2_subdev_cleanup(&csi2rx->subdev);
 err_cleanup:
 	v4l2_async_nf_unregister(&csi2rx->notifier);
 	v4l2_async_nf_cleanup(&csi2rx->notifier);
@@ -691,6 +668,7 @@ static void csi2rx_remove(struct platform_device *pdev)
 	v4l2_async_nf_unregister(&csi2rx->notifier);
 	v4l2_async_nf_cleanup(&csi2rx->notifier);
 	v4l2_async_unregister_subdev(&csi2rx->subdev);
+	v4l2_subdev_cleanup(&csi2rx->subdev);
 	media_entity_cleanup(&csi2rx->subdev.entity);
 	kfree(csi2rx);
 }
