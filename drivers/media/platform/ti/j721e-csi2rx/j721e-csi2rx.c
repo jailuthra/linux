@@ -32,6 +32,7 @@
 #define SHIM_DMACNTX_YUV422		GENMASK(27, 26)
 #define SHIM_DMACNTX_DUAL_PCK_CFG	BIT(24)
 #define SHIM_DMACNTX_SIZE		GENMASK(21, 20)
+#define SHIM_DMACNTX_VC			GENMASK(9, 6)
 #define SHIM_DMACNTX_FMT		GENMASK(5, 0)
 #define SHIM_DMACNTX_YUV422_MODE_11	3
 #define SHIM_DMACNTX_SIZE_8		0
@@ -103,6 +104,7 @@ struct ti_csi2rx_dev;
 
 struct ti_csi2rx_ctx {
 	struct ti_csi2rx_dev		*csi;
+	struct v4l2_subdev_route	*route;
 	struct video_device		vdev;
 	struct vb2_queue		vidq;
 	struct mutex			mutex; /* To serialize ioctls. */
@@ -111,6 +113,8 @@ struct ti_csi2rx_ctx {
 	struct media_pad		pad;
 	u32				sequence;
 	u32				idx;
+	u32				vc;
+	u32				stream;
 };
 
 struct ti_csi2rx_dev {
@@ -134,6 +138,7 @@ struct ti_csi2rx_dev {
 		dma_addr_t		paddr;
 		size_t			len;
 	} drain;
+	bool				vc_cached;
 };
 
 static inline struct ti_csi2rx_dev *to_csi2rx_dev(struct v4l2_subdev *sd)
@@ -638,6 +643,7 @@ static void ti_csi2rx_setup_shim(struct ti_csi2rx_ctx *ctx)
 	}
 
 	reg |= FIELD_PREP(SHIM_DMACNTX_SIZE, fmt->size);
+	reg |= FIELD_PREP(SHIM_DMACNTX_VC, ctx->vc);
 
 	writel(reg, csi->shim + SHIM_DMACNTX(ctx->idx));
 
@@ -911,6 +917,83 @@ static void ti_csi2rx_buffer_queue(struct vb2_buffer *vb)
 	}
 }
 
+static int ti_csi2rx_get_route(struct ti_csi2rx_ctx *ctx)
+{
+	struct ti_csi2rx_dev *csi = ctx->csi;
+	struct media_pad *pad;
+	struct v4l2_subdev_state *state;
+	struct v4l2_subdev_route *r;
+
+	/* Get the source pad connected to this ctx */
+	pad = media_entity_remote_source_pad_unique(ctx->pad.entity);
+	if (!pad) {
+		dev_err(csi->dev, "No pad connected to ctx %d\n", ctx->idx);
+		v4l2_subdev_unlock_state(state);
+		return -ENODEV;
+	}
+
+	state = v4l2_subdev_lock_and_get_active_state(&csi->subdev);
+
+	for_each_active_route(&state->routing, r) {
+		if (!(r->flags & V4L2_SUBDEV_ROUTE_FL_ACTIVE))
+			continue;
+		if (r->source_pad != pad->index)
+			continue;
+
+		ctx->route = r;
+	}
+
+	v4l2_subdev_unlock_state(state);
+
+	if (!ctx->route)
+		return -ENODEV;
+
+	return 0;
+}
+
+static int ti_csi2rx_get_vc(struct ti_csi2rx_ctx *ctx)
+{
+	struct ti_csi2rx_dev *csi = ctx->csi;
+	struct ti_csi2rx_ctx *curr_ctx;
+	struct v4l2_mbus_frame_desc fd;
+	struct media_pad *source_pad;
+	struct v4l2_subdev_route *curr_route;
+	int ret;
+	unsigned int i, j;
+
+	/* Get the frame desc form source */
+	source_pad = media_entity_remote_pad_unique(&csi->subdev.entity, MEDIA_PAD_FL_SOURCE);
+	if (!source_pad)
+		return -ENODEV;
+
+	ret = v4l2_subdev_call(csi->source, pad, get_frame_desc, source_pad->index, &fd);
+	if (ret)
+		return ret;
+
+	if (fd.type != V4L2_MBUS_FRAME_DESC_TYPE_CSI2)
+		return -EINVAL;
+
+	for (i = 0; i < csi->num_ctx; i++) {
+		curr_ctx = &csi->ctx[i];
+
+		/* Capture VC 0 by default */
+		curr_ctx->vc = 0;
+
+		ret = ti_csi2rx_get_route(curr_ctx);
+		if (ret)
+			continue;
+
+		curr_route = curr_ctx->route;
+		curr_ctx->stream = curr_route->sink_stream;
+
+		for (j = 0; j < fd.num_entries; j++)
+			if (curr_ctx->stream == fd.entry[j].stream)
+				curr_ctx->vc = fd.entry[j].bus.csi2.vc;
+	}
+
+	return 0;
+}
+
 static int ti_csi2rx_start_streaming(struct vb2_queue *vq, unsigned int count)
 {
 	struct ti_csi2rx_ctx *ctx = vb2_get_drv_priv(vq);
@@ -930,6 +1013,25 @@ static int ti_csi2rx_start_streaming(struct vb2_queue *vq, unsigned int count)
 	ret = video_device_pipeline_start(&ctx->vdev, &csi->pipe);
 	if (ret)
 		goto err;
+
+	/* If no stream is routed to this ctx, exit early */
+	ret = ti_csi2rx_get_route(ctx);
+	if (ret)
+		goto err;
+
+	/* Get the VC for all enabled ctx on first stream start */
+	mutex_lock(&csi->mutex);
+	if (!csi->vc_cached) {
+		ret = ti_csi2rx_get_vc(ctx);
+		if (ret == -ENOIOCTLCMD) {
+			ctx->vc = 0;
+		} else if (ret < 0) {
+			mutex_unlock(&csi->mutex);
+			goto err;
+		}
+		csi->vc_cached = true;
+	}
+	mutex_unlock(&csi->mutex);
 
 	ti_csi2rx_setup_shim(ctx);
 
@@ -976,6 +1078,10 @@ static void ti_csi2rx_stop_streaming(struct vb2_queue *vq)
 
 	writel(0, csi->shim + SHIM_CNTL);
 	writel(0, csi->shim + SHIM_DMACNTX(ctx->idx));
+
+	mutex_lock(&csi->mutex);
+	csi->vc_cached = false;
+	mutex_unlock(&csi->mutex);
 
 	ret = v4l2_subdev_call(&csi->subdev, video, s_stream, 0);
 	if (ret)
@@ -1329,6 +1435,8 @@ static int ti_csi2rx_init_ctx(struct ti_csi2rx_ctx *ctx)
 	pix_fmt->xfer_func = V4L2_XFER_FUNC_SRGB,
 
 	ti_csi2rx_fill_fmt(fmt, &ctx->v_fmt);
+
+	ctx->route = NULL;
 
 	ctx->pad.flags = MEDIA_PAD_FL_SINK;
 	vdev->entity.ops = &ti_csi2rx_video_entity_ops;
