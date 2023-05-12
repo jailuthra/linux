@@ -156,7 +156,7 @@
 
 		sound_master: simple-audio-card,codec {
 			sound-dai = <&tlv320aic3106>;
-			clocks = <&tlv320_mclk>;
+			clocks = <&audio_refclk 0>;
 		};
 	};
 
