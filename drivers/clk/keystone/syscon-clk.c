@@ -61,6 +61,7 @@ static const struct clk_ops ti_syscon_gate_clk_ops = {
 
 static struct clk_hw
 *ti_syscon_gate_clk_register(struct device *dev, struct regmap *regmap,
+			     const char *parent_name,
 			     const struct ti_syscon_gate_clk_data *data)
 {
 	struct ti_syscon_gate_clk_priv *priv;
@@ -73,9 +74,15 @@ static struct clk_hw
 
 	init.name = data->name;
 	init.ops = &ti_syscon_gate_clk_ops;
-	init.parent_names = NULL;
-	init.num_parents = 0;
-	init.flags = 0;
+	if (parent_name) {
+		init.parent_names = &parent_name;
+		init.num_parents = 1;
+		init.flags = CLK_SET_RATE_PARENT;
+	} else {
+		init.parent_names = NULL;
+		init.num_parents = 0;
+		init.flags = 0;
+	}
 
 	priv->regmap = regmap;
 	priv->reg = data->offset;
@@ -94,8 +101,9 @@ static int ti_syscon_gate_clk_probe(struct platform_device *pdev)
 	const struct ti_syscon_gate_clk_data *data, *p;
 	struct clk_hw_onecell_data *hw_data;
 	struct device *dev = &pdev->dev;
+	int num_clks, num_parents, i;
+	const char *parent_name;
 	struct regmap *regmap;
-	int num_clks, i;
 
 	data = device_get_match_data(dev);
 	if (!data)
@@ -113,6 +121,13 @@ static int ti_syscon_gate_clk_probe(struct platform_device *pdev)
 	for (p = data; p->name; p++)
 		num_clks++;
 
+	num_parents = of_clk_get_parent_count(dev->of_node);
+	if (num_parents > 0 && num_parents != num_clks) {
+		dev_err(dev, "%d parents != %d clocks\n",
+			num_parents, num_clks);
+		return -EINVAL;
+	}
+
 	hw_data = devm_kzalloc(dev, struct_size(hw_data, hws, num_clks),
 			       GFP_KERNEL);
 	if (!hw_data)
@@ -121,7 +136,11 @@ static int ti_syscon_gate_clk_probe(struct platform_device *pdev)
 	hw_data->num = num_clks;
 
 	for (i = 0; i < num_clks; i++) {
+		parent_name = NULL;
+		if (num_parents > 0)
+			parent_name = of_clk_get_parent_name(dev->of_node, i);
 		hw_data->hws[i] = ti_syscon_gate_clk_register(dev, regmap,
+							      parent_name,
 							      &data[i]);
 		if (IS_ERR(hw_data->hws[i]))
 			dev_warn(dev, "failed to register %s\n",
@@ -169,6 +188,12 @@ static const struct ti_syscon_gate_clk_data am62_clk_data[] = {
 	{ /* Sentinel */ },
 };
 
+static const struct ti_syscon_gate_clk_data am62_audio_clk_data[] = {
+	TI_SYSCON_CLK_GATE("audio_refclk0", 0x0, 15),
+	TI_SYSCON_CLK_GATE("audio_refclk1", 0x4, 15),
+	{ /* Sentinel */ },
+};
+
 static const struct of_device_id ti_syscon_gate_clk_ids[] = {
 	{
 		.compatible = "ti,am654-ehrpwm-tbclk",
@@ -181,6 +206,10 @@ static const struct of_device_id ti_syscon_gate_clk_ids[] = {
 	{
 		.compatible = "ti,am62-epwm-tbclk",
 		.data = &am62_clk_data,
+	},
+	{
+		.compatible = "ti,am62-audio-refclk",
+		.data = &am62_audio_clk_data,
 	},
 	{ }
 };
