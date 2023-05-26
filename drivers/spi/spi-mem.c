@@ -172,7 +172,17 @@ bool spi_mem_default_supports_op(struct spi_mem *mem,
 		if (!spi_mem_controller_is_capable(ctlr, dtr))
 			return false;
 
-		if (op->cmd.nbytes != 2)
+		if (op->cmd.buswidth == 8 && op->cmd.nbytes % 2)
+			return false;
+
+		if (op->addr.nbytes && op->addr.buswidth == 8 && op->addr.nbytes % 2)
+			return false;
+
+		if (op->dummy.nbytes && op->dummy.buswidth == 8 && op->dummy.nbytes % 2)
+			return false;
+
+		if (op->data.dir != SPI_MEM_NO_DATA &&
+		    op->dummy.buswidth == 8 && op->data.nbytes % 2)
 			return false;
 	} else {
 		if (op->cmd.nbytes != 1)
