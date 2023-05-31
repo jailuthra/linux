@@ -107,7 +107,5 @@
 		ti,sci-proc-ids = <0x18 0xff>;
 		resets = <&k3_reset 9 1>;
 		firmware-name = "am62-mcu-m4f0_0-fw";
-		/* HACK: driver is unstable */
-		status = "disabled";
 	};
 };
