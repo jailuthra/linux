@@ -1130,10 +1130,9 @@ int v4l2_subdev_link_validate_default(struct v4l2_subdev *sd,
 }
 EXPORT_SYMBOL_GPL(v4l2_subdev_link_validate_default);
 
-static int
-v4l2_subdev_link_validate_get_format(struct media_pad *pad, u32 stream,
-				     struct v4l2_subdev_format *fmt,
-				     bool states_locked)
+int v4l2_subdev_link_validate_get_format(struct media_pad *pad, u32 stream,
+					 struct v4l2_subdev_format *fmt,
+					 bool states_locked)
 {
 	struct v4l2_subdev_state *state;
 	struct v4l2_subdev *sd;
@@ -1165,6 +1164,7 @@ v4l2_subdev_link_validate_get_format(struct media_pad *pad, u32 stream,
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(v4l2_subdev_link_validate_get_format);
 
 #if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
 
