@@ -1302,6 +1302,18 @@ int v4l2_subdev_link_validate_default(struct v4l2_subdev *sd,
 				      struct v4l2_subdev_format *sink_fmt);
 
 /**
+ * v4l2_subdev_link_validate_get_format - get format for media link validation
+ *
+ * @pad: pad id
+ * @stream: stream id
+ * @fmt: pointer to &struct v4l2_subdev_format
+ * @states_locked: is the subdev state already locked
+ */
+int v4l2_subdev_link_validate_get_format(struct media_pad *pad, u32 stream,
+					 struct v4l2_subdev_format *fmt,
+					 bool states_locked);
+
+/**
  * v4l2_subdev_link_validate - validates a media link
  *
  * @link: pointer to &struct media_link
