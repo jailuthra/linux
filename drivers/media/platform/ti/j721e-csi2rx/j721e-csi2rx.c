@@ -824,25 +824,6 @@ static int ti_csi2rx_init_vb2q(struct ti_csi2rx_dev *csi)
 	return 0;
 }
 
-static int ti_csi2rx_link_validate_get_fmt(struct media_pad *pad,
-					   struct v4l2_subdev_format *fmt)
-{
-	if (is_media_entity_v4l2_subdev(pad->entity)) {
-		struct v4l2_subdev *sd =
-			media_entity_to_v4l2_subdev(pad->entity);
-
-		fmt->which = V4L2_SUBDEV_FORMAT_ACTIVE;
-		fmt->pad = pad->index;
-		return v4l2_subdev_call(sd, pad, get_fmt, NULL, fmt);
-	}
-
-	WARN(pad->entity->function != MEDIA_ENT_F_IO_V4L,
-	     "Driver bug! Wrong media entity type 0x%08x, entity %s\n",
-	     pad->entity->function, pad->entity->name);
-
-	return -EINVAL;
-}
-
 static int ti_csi2rx_link_validate(struct media_link *link)
 {
 	struct media_entity *entity = link->sink->entity;
@@ -853,7 +834,8 @@ static int ti_csi2rx_link_validate(struct media_link *link)
 	const struct ti_csi2rx_fmt *ti_fmt;
 	int ret;
 
-	ret = ti_csi2rx_link_validate_get_fmt(link->source, &source_fmt);
+	ret = v4l2_subdev_link_validate_get_format(link->source, 0,
+						   &source_fmt, false);
 	if (ret)
 		return ret;
 
