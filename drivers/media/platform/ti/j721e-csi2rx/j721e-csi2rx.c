@@ -601,17 +601,7 @@ static void ti_csi2rx_cleanup_buffers(struct ti_csi2rx_dev *csi,
 	int ret;
 
 	spin_lock_irqsave(&dma->lock, flags);
-	list_for_each_entry_safe(buf, tmp, &csi->dma.queue, list) {
-		list_del(&buf->list);
-		vb2_buffer_done(&buf->vb.vb2_buf, buf_state);
-	}
-
-	if (dma->curr)
-		vb2_buffer_done(&dma->curr->vb.vb2_buf, buf_state);
-
 	state = csi->dma.state;
-
-	dma->curr = NULL;
 	dma->state = TI_CSI2RX_DMA_STOPPED;
 	spin_unlock_irqrestore(&dma->lock, flags);
 
@@ -621,6 +611,19 @@ static void ti_csi2rx_cleanup_buffers(struct ti_csi2rx_dev *csi,
 			dev_dbg(csi->dev,
 				"Failed to drain DMA. Next frame might be bogus\n");
 	}
+	ret = dmaengine_terminate_sync(csi->dma.chan);
+	if (ret)
+		dev_err(csi->dev, "Failed to stop DMA: %d\n", ret);
+
+	spin_lock_irqsave(&dma->lock, flags);
+	list_for_each_entry_safe(buf, tmp, &csi->dma.queue, list) {
+		list_del(&buf->list);
+		vb2_buffer_done(&buf->vb.vb2_buf, buf_state);
+	}
+
+	if (dma->curr)
+		vb2_buffer_done(&dma->curr->vb.vb2_buf, buf_state);
+	spin_unlock_irqrestore(&dma->lock, flags);
 }
 
 static int ti_csi2rx_queue_setup(struct vb2_queue *q, unsigned int *nbuffers,
@@ -739,7 +742,6 @@ static int ti_csi2rx_start_streaming(struct vb2_queue *vq, unsigned int count)
 	spin_lock_irqsave(&dma->lock, flags);
 	buf = list_entry(dma->queue.next, struct ti_csi2rx_buffer, list);
 	list_del(&buf->list);
-	dma->state = TI_CSI2RX_DMA_ACTIVE;
 	dma->curr = buf;
 
 	ret = ti_csi2rx_start_dma(csi, buf);
@@ -749,6 +751,7 @@ static int ti_csi2rx_start_streaming(struct vb2_queue *vq, unsigned int count)
 		goto err_pipeline;
 	}
 
+	dma->state = TI_CSI2RX_DMA_ACTIVE;
 	spin_unlock_irqrestore(&dma->lock, flags);
 
 	ret = v4l2_subdev_call(csi->subdev, video, s_stream, 1);
@@ -779,11 +782,6 @@ static void ti_csi2rx_stop_streaming(struct vb2_queue *vq)
 		dev_err(csi->dev, "Failed to stop subdev stream\n");
 
 	writel(0, csi->shim + SHIM_CNTL);
-
-	ret = dmaengine_terminate_sync(csi->dma.chan);
-	if (ret)
-		dev_err(csi->dev, "Failed to stop DMA: %d\n", ret);
-
 	writel(0, csi->shim + SHIM_DMACNTX);
 
 	ti_csi2rx_cleanup_buffers(csi, VB2_BUF_STATE_ERROR);
