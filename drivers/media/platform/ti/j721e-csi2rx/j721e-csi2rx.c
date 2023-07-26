@@ -82,10 +82,9 @@ struct ti_csi2rx_dma {
 	struct list_head		queue;
 	enum ti_csi2rx_dma_state	state;
 	/*
-	 * Current buffer being processed by DMA. NULL if no buffer is being
-	 * processed.
+	 * Queue of buffers submitted to DMA engine.
 	 */
-	struct ti_csi2rx_buffer		*curr;
+	struct list_head		submitted;
 };
 
 struct ti_csi2rx_dev {
@@ -538,25 +537,23 @@ static void ti_csi2rx_dma_callback(void *param)
 
 	spin_lock_irqsave(&dma->lock, flags);
 
-	WARN_ON(dma->curr != buf);
+	WARN_ON(!list_is_first(&buf->list, &dma->submitted));
 	vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
+	list_del(&buf->list);
 
 	/* If there are more buffers to process then start their transfer. */
-	dma->curr = NULL;
 	while (!list_empty(&dma->queue)) {
 		buf = list_entry(dma->queue.next, struct ti_csi2rx_buffer, list);
-		list_del(&buf->list);
 
 		if (ti_csi2rx_start_dma(csi, buf)) {
 			dev_err(csi->dev, "Failed to queue the next buffer for DMA\n");
 			vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
 		} else {
-			dma->curr = buf;
-			break;
+			list_move_tail(&buf->list, &dma->submitted);
 		}
 	}
 
-	if (!dma->curr)
+	if (list_empty(&dma->submitted))
 		dma->state = TI_CSI2RX_DMA_IDLE;
 
 	spin_unlock_irqrestore(&dma->lock, flags);
@@ -620,9 +617,10 @@ static void ti_csi2rx_cleanup_buffers(struct ti_csi2rx_dev *csi,
 		list_del(&buf->list);
 		vb2_buffer_done(&buf->vb.vb2_buf, buf_state);
 	}
-
-	if (dma->curr)
-		vb2_buffer_done(&dma->curr->vb.vb2_buf, buf_state);
+	list_for_each_entry_safe(buf, tmp, &csi->dma.submitted, list) {
+		list_del(&buf->list);
+		vb2_buffer_done(&buf->vb.vb2_buf, buf_state);
+	}
 	spin_unlock_irqrestore(&dma->lock, flags);
 }
 
@@ -684,7 +682,6 @@ static void ti_csi2rx_buffer_queue(struct vb2_buffer *vb)
 		 * callback is not being fired.
 		 */
 		restart_dma = true;
-		dma->curr = buf;
 		dma->state = TI_CSI2RX_DMA_ACTIVE;
 	} else {
 		list_add_tail(&buf->list, &dma->queue);
@@ -709,8 +706,11 @@ static void ti_csi2rx_buffer_queue(struct vb2_buffer *vb)
 			dev_err(csi->dev, "Failed to start DMA: %d\n", ret);
 			spin_lock_irqsave(&dma->lock, flags);
 			vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
-			dma->curr = NULL;
 			dma->state = TI_CSI2RX_DMA_IDLE;
+			spin_unlock_irqrestore(&dma->lock, flags);
+		} else {
+			spin_lock_irqsave(&dma->lock, flags);
+			list_add_tail(&buf->list, &dma->submitted);
 			spin_unlock_irqrestore(&dma->lock, flags);
 		}
 	}
@@ -741,8 +741,6 @@ static int ti_csi2rx_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	spin_lock_irqsave(&dma->lock, flags);
 	buf = list_entry(dma->queue.next, struct ti_csi2rx_buffer, list);
-	list_del(&buf->list);
-	dma->curr = buf;
 
 	ret = ti_csi2rx_start_dma(csi, buf);
 	if (ret) {
@@ -751,6 +749,7 @@ static int ti_csi2rx_start_streaming(struct vb2_queue *vq, unsigned int count)
 		goto err_pipeline;
 	}
 
+	list_move_tail(&buf->list, &dma->submitted);
 	dma->state = TI_CSI2RX_DMA_ACTIVE;
 	spin_unlock_irqrestore(&dma->lock, flags);
 
@@ -885,6 +884,7 @@ static int ti_csi2rx_init_dma(struct ti_csi2rx_dev *csi)
 	int ret;
 
 	INIT_LIST_HEAD(&csi->dma.queue);
+	INIT_LIST_HEAD(&csi->dma.submitted);
 	spin_lock_init(&csi->dma.lock);
 
 	csi->dma.state = TI_CSI2RX_DMA_STOPPED;
