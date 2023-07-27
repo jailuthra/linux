@@ -728,6 +728,7 @@ static void csi2rx_remove(struct platform_device *pdev)
 
 static const struct of_device_id csi2rx_of_table[] = {
 	{ .compatible = "starfive,jh7110-csi2rx" },
+	{ .compatible = "ti,j721e-csi2rx" },
 	{ .compatible = "cdns,csi2rx" },
 	{ },
 };
