@@ -167,21 +167,18 @@ static int csi2rx_configure_ext_dphy(struct csi2rx_priv *csi2rx)
 	union phy_configure_opts opts = { };
 	struct phy_configure_opts_mipi_dphy *cfg = &opts.mipi_dphy;
 	const struct csi2rx_fmt *fmt;
-	s64 pixel_clock;
+	s64 link_freq;
 	int ret;
 
 	fmt = csi2rx_get_fmt_by_code(csi2rx->fmt.code);
 
-	/*
-	 * Do not divide by the number of lanes here. That will be done by
-	 * phy_mipi_dphy_get_default_config().
-	 */
-	pixel_clock = v4l2_get_link_freq(csi2rx->source_subdev->ctrl_handler,
-					 fmt->bpp, 2 * csi2rx->num_lanes);
-	if (pixel_clock < 0)
-		return pixel_clock;
+	link_freq = v4l2_get_link_freq(csi2rx->source_subdev->ctrl_handler,
+				       fmt->bpp, 2 * csi2rx->num_lanes);
+	if (link_freq < 0)
+		return link_freq;
 
-	ret = phy_mipi_dphy_get_default_config(pixel_clock, 1, 1, cfg);
+	ret = phy_mipi_dphy_get_default_config_for_hsclk(link_freq,
+							 csi2rx->num_lanes, cfg);
 	if (ret)
 		return ret;
 
