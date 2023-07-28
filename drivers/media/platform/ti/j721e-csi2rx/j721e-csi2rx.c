@@ -824,12 +824,12 @@ static void ti_csi2rx_stop_streaming(struct vb2_queue *vq)
 
 	video_device_pipeline_stop(&csi->vdev);
 
+	writel(0, csi->shim + SHIM_CNTL);
+	writel(0, csi->shim + SHIM_DMACNTX);
+
 	ret = v4l2_subdev_call(csi->subdev, video, s_stream, 0);
 	if (ret)
 		dev_err(csi->dev, "Failed to stop subdev stream\n");
-
-	writel(0, csi->shim + SHIM_CNTL);
-	writel(0, csi->shim + SHIM_DMACNTX);
 
 	ti_csi2rx_cleanup_buffers(csi, VB2_BUF_STATE_ERROR);
 }
