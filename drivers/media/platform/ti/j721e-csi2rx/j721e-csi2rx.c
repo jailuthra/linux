@@ -389,7 +389,7 @@ static const struct v4l2_file_operations csi_fops = {
 
 static int csi_async_notifier_bound(struct v4l2_async_notifier *notifier,
 				    struct v4l2_subdev *subdev,
-				    struct v4l2_async_subdev *asd)
+				    struct v4l2_async_connection *asc)
 {
 	struct ti_csi2rx_dev *csi = dev_get_drvdata(notifier->v4l2_dev->dev);
 
@@ -427,7 +427,7 @@ static const struct v4l2_async_notifier_operations csi_async_notifier_ops = {
 static int ti_csi2rx_init_subdev(struct ti_csi2rx_dev *csi)
 {
 	struct fwnode_handle *fwnode;
-	struct v4l2_async_subdev *asd;
+	struct v4l2_async_connection *asc;
 	struct device_node *node;
 	int ret;
 
@@ -441,18 +441,18 @@ static int ti_csi2rx_init_subdev(struct ti_csi2rx_dev *csi)
 		return -EINVAL;
 	}
 
-	v4l2_async_nf_init(&csi->notifier);
+	v4l2_async_nf_init(&csi->notifier, &csi->v4l2_dev);
 	csi->notifier.ops = &csi_async_notifier_ops;
 
-	asd = v4l2_async_nf_add_fwnode(&csi->notifier, fwnode,
-				       struct v4l2_async_subdev);
+	asc = v4l2_async_nf_add_fwnode(&csi->notifier, fwnode,
+				       struct v4l2_async_connection);
 	of_node_put(node);
-	if (IS_ERR(asd)) {
+	if (IS_ERR(asc)) {
 		v4l2_async_nf_cleanup(&csi->notifier);
-		return PTR_ERR(asd);
+		return PTR_ERR(asc);
 	}
 
-	ret = v4l2_async_nf_register(&csi->v4l2_dev, &csi->notifier);
+	ret = v4l2_async_nf_register(&csi->notifier);
 	if (ret) {
 		v4l2_async_nf_cleanup(&csi->notifier);
 		return ret;
