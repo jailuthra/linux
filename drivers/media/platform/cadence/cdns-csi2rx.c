@@ -99,7 +99,6 @@ struct csi2rx_priv {
 	struct v4l2_subdev		subdev;
 	struct v4l2_async_notifier	notifier;
 	struct media_pad		pads[CSI2RX_PAD_MAX];
-	struct v4l2_mbus_framefmt	fmt;
 
 	/* Remote source */
 	struct v4l2_subdev		*source_subdev;
@@ -419,7 +418,6 @@ static int csi2rx_set_fmt(struct v4l2_subdev *subdev,
 			  struct v4l2_subdev_state *state,
 			  struct v4l2_subdev_format *format)
 {
-	struct csi2rx_priv *csi2rx = v4l2_subdev_to_csi2rx(subdev);
 	struct v4l2_mbus_framefmt *fmt;
 	unsigned int i;
 
@@ -446,8 +444,6 @@ static int csi2rx_set_fmt(struct v4l2_subdev *subdev,
 			return -EINVAL;
 		*fmt = format->format;
 	}
-
-	csi2rx->fmt = format->format;
 
 	return 0;
 }
