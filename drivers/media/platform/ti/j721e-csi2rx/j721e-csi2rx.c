@@ -875,7 +875,7 @@ static int ti_csi2rx_link_validate(struct media_link *link)
 	struct video_device *vdev = media_entity_to_video_device(entity);
 	struct ti_csi2rx_dev *csi = container_of(vdev, struct ti_csi2rx_dev, vdev);
 	struct v4l2_pix_format *csi_fmt = &csi->v_fmt.fmt.pix;
-	struct v4l2_subdev_format source_fmt;
+	struct v4l2_subdev_format source_fmt = {};
 	const struct ti_csi2rx_fmt *ti_fmt;
 	int ret;
 
