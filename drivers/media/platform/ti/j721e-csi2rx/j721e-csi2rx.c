@@ -1251,45 +1251,54 @@ static int ti_csi2rx_link_validate(struct media_link *link)
 	struct v4l2_subdev_format source_fmt = {
 		.which	= V4L2_SUBDEV_FORMAT_ACTIVE,
 		.pad	= link->source->index,
+		.stream = 0,
 	};
+	struct v4l2_subdev_state *state;
 	const struct ti_csi2rx_fmt *ti_fmt;
 	int ret;
 
-	ret = v4l2_subdev_call_state_active(&csi->subdev, pad,
-					    get_fmt, &source_fmt);
-	if (ret)
-		return ret;
+	state = v4l2_subdev_lock_and_get_active_state(&csi->subdev);
+	ret = v4l2_subdev_call(&csi->subdev, pad, get_fmt, state, &source_fmt);
+	v4l2_subdev_unlock_state(state);
+
+	if (ret) {
+		dev_dbg(csi->dev,
+			"Skipping validation as no format present on \"%s\":%u:0\n",
+			link->source->entity->name, link->source->index);
+		return 0;
+	}
 
 	if (source_fmt.format.width != csi_fmt->width) {
-		dev_dbg(csi->dev, "Width does not match (source %u, sink %u)\n",
+		dev_err(csi->dev, "Width does not match (source %u, sink %u)\n",
 			source_fmt.format.width, csi_fmt->width);
 		return -EPIPE;
 	}
 
 	if (source_fmt.format.height != csi_fmt->height) {
-		dev_dbg(csi->dev, "Height does not match (source %u, sink %u)\n",
+		dev_err(csi->dev, "Height does not match (source %u, sink %u)\n",
 			source_fmt.format.height, csi_fmt->height);
 		return -EPIPE;
 	}
 
 	if (source_fmt.format.field != csi_fmt->field &&
 	    csi_fmt->field != V4L2_FIELD_NONE) {
-		dev_dbg(csi->dev, "Field does not match (source %u, sink %u)\n",
+		dev_err(csi->dev, "Field does not match (source %u, sink %u)\n",
 			source_fmt.format.field, csi_fmt->field);
 		return -EPIPE;
 	}
 
 	ti_fmt = find_format_by_code(source_fmt.format.code);
 	if (!ti_fmt) {
-		dev_dbg(csi->dev, "Media bus format 0x%x not supported\n",
+		dev_err(csi->dev, "Media bus format 0x%x not supported\n",
 			source_fmt.format.code);
 		return -EPIPE;
 	}
 
 	if (ti_fmt->fourcc != csi_fmt->pixelformat) {
-		dev_dbg(csi->dev,
-			"Cannot transform source fmt 0x%x to sink fmt 0x%x\n",
-			ti_fmt->fourcc, csi_fmt->pixelformat);
+		dev_err(csi->dev,
+			"Cannot transform \"%s\":%u format %p4cc to %p4cc\n",
+			link->source->entity->name, link->source->index,
+			&ti_fmt->fourcc, &csi_fmt->pixelformat);
 		return -EPIPE;
 	}
 
