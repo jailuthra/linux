@@ -1296,7 +1296,7 @@ static int ti_csi2rx_link_validate(struct media_link *link)
 }
 
 static const struct media_entity_operations ti_csi2rx_video_entity_ops = {
-	.link_validate = ti_csi2rx_link_validate,
+	/*.link_validate = ti_csi2rx_link_validate,*/
 };
 
 static const struct media_entity_operations ti_csi2rx_subdev_entity_ops = {
