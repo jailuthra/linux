@@ -386,8 +386,7 @@ static int csi2rx_enable_streams(struct v4l2_subdev *subdev,
 	if (ret < 0)
 		return ret;
 
-	sink_streams = v4l2_subdev_state_xlate_streams(state,
-						       CSI2RX_PAD_SOURCE_STREAM0,
+	sink_streams = v4l2_subdev_state_xlate_streams(state, pad,
 						       CSI2RX_PAD_SINK,
 						       &streams_mask);
 
@@ -434,8 +433,7 @@ static int csi2rx_disable_streams(struct v4l2_subdev *subdev,
 	struct media_pad *remote_pad;
 	u64 sink_streams;
 
-	sink_streams = v4l2_subdev_state_xlate_streams(state,
-						       CSI2RX_PAD_SOURCE_STREAM0,
+	sink_streams = v4l2_subdev_state_xlate_streams(state, pad,
 						       CSI2RX_PAD_SINK,
 						       &streams_mask);
 
