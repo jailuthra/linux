@@ -1071,7 +1071,8 @@ static int _ti_csi2rx_sd_set_routing(struct v4l2_subdev *sd,
 	};
 
 	ret = v4l2_subdev_routing_validate(sd, routing,
-					   V4L2_SUBDEV_ROUTING_ONLY_1_TO_1);
+					   V4L2_SUBDEV_ROUTING_ONLY_1_TO_1 |
+					   V4L2_SUBDEV_ROUTING_NO_SOURCE_MULTIPLEXING);
 
 	if (ret)
 		return ret;
