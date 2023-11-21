@@ -50,6 +50,7 @@
 
 #define CSI2RX_STREAM_DATA_CFG_REG(n)		(CSI2RX_STREAM_BASE(n) + 0x008)
 #define CSI2RX_STREAM_DATA_CFG_VC_SELECT(n)		BIT((n) + 16)
+#define CSI2RX_STREAM_DATA_CFG_VC_ALL			0
 
 #define CSI2RX_STREAM_CFG_REG(n)		(CSI2RX_STREAM_BASE(n) + 0x00c)
 #define CSI2RX_STREAM_CFG_FIFO_MODE_LARGE_BUF		(1 << 8)
@@ -90,6 +91,7 @@ struct csi2rx_priv {
 	struct reset_control		*pixel_rst[CSI2RX_STREAMS_MAX];
 	struct phy			*dphy;
 
+	u32				vc_select[CSI2RX_STREAMS_MAX];
 	u8				lanes[CSI2RX_LANES_MAX];
 	u8				num_lanes;
 	u8				max_lanes;
@@ -308,11 +310,7 @@ static int csi2rx_start(struct csi2rx_priv *csi2rx)
 		writel(CSI2RX_STREAM_CFG_FIFO_MODE_LARGE_BUF,
 		       csi2rx->base + CSI2RX_STREAM_CFG_REG(i));
 
-		/*
-		 * Enable one virtual channel. When multiple virtual channels
-		 * are supported this will have to be changed.
-		 */
-		writel(CSI2RX_STREAM_DATA_CFG_VC_SELECT(0),
+		writel(csi2rx->vc_select[i],
 		       csi2rx->base + CSI2RX_STREAM_DATA_CFG_REG(i));
 
 		writel(CSI2RX_STREAM_CTRL_START,
@@ -383,6 +381,41 @@ static void csi2rx_stop(struct csi2rx_priv *csi2rx)
 	}
 }
 
+static void csi2rx_update_vc_select(struct csi2rx_priv *csi2rx,
+				    struct v4l2_subdev_state *state)
+{
+	struct v4l2_mbus_frame_desc fd = {0};
+	struct v4l2_subdev_route *route;
+	unsigned int i;
+	int ret;
+
+	/* By default enable all virtual channels */
+	for (i = 0; i < CSI2RX_STREAMS_MAX; i++)
+		csi2rx->vc_select[i] = CSI2RX_STREAM_DATA_CFG_VC_ALL;
+
+	ret = csi2rx_get_frame_desc_from_source(csi2rx, &fd);
+	if (ret || fd.type != V4L2_MBUS_FRAME_DESC_TYPE_CSI2) {
+		dev_dbg(csi2rx->dev,
+			"Failed to get source frame desc, allowing all VCs\n");
+		return;
+	}
+
+	/* If source provides per-stream VC info, use it to filter by VC */
+	for_each_active_route(&state->routing, route) {
+		int cdns_stream = route->source_pad - CSI2RX_PAD_SOURCE_STREAM0;
+		u8 used_vc;
+
+		for (i = 0; i < fd.num_entries; i++) {
+			if (fd.entry[i].stream == route->sink_stream) {
+				used_vc = fd.entry[i].bus.csi2.vc;
+				break;
+			}
+		}
+		csi2rx->vc_select[cdns_stream] |=
+			CSI2RX_STREAM_DATA_CFG_VC_SELECT(used_vc);
+	}
+}
+
 static int csi2rx_enable_streams(struct v4l2_subdev *subdev,
 				 struct v4l2_subdev_state *state, u32 pad,
 				 u64 streams_mask)
@@ -413,6 +446,7 @@ static int csi2rx_enable_streams(struct v4l2_subdev *subdev,
 	 * enable the whole controller.
 	 */
 	if (!csi2rx->count) {
+		csi2rx_update_vc_select(csi2rx, state);
 		ret = csi2rx_start(csi2rx);
 		if (ret)
 			goto err_stream_start;
@@ -507,7 +541,8 @@ static int _csi2rx_set_routing(struct v4l2_subdev *subdev,
 		return -EINVAL;
 
 	ret = v4l2_subdev_routing_validate(subdev, routing,
-					   V4L2_SUBDEV_ROUTING_ONLY_1_TO_1);
+					   V4L2_SUBDEV_ROUTING_NO_N_TO_1 |
+					   V4L2_SUBDEV_ROUTING_NO_SOURCE_STREAM_MIX);
 	if (ret)
 		return ret;
 
@@ -536,6 +571,7 @@ static int csi2rx_set_fmt(struct v4l2_subdev *subdev,
 			  struct v4l2_subdev_format *format)
 {
 	struct v4l2_mbus_framefmt *fmt;
+	struct v4l2_subdev_route *route;
 
 	/* No transcoding, source and sink formats must match. */
 	if (format->pad != CSI2RX_PAD_SINK)
@@ -553,13 +589,24 @@ static int csi2rx_set_fmt(struct v4l2_subdev *subdev,
 
 	*fmt = format->format;
 
-	/* Propagate to source format */
-	fmt = v4l2_subdev_state_get_opposite_stream_format(state, format->pad,
-							   format->stream);
-	if (!fmt)
-		return -EINVAL;
+	/* Propagate to all source format */
+	for_each_active_route(&state->routing, route) {
+		u32 other_pad, other_stream;
 
-	*fmt = format->format;
+		if (route->sink_pad != format->pad ||
+		    route->sink_stream != format->stream)
+			continue;
+
+		other_pad = route->source_pad;
+		other_stream = route->source_stream;
+
+		fmt = v4l2_subdev_state_get_format(state, other_pad, other_stream);
+
+		if (!fmt)
+			return -EINVAL;
+
+		*fmt = format->format;
+	}
 
 	return 0;
 }
@@ -572,6 +619,27 @@ static int csi2rx_init_state(struct v4l2_subdev *subdev,
 			.sink_pad = CSI2RX_PAD_SINK,
 			.sink_stream = 0,
 			.source_pad = CSI2RX_PAD_SOURCE_STREAM0,
+			.source_stream = 0,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
+		},
+		{
+			.sink_pad = CSI2RX_PAD_SINK,
+			.sink_stream = 0,
+			.source_pad = CSI2RX_PAD_SOURCE_STREAM1,
+			.source_stream = 0,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
+		},
+		{
+			.sink_pad = CSI2RX_PAD_SINK,
+			.sink_stream = 0,
+			.source_pad = CSI2RX_PAD_SOURCE_STREAM2,
+			.source_stream = 0,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
+		},
+		{
+			.sink_pad = CSI2RX_PAD_SINK,
+			.sink_stream = 0,
+			.source_pad = CSI2RX_PAD_SOURCE_STREAM3,
 			.source_stream = 0,
 			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
 		},
