@@ -90,6 +90,7 @@ struct csi2rx_priv {
 	struct reset_control		*pixel_rst[CSI2RX_STREAMS_MAX];
 	struct phy			*dphy;
 
+	u32				vc_select[CSI2RX_STREAMS_MAX];
 	u8				lanes[CSI2RX_LANES_MAX];
 	u8				num_lanes;
 	u8				max_lanes;
@@ -312,11 +313,7 @@ static int csi2rx_start(struct csi2rx_priv *csi2rx)
 		writel(CSI2RX_STREAM_CFG_FIFO_MODE_LARGE_BUF,
 		       csi2rx->base + CSI2RX_STREAM_CFG_REG(i));
 
-		/*
-		 * Enable one virtual channel. When multiple virtual channels
-		 * are supported this will have to be changed.
-		 */
-		writel(CSI2RX_STREAM_DATA_CFG_VC_SELECT(0),
+		writel(csi2rx->vc_select[i],
 		       csi2rx->base + CSI2RX_STREAM_DATA_CFG_REG(i));
 
 		writel(CSI2RX_STREAM_CTRL_START,
@@ -384,6 +381,48 @@ static void csi2rx_stop(struct csi2rx_priv *csi2rx)
 
 		if (phy_power_off(csi2rx->dphy))
 			dev_warn(csi2rx->dev, "Couldn't power off DPHY\n");
+	}
+}
+
+static void csi2rx_update_vc_select(struct csi2rx_priv *csi2rx,
+				    struct v4l2_subdev_state *state)
+{
+	struct v4l2_mbus_frame_desc fd = {0};
+	struct v4l2_subdev_route *route;
+	unsigned int i;
+	int ret;
+
+	for (i = 0; i < CSI2RX_STREAMS_MAX; i++)
+		csi2rx->vc_select[i] = 0;
+
+	ret = csi2rx_get_frame_desc_from_source(csi2rx, &fd);
+	if (ret || fd.type != V4L2_MBUS_FRAME_DESC_TYPE_CSI2) {
+		dev_dbg(csi2rx->dev,
+			"Failed to get source frame desc, allowing only VC=0\n");
+		goto err_no_fd;
+	}
+
+	/* If source provides per-stream VC info, use it to filter by VC */
+	for_each_active_route(&state->routing, route) {
+		int cdns_stream = route->source_pad - CSI2RX_PAD_SOURCE_STREAM0;
+		u8 used_vc;
+
+		for (i = 0; i < fd.num_entries; i++) {
+			if (fd.entry[i].stream == route->sink_stream) {
+				used_vc = fd.entry[i].bus.csi2.vc;
+				break;
+			}
+		}
+		csi2rx->vc_select[cdns_stream] |=
+			CSI2RX_STREAM_DATA_CFG_VC_SELECT(used_vc);
+	}
+
+err_no_fd:
+	for (i = 0; i < CSI2RX_STREAMS_MAX; i++) {
+		if (!csi2rx->vc_select[i]) {
+			csi2rx->vc_select[i] =
+				CSI2RX_STREAM_DATA_CFG_VC_SELECT(0);
+		}
 	}
 }
 
@@ -558,11 +597,19 @@ static int csi2rx_set_routing(struct v4l2_subdev *subdev,
 			      struct v4l2_subdev_krouting *routing)
 {
 	struct csi2rx_priv *csi2rx = v4l2_subdev_to_csi2rx(subdev);
+	int ret;
 
 	if (which == V4L2_SUBDEV_FORMAT_ACTIVE && csi2rx->count)
 		return -EBUSY;
 
-	return _csi2rx_set_routing(subdev, state, routing);
+	ret = _csi2rx_set_routing(subdev, state, routing);
+
+	if (ret)
+		return ret;
+
+	csi2rx_update_vc_select(csi2rx, state);
+
+	return 0;
 }
 
 static int csi2rx_set_fmt(struct v4l2_subdev *subdev,
