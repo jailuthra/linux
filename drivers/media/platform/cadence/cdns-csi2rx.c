@@ -478,7 +478,8 @@ static int _csi2rx_set_routing(struct v4l2_subdev *subdev,
 		return -EINVAL;
 
 	ret = v4l2_subdev_routing_validate(subdev, routing,
-					   V4L2_SUBDEV_ROUTING_ONLY_1_TO_1);
+					   V4L2_SUBDEV_ROUTING_NO_N_TO_1 |
+					   V4L2_SUBDEV_ROUTING_NO_SOURCE_STREAM_MIX);
 	if (ret)
 		return ret;
 
@@ -543,6 +544,27 @@ static int csi2rx_init_cfg(struct v4l2_subdev *subdev,
 			.sink_pad = CSI2RX_PAD_SINK,
 			.sink_stream = 0,
 			.source_pad = CSI2RX_PAD_SOURCE_STREAM0,
+			.source_stream = 0,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
+		},
+		{
+			.sink_pad = CSI2RX_PAD_SINK,
+			.sink_stream = 0,
+			.source_pad = CSI2RX_PAD_SOURCE_STREAM1,
+			.source_stream = 0,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
+		},
+		{
+			.sink_pad = CSI2RX_PAD_SINK,
+			.sink_stream = 0,
+			.source_pad = CSI2RX_PAD_SOURCE_STREAM2,
+			.source_stream = 0,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
+		},
+		{
+			.sink_pad = CSI2RX_PAD_SINK,
+			.sink_stream = 0,
+			.source_pad = CSI2RX_PAD_SOURCE_STREAM3,
 			.source_stream = 0,
 			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE,
 		},
