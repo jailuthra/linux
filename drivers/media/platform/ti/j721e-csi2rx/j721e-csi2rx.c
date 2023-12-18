@@ -722,7 +722,8 @@ static int ti_csi2rx_dma_submit_pending(struct ti_csi2rx_ctx *ctx)
 	return ret;
 }
 
-static void ti_csi2rx_dma_callback(void *param)
+static void ti_csi2rx_dma_callback(void *param,
+				   const struct dmaengine_result *result)
 {
 	struct ti_csi2rx_buffer *buf = param;
 	struct ti_csi2rx_ctx *ctx = buf->ctx;
@@ -739,7 +740,12 @@ static void ti_csi2rx_dma_callback(void *param)
 	spin_lock_irqsave(&dma->lock, flags);
 
 	WARN_ON(!list_is_first(&buf->list, &dma->submitted));
-	vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
+
+	if (result && (result->result != DMA_TRANS_NOERROR || result->residue != 0))
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
+	else
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
+
 	list_del(&buf->list);
 
 	ti_csi2rx_dma_submit_pending(ctx);
@@ -766,7 +772,7 @@ static int ti_csi2rx_start_dma(struct ti_csi2rx_ctx *ctx,
 	if (!desc)
 		return -EIO;
 
-	desc->callback = ti_csi2rx_dma_callback;
+	desc->callback_result = ti_csi2rx_dma_callback;
 	desc->callback_param = buf;
 
 	cookie = dmaengine_submit(desc);
