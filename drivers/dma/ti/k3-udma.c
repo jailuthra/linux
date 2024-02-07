@@ -840,14 +840,18 @@ static int udma_reset_chan(struct udma_chan *uc, bool hard)
 		struct udma_chan_config ucc_backup;
 		int ret;
 
-		memcpy(&ucc_backup, &uc->config, sizeof(uc->config));
+		/*memcpy(&ucc_backup, &uc->config, sizeof(uc->config));
 		uc->ud->ddev.device_free_chan_resources(&uc->vc.chan);
 
-		/* restore the channel configuration */
+		[> restore the channel configuration <]
 		memcpy(&uc->config, &ucc_backup, sizeof(uc->config));
 		ret = uc->ud->ddev.device_alloc_chan_resources(&uc->vc.chan);
 		if (ret)
-			return ret;
+			return ret;*/
+		navss_psil_unpair(uc->ud, uc->config.src_thread,
+				  uc->config.dst_thread);
+		navss_psil_pair(uc->ud, uc->config.src_thread,
+				uc->config.dst_thread);
 
 		/*
 		 * Setting forced teardown after forced reset helps recovering
@@ -887,6 +891,8 @@ static void udma_start_desc(struct udma_chan *uc)
 
 static bool udma_chan_needs_reconfiguration(struct udma_chan *uc)
 {
+	return true;
+
 	/* Only PDMAs have staticTR */
 	if (uc->config.ep_type == PSIL_EP_NATIVE)
 		return false;
