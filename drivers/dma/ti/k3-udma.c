@@ -1845,7 +1845,8 @@ err_rflow:
 
 #define TISCI_BCDMA_TCHAN_VALID_PARAMS (			\
 	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID |	\
-	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_SUPR_TDPKT_VALID)
+	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_SUPR_TDPKT_VALID |	\
+	TI_SCI_MSG_VALUE_RM_UDMAP_CH_TX_FDEPTH_VALID)
 
 #define TISCI_BCDMA_RCHAN_VALID_PARAMS (			\
 	TI_SCI_MSG_VALUE_RM_UDMAP_CH_PAUSE_ON_ERR_VALID)
@@ -2019,6 +2020,7 @@ static int bcdma_tisci_tx_channel_config(struct udma_chan *uc)
 	req_tx.nav_id = tisci_rm->tisci_dev_id;
 	req_tx.index = tchan->id;
 	req_tx.tx_supr_tdpkt = uc->config.notdpkt;
+	req_tx.fdepth = 64;
 	if (ud->match_data->flags & UDMA_FLAG_TDTYPE) {
 		/* wait for peer to complete the teardown for PDMAs */
 		req_tx.valid_params |=
