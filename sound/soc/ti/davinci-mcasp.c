@@ -1475,7 +1475,7 @@ static int davinci_mcasp_hw_rule_min_periodsize(
 	struct snd_interval frames;
 
 	snd_interval_any(&frames);
-	frames.min = 64;
+	frames.min = 16;
 	frames.integer = 1;
 
 	return snd_interval_refine(period_size, &frames);
