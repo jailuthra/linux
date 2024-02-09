@@ -1049,6 +1049,9 @@ static int mcasp_i2s_hw_param(struct davinci_mcasp *mcasp, int stream,
 				       FSXMOD(total_slots), FSXMOD(0x1FF));
 	}
 
+	mcasp_set_bits(mcasp, DAVINCI_MCASP_LBCTL_REG, LBEN);
+	mcasp_mod_bits(mcasp, DAVINCI_MCASP_LBCTL_REG, LBGENMODE(0x1), LBGENMODE(0x3));
+
 	return 0;
 }
 
