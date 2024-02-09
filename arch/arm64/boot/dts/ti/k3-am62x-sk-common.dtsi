@@ -145,32 +145,25 @@
 		clock-frequency = <12288000>;
 	};
 
+	dummy_codec: audio-codec {
+		compatible = "linux,snd-soc-dummy";
+		#sound-dai-cells = <0>;
+	};
+
 	codec_audio: sound {
 		compatible = "simple-audio-card";
-		simple-audio-card,name = "AM62x-SKEVM";
-		simple-audio-card,widgets =
-			"Headphone",	"Headphone Jack",
-			"Line",		"Line In",
-			"Microphone",	"Microphone Jack";
-		simple-audio-card,routing =
-			"Headphone Jack",	"HPLOUT",
-			"Headphone Jack",	"HPROUT",
-			"LINE1L",		"Line In",
-			"LINE1R",		"Line In",
-			"MIC3R",		"Microphone Jack",
-			"Microphone Jack",	"Mic Bias";
-		simple-audio-card,format = "dsp_b";
+		simple-audio-card,name = "AM62x-McASP-Loopback";
+		simple-audio-card,format = "i2s";
 		simple-audio-card,bitclock-master = <&sound_master>;
 		simple-audio-card,frame-master = <&sound_master>;
-		simple-audio-card,bitclock-inversion;
 
-		simple-audio-card,cpu {
+		sound_master: simple-audio-card,cpu {
 			sound-dai = <&mcasp1>;
+			system-clock-direction-out;
 		};
 
-		sound_master: simple-audio-card,codec {
-			sound-dai = <&tlv320aic3106>;
-			clocks = <&tlv320_mclk>;
+		simple-audio-card,codec {
+			sound-dai = <&dummy_codec>;
 		};
 	};
 
@@ -404,6 +397,7 @@
 		AVDD-supply = <&vcc_3v3_sys>;
 		IOVDD-supply = <&vcc_3v3_sys>;
 		DRVDD-supply = <&vcc_3v3_sys>;
+		status = "disabled";
 	};
 
 	sii9022: sii9022@3b {
@@ -546,6 +540,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_mcasp1_pins_default>;
 
+	auxclk-fs-ratio = <2177>;
 	op-mode = <0>;          /* MCASP_IIS_MODE */
 	tdm-slots = <2>;
 
