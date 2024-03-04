@@ -60,6 +60,7 @@ dtb-$(CONFIG_ARCH_K3) += k3-am62p5-sk-rpi-hdr-ehrpwm.dtbo
 dtb-$(CONFIG_ARCH_K3) += k3-am62x-sk-csi2-ov5640.dtbo
 dtb-$(CONFIG_ARCH_K3) += k3-am62x-sk-csi2-tevi-ov5640.dtbo
 dtb-$(CONFIG_ARCH_K3) += k3-am62x-sk-csi2-imx219.dtbo
+dtb-$(CONFIG_ARCH_K3) += k3-am62x-sk-csi2-imx519.dtbo
 dtb-$(CONFIG_ARCH_K3) += k3-am62x-sk-csi2-v3link-fusion.dtbo
 dtb-$(CONFIG_ARCH_K3) += k3-am62x-sk-eqep.dtbo
 dtb-$(CONFIG_ARCH_K3) += k3-am62x-sk-fastboot-disable-hdmi.dtbo
