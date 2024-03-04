@@ -1158,8 +1158,8 @@ static int imx519_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	struct imx519 *imx519 = to_imx519(sd);
 	struct v4l2_mbus_framefmt *try_fmt_img =
 		v4l2_subdev_get_try_format(sd, fh->state, IMAGE_PAD);
-	struct v4l2_mbus_framefmt *try_fmt_meta =
-		v4l2_subdev_get_try_format(sd, fh->state, METADATA_PAD);
+	/*struct v4l2_mbus_framefmt *try_fmt_meta =*/
+		/*v4l2_subdev_get_try_format(sd, fh->state, METADATA_PAD);*/
 	struct v4l2_rect *try_crop;
 
 	mutex_lock(&imx519->mutex);
@@ -1171,10 +1171,10 @@ static int imx519_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	try_fmt_img->field = V4L2_FIELD_NONE;
 
 	/* Initialize try_fmt for the embedded metadata pad */
-	try_fmt_meta->width = IMX519_EMBEDDED_LINE_WIDTH;
+	/*try_fmt_meta->width = IMX519_EMBEDDED_LINE_WIDTH;
 	try_fmt_meta->height = IMX519_NUM_EMBEDDED_LINES;
 	try_fmt_meta->code = MEDIA_BUS_FMT_CUSTOM_SENSOR_DATA;
-	try_fmt_meta->field = V4L2_FIELD_NONE;
+	try_fmt_meta->field = V4L2_FIELD_NONE;*/
 
 	/* Initialize try_crop */
 	try_crop = v4l2_subdev_get_try_crop(sd, fh->state, IMAGE_PAD);
@@ -2079,7 +2079,7 @@ static int imx519_probe(struct i2c_client *client)
 	imx519->pad[IMAGE_PAD].flags = MEDIA_PAD_FL_SOURCE;
 	imx519->pad[METADATA_PAD].flags = MEDIA_PAD_FL_SOURCE;
 
-	ret = media_entity_pads_init(&imx519->sd.entity, NUM_PADS, imx519->pad);
+	ret = media_entity_pads_init(&imx519->sd.entity, 1, imx519->pad);
 	if (ret) {
 		dev_err(dev, "failed to init entity pads: %d\n", ret);
 		goto error_handler_free;
