@@ -41,6 +41,8 @@
 #define SHIM_PSI_CFG0_SRC_TAG		GENMASK(15, 0)
 #define SHIM_PSI_CFG0_DST_TAG		GENMASK(31, 16)
 
+#define CDNS_STREAM0_MONITOR_FRAME	0x114
+
 #define PSIL_WORD_SIZE_BYTES		16
 #define TI_CSI2RX_MAX_CTX		32
 
@@ -114,6 +116,7 @@ struct ti_csi2rx_ctx {
 struct ti_csi2rx_dev {
 	struct device			*dev;
 	void __iomem			*shim;
+	void __iomem			*cdns;
 	/* To serialize core subdev ioctls. */
 	struct mutex			mutex;
 	unsigned int			enable_count;
@@ -728,13 +731,21 @@ static void ti_csi2rx_dma_callback(void *param)
 	struct ti_csi2rx_ctx *ctx = buf->ctx;
 	struct ti_csi2rx_dma *dma = &ctx->dma;
 	unsigned long flags = 0;
+	u32 reg;
 
-	/*
-	 * TODO: Derive the sequence number from the CSI2RX frame number
-	 * hardware monitor registers.
-	 */
 	buf->vb.vb2_buf.timestamp = ktime_get_ns();
 	buf->vb.sequence = ctx->sequence++;
+
+	/*
+	 * Derive the sequence number from the CSI2RX frame number hardware
+	 * monitor registers. The frame count register starts wrapping from
+	 * 0xfe (254) -> 0x1 (1) for some reason, so match the driver sequence
+	 * number by performing % 254.
+	 */
+	reg = readl(ctx->csi->cdns + CDNS_STREAM0_MONITOR_FRAME);
+	reg = reg & 0xff;
+	pr_err("%s: driver sequence %u frame monitor reg %u\n", __func__,
+	       ctx->sequence % 254, reg % 254);
 
 	spin_lock_irqsave(&dma->lock, flags);
 
@@ -1621,6 +1632,13 @@ static int ti_csi2rx_probe(struct platform_device *pdev)
 	csi->shim = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(csi->shim)) {
 		ret = PTR_ERR(csi->shim);
+		return ret;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	csi->cdns = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	if (IS_ERR(csi->cdns)) {
+		ret = PTR_ERR(csi->cdns);
 		return ret;
 	}
 

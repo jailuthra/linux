@@ -54,6 +54,10 @@
 #define CSI2RX_STREAM_CFG_REG(n)		(CSI2RX_STREAM_BASE(n) + 0x00c)
 #define CSI2RX_STREAM_CFG_FIFO_MODE_LARGE_BUF		(1 << 8)
 
+#define CSI2RX_STREAM_MON_CTRL_REG(n)		(CSI2RX_STREAM_BASE(n) + 0x010)
+#define CSI2RX_STREAM_MON_FRAME_MON_EN		(1 << 15)
+#define CSI2RX_STREAM_MON_FRAME_MON_VC_MASK	GENMASK(14, 11)
+
 #define CSI2RX_LANES_MAX	4
 #define CSI2RX_STREAMS_MAX	4
 
@@ -367,6 +371,10 @@ static int csi2rx_start(struct csi2rx_priv *csi2rx)
 		/* Let all virtual channels through. */
 		writel(CSI2RX_STREAM_DATA_CFG_VC_ALL,
 		       csi2rx->base + CSI2RX_STREAM_DATA_CFG_REG(i));
+
+		/* Enable frame counter monitoring for VC=0 */
+		writel(CSI2RX_STREAM_MON_FRAME_MON_EN,
+		       csi2rx->base + CSI2RX_STREAM_MON_CTRL_REG(i));
 
 		writel(CSI2RX_STREAM_CTRL_START,
 		       csi2rx->base + CSI2RX_STREAM_CTRL_REG(i));
