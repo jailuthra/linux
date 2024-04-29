@@ -70,6 +70,7 @@ struct davinci_mcasp_context {
 struct davinci_mcasp_ruledata {
 	struct davinci_mcasp *mcasp;
 	int serializers;
+	u8 numevt;
 };
 
 struct davinci_mcasp {
@@ -1470,12 +1471,13 @@ static int davinci_mcasp_hw_rule_format(struct snd_pcm_hw_params *params,
 static int davinci_mcasp_hw_rule_min_periodsize(
 		struct snd_pcm_hw_params *params, struct snd_pcm_hw_rule *rule)
 {
+	struct davinci_mcasp_ruledata *rd = rule->private;
 	struct snd_interval *period_size = hw_param_interval(params,
 						SNDRV_PCM_HW_PARAM_PERIOD_SIZE);
 	struct snd_interval frames;
 
 	snd_interval_any(&frames);
-	frames.min = 64;
+	frames.min = rd->numevt;
 	frames.integer = 1;
 
 	return snd_interval_refine(period_size, &frames);
@@ -1516,6 +1518,9 @@ static int davinci_mcasp_startup(struct snd_pcm_substream *substream,
 		if (mcasp->serial_dir[i] == dir)
 			max_channels++;
 	}
+	ruledata->numevt = (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) ?
+				   mcasp->txnumevt :
+				   mcasp->rxnumevt;
 	ruledata->serializers = max_channels;
 	ruledata->mcasp = mcasp;
 	max_channels *= tdm_slots;
@@ -1591,7 +1596,7 @@ static int davinci_mcasp_startup(struct snd_pcm_substream *substream,
 
 	snd_pcm_hw_rule_add(substream->runtime, 0,
 			    SNDRV_PCM_HW_PARAM_PERIOD_SIZE,
-			    davinci_mcasp_hw_rule_min_periodsize, NULL,
+			    davinci_mcasp_hw_rule_min_periodsize, ruledata,
 			    SNDRV_PCM_HW_PARAM_PERIOD_SIZE, -1);
 
 	return 0;
