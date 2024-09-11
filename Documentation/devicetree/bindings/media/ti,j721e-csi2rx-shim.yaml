@@ -29,6 +29,15 @@ properties:
   reg:
     maxItems: 1
 
+  port:
+    $ref: /schemas/graph.yaml#/$defs/port-base
+    additionalProperties: false
+
+    properties:
+      endpoint:
+        $ref: /schemas/media/video-interfaces.yaml#
+        unevaluatedProperties: false
+
   power-domains:
     maxItems: 1
 
@@ -49,6 +58,7 @@ required:
   - reg
   - dmas
   - dma-names
+  - port
   - power-domains
   - ranges
   - "#address-cells"
@@ -69,6 +79,12 @@ examples:
         #address-cells = <1>;
         #size-cells = <1>;
         ranges;
+
+        port {
+            grabber0_in_csi2rx: endpoint {
+                remote-endpoint = <&csi0_out_grabber0>;
+            };
+        };
 
         cdns_csi2rx: csi-bridge@4504000 {
             compatible = "ti,j721e-csi2rx", "cdns,csi2rx";
@@ -95,6 +111,16 @@ examples:
                         data-lanes = <1 2>;
                     };
                 };
+
+                csi2_1: port@1 {
+
+                    reg = <1>;
+
+                    csi0_out_grabber0: endpoint {
+                        remote-endpoint = <&grabber0_in_csi2rx>;
+                    };
+                };
+
             };
         };
     };
