@@ -392,36 +392,28 @@ static void csi2rx_update_vc_select(struct csi2rx_priv *csi2rx,
 	unsigned int i;
 	int ret;
 
+	/* Capture VC=0 by default */
 	for (i = 0; i < CSI2RX_STREAMS_MAX; i++)
-		csi2rx->vc_select[i] = 0;
+		csi2rx->vc_select[i] = CSI2RX_STREAM_DATA_CFG_VC_SELECT(0);
 
 	ret = csi2rx_get_frame_desc_from_source(csi2rx, &fd);
 	if (ret || fd.type != V4L2_MBUS_FRAME_DESC_TYPE_CSI2) {
 		dev_dbg(csi2rx->dev,
 			"Failed to get source frame desc, allowing only VC=0\n");
-		goto err_no_fd;
 	}
 
 	/* If source provides per-stream VC info, use it to filter by VC */
 	for_each_active_route(&state->routing, route) {
-		int cdns_stream = route->source_pad - CSI2RX_PAD_SOURCE_STREAM0;
-		u8 used_vc = 0;
+		u32 cdns_stream = route->source_pad - CSI2RX_PAD_SOURCE_STREAM0;
+		csi2rx->vc_select[cdns_stream] = 0;
 
 		for (i = 0; i < fd.num_entries; i++) {
-			if (fd.entry[i].stream == route->sink_stream) {
-				used_vc = fd.entry[i].bus.csi2.vc;
-				break;
-			}
-		}
-		csi2rx->vc_select[cdns_stream] |=
-			CSI2RX_STREAM_DATA_CFG_VC_SELECT(used_vc);
-	}
+			if (fd.entry[i].stream != route->sink_stream)
+				continue;
 
-err_no_fd:
-	for (i = 0; i < CSI2RX_STREAMS_MAX; i++) {
-		if (!csi2rx->vc_select[i]) {
-			csi2rx->vc_select[i] =
-				CSI2RX_STREAM_DATA_CFG_VC_SELECT(0);
+			csi2rx->vc_select[cdns_stream] |=
+				CSI2RX_STREAM_DATA_CFG_VC_SELECT(
+					fd.entry[i].bus.csi2.vc);
 		}
 	}
 }
@@ -577,11 +569,7 @@ static int _csi2rx_set_routing(struct v4l2_subdev *subdev,
 	if (ret)
 		return ret;
 
-	ret = v4l2_subdev_set_routing_with_fmt(subdev, state, routing, &format);
-	if (ret)
-		return ret;
-
-	return 0;
+	return v4l2_subdev_set_routing_with_fmt(subdev, state, routing, &format);
 }
 
 static int csi2rx_set_routing(struct v4l2_subdev *subdev,
@@ -596,7 +584,6 @@ static int csi2rx_set_routing(struct v4l2_subdev *subdev,
 		return -EBUSY;
 
 	ret = _csi2rx_set_routing(subdev, state, routing);
-
 	if (ret)
 		return ret;
 
@@ -622,9 +609,6 @@ static int csi2rx_set_fmt(struct v4l2_subdev *subdev,
 
 	/* Set sink format */
 	fmt = v4l2_subdev_state_get_format(state, format->pad, format->stream);
-	if (!fmt)
-		return -EINVAL;
-
 	*fmt = format->format;
 
 	/* Propagate to source format */
@@ -958,7 +942,7 @@ static int csi2rx_probe(struct platform_device *pdev)
 	csi2rx->pads[CSI2RX_PAD_SINK].flags = MEDIA_PAD_FL_SINK;
 	for (i = CSI2RX_PAD_SOURCE_STREAM0; i < CSI2RX_PAD_MAX; i++)
 		csi2rx->pads[i].flags = MEDIA_PAD_FL_SOURCE;
-	csi2rx->subdev.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+	csi2rx->subdev.flags = V4L2_SUBDEV_FL_HAS_DEVNODE |
 		V4L2_SUBDEV_FL_STREAMS;
 	csi2rx->subdev.entity.ops = &csi2rx_media_ops;
 
