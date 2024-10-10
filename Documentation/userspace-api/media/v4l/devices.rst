@@ -23,4 +23,5 @@ Interfaces
     dev-touch
     dev-event
     dev-subdev
+    subdev-config-model
     dev-meta
