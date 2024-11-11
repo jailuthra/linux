@@ -245,13 +245,16 @@
 
 #define UB960_RR_BCC_CONFIG			0x58
 #define UB960_RR_BCC_CONFIG_BC_ALWAYS_ON	BIT(4)
+#define UB960_RR_BCC_CONFIG_AUTO_ACK_ALL	BIT(5)
 #define UB960_RR_BCC_CONFIG_I2C_PASS_THROUGH	BIT(6)
 #define UB960_RR_BCC_CONFIG_BC_FREQ_SEL_MASK	GENMASK(2, 0)
 
 #define UB960_RR_DATAPATH_CTL1			0x59
 #define UB960_RR_DATAPATH_CTL2			0x5a
 #define UB960_RR_SER_ID				0x5b
+#define UB960_RR_SER_ID_FREEZE_DEVICE_ID	BIT(0)
 #define UB960_RR_SER_ALIAS_ID			0x5c
+#define UB960_RR_SER_ALIAS_ID_AUTO_ACK		BIT(0)
 
 /* For these two register sets: n < UB960_MAX_PORT_ALIASES */
 #define UB960_RR_SLAVE_ID(n)			(0x5d + (n))
@@ -504,7 +507,9 @@ struct ub960_rxport {
 		struct fwnode_handle *fwnode;
 		struct i2c_client *client;
 		unsigned short alias; /* I2C alias (lower 7 bits) */
+		short addr; /* Local I2C address (lower 7 bits) */
 		struct ds90ub9xx_platform_data pdata;
+		struct regmap *regmap;
 	} ser;
 
 	enum ub960_rxport_mode  rx_mode;
@@ -2016,6 +2021,87 @@ static unsigned long ub960_calc_bc_clk_rate_ub9702(struct ub960_data *priv,
 	}
 }
 
+static int ub960_rxport_serializer_write(struct ub960_rxport *rxport, u8 reg, u8 val)
+{
+	struct ub960_data *priv = rxport->priv;
+	struct device *dev = &priv->client->dev;
+	union i2c_smbus_data data;
+	int ret;
+
+	data.byte = val;
+
+	ret = i2c_smbus_xfer(priv->client->adapter, rxport->ser.alias, 0,
+			     I2C_SMBUS_WRITE, reg, I2C_SMBUS_BYTE_DATA, &data);
+	if (ret)
+		dev_dbg(dev,
+			"%s: cannot write back-channel register 0x%02x (%d)!\n",
+			__func__, reg, ret);
+
+	return ret;
+}
+
+static void ub960_rxport_bc_ser_config(struct ub960_rxport *rxport)
+{
+	struct ub960_data *priv = rxport->priv;
+	struct device *dev = &priv->client->dev;
+	u8 nport = rxport->nport;
+	int ret;
+
+	/* Skip port if serializer's address is not known */
+	if (rxport->ser.addr < 0) {
+		dev_dbg(dev,
+			"rx%u: 'i2c-addr' property missing, skip serializer configuration\n",
+			nport);
+		return;
+	}
+
+	/* Freeze serializer's I2C address to prevent updates from FC */
+	ub960_rxport_write(priv, nport, UB960_RR_SER_ID,
+			   rxport->ser.addr << 1 |
+				   UB960_RR_SER_ID_FREEZE_DEVICE_ID, &ret);
+
+	/*
+	 * Enable I2C auto ack for cases where serializer strap values
+	 * are wrong and FC is not functional.
+	 */
+	ub960_rxport_write(priv, nport, UB960_RR_SER_ALIAS_ID,
+			   rxport->ser.alias << 1 |
+				   UB960_RR_SER_ALIAS_ID_AUTO_ACK, &ret);
+
+	/* Enable I2C passthrough and auto-ack on BC */
+	ub960_rxport_update_bits(priv, nport, UB960_RR_BCC_CONFIG,
+				 UB960_RR_BCC_CONFIG_I2C_PASS_THROUGH |
+					 UB960_RR_BCC_CONFIG_AUTO_ACK_ALL,
+				 UB960_RR_BCC_CONFIG_I2C_PASS_THROUGH |
+					 UB960_RR_BCC_CONFIG_AUTO_ACK_ALL,
+				 &ret);
+
+	if (ret)
+		dev_err(dev,
+			"rx%u: Failed to enable I2C passthrough on BC: %d\n",
+			nport, ret);
+
+	/* Disable BC alternate mode auto detect */
+	ub960_rxport_serializer_write(rxport, 0x4b, 0x02);
+	/* Decrease link detect timer */
+	ub960_rxport_serializer_write(rxport, 0x49, 0x06);
+
+	/* Disable I2C passthrough and auto-ack on BC */
+	ub960_rxport_update_bits(priv, nport, UB960_RR_BCC_CONFIG,
+				       UB960_RR_BCC_CONFIG_I2C_PASS_THROUGH |
+					       UB960_RR_BCC_CONFIG_AUTO_ACK_ALL,
+				       0x0, &ret);
+
+	/* Disable auto-ack for the remote serializer */
+	ub960_rxport_update_bits(priv, nport, UB960_RR_SER_ALIAS_ID,
+				 UB960_RR_SER_ALIAS_ID_AUTO_ACK, 0x0, &ret);
+
+	if (ret)
+		dev_err(dev,
+			"rx%u: Failed to disable I2C auto-ack and passthrough: %d\n",
+			nport, ret);
+}
+
 static int ub960_rxport_add_serializer(struct ub960_data *priv, u8 nport)
 {
 	struct ub960_rxport *rxport = priv->rxports[nport];
@@ -2964,6 +3050,13 @@ static int ub960_init_rx_ports_ub9702(struct ub960_data *priv)
 	if (ret)
 		return ret;
 
+	for_each_active_rxport(priv) {
+		if (fwnode_device_is_compatible(it.rxport->ser.fwnode,
+						"ti,ds90ub971-q1")) {
+			ub960_rxport_bc_ser_config(it.rxport);
+		}
+	}
+
 	ret = ub960_enable_sscg_ub9702(priv);
 	if (ret)
 		return ret;
@@ -3101,6 +3194,10 @@ static int ub960_init_rx_ports_ub9702(struct ub960_data *priv)
 					 UB960_RR_BCC_CONFIG_I2C_PASS_THROUGH,
 					 UB960_RR_BCC_CONFIG_I2C_PASS_THROUGH,
 					 &ret);
+
+		/* Set serializer address */
+		ub960_rxport_write(priv, it.nport, UB960_RR_SER_ID,
+				   it.rxport->ser.addr << 1, &ret);
 
 		/* Enable I2C communication to the serializer via the alias */
 		ub960_rxport_write(priv, it.nport, UB960_RR_SER_ALIAS_ID,
@@ -4265,6 +4362,7 @@ ub960_parse_dt_rxport_link_properties(struct ub960_data *priv,
 	s32 strobe_pos;
 	u32 eq_level;
 	u32 ser_i2c_alias;
+	u32 ser_i2c_addr;
 	int ret;
 
 	cdr_mode = RXPORT_CDR_FPD3;
@@ -4369,6 +4467,13 @@ ub960_parse_dt_rxport_link_properties(struct ub960_data *priv,
 		return ret;
 	}
 	rxport->ser.alias = ser_i2c_alias;
+
+	ret = fwnode_property_read_u32(link_fwnode, "i2c-addr",
+				       &ser_i2c_addr);
+	if (ret)
+		rxport->ser.addr = -EINVAL;
+	else
+		rxport->ser.addr = ser_i2c_addr;
 
 	rxport->ser.fwnode = fwnode_get_named_child_node(link_fwnode, "serializer");
 	if (!rxport->ser.fwnode) {
