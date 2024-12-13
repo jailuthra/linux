@@ -708,6 +708,9 @@ ForEachMacros:
   - 'ynl_attr_for_each_nested'
   - 'ynl_attr_for_each_payload'
   - 'zorro_for_each_dev'
+  - 'for_each_active_rxport'
+  - 'for_each_rxport'
+  - 'for_each_active_rxport_fpd4'
 
 IncludeBlocks: Preserve
 IncludeCategories:
