@@ -102,7 +102,7 @@
 
 /* Indirect register blocks */
 #define UB953_IND_TARGET_PAT_GEN		0x00
-#define UB953_IND_TARGET_FPD3_TX		0x01
+#define UB953_IND_TARGET_ANALOG			0x01
 #define UB953_IND_TARGET_DIE_ID			0x02
 
 #define UB953_IND_PGEN_CTL			0x01
@@ -122,6 +122,11 @@
 #define UB953_IND_PGEN_VBP			0x0e
 #define UB953_IND_PGEN_VFP			0x0f
 #define UB953_IND_PGEN_COLOR(n)			(0x10 + (n)) /* n <= 15 */
+
+#define UB953_IND_ANA_TEMP_DYNAMIC_CFG		0x4b
+#define UB953_IND_ANA_TEMP_DYNAMIC_CFG_OV	BIT(5)
+#define UB953_IND_ANA_TEMP_STATIC_CFG		0x4c
+#define UB953_IND_ANA_TEMP_STATIC_CFG_MASK	GENMASK(6, 4)
 
 /* Note: Only sync mode supported for now */
 enum ub953_mode {
@@ -260,7 +265,6 @@ static int ub953_select_ind_reg_block(struct ub953_data *priv, u8 block)
 	return 0;
 }
 
-__maybe_unused
 static int ub953_read_ind(struct ub953_data *priv, u8 block, u8 reg, u8 *val,
 			  int *err)
 {
@@ -303,7 +307,6 @@ out_unlock:
 	return ret;
 }
 
-__maybe_unused
 static int ub953_write_ind(struct ub953_data *priv, u8 block, u8 reg, u8 val,
 			   int *err)
 {
@@ -1253,12 +1256,48 @@ static int ub953_parse_dt(struct ub953_data *priv)
 	return 0;
 }
 
+static void ub953_configure_temp_ramp(struct ub953_data *priv)
+{
+	short temp_dynamic_offset[] = {-1, -1, 0, 0, 1, 1, 1, 3};
+	u8 temp_dynamic_cfg;
+	u8 ser_temp_code;
+
+	/* Read current serializer die temperature */
+	priv->plat_data->read_sensor_sts(priv->plat_data->deser_priv,
+					 priv->plat_data->port, 2,
+					 &ser_temp_code);
+
+	/* Read current temperature ramp dynamic config */
+	ub953_read_ind(priv, UB953_IND_TARGET_ANALOG,
+		       UB953_IND_ANA_TEMP_DYNAMIC_CFG, &temp_dynamic_cfg, NULL);
+
+	temp_dynamic_cfg |= UB953_IND_ANA_TEMP_DYNAMIC_CFG_OV;
+	temp_dynamic_cfg += temp_dynamic_offset[ser_temp_code];
+
+	/* Update temp static config */
+	ub953_write_ind(priv, UB953_IND_TARGET_ANALOG,
+			UB953_IND_ANA_TEMP_STATIC_CFG,
+			UB953_IND_ANA_TEMP_STATIC_CFG_MASK, NULL);
+
+	/* Update temperature ramp dynamic config */
+	ub953_write_ind(priv, UB953_IND_TARGET_ANALOG,
+			UB953_IND_ANA_TEMP_DYNAMIC_CFG, temp_dynamic_cfg, NULL);
+
+	/* Soft reset to apply PLL updates */
+	ub953_write(priv, UB953_REG_RESET_CTL,
+		    UB953_REG_RESET_CTL_DIGITAL_RESET_0, NULL);
+	msleep(20);
+}
+
 static int ub953_hw_init(struct ub953_data *priv)
 {
 	struct device *dev = &priv->client->dev;
 	bool mode_override;
 	int ret;
 	u8 v;
+
+	if (!priv->hw_data->is_ub971)
+		ub953_configure_temp_ramp(priv);
 
 	ret = ub953_read(priv, UB953_REG_MODE_SEL, &v, NULL);
 	if (ret)

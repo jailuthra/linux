@@ -1248,6 +1248,16 @@ out_unlock:
 	return ret;
 }
 
+static int ub960_read_sensor_sts(struct ub960_data *priv, u8 nport, u8 sts_reg,
+				 u8 *val)
+{
+	if (sts_reg > 3)
+		return -EINVAL;
+
+	return ub960_rxport_read(priv, nport, UB960_RR_SENSOR_STS_0 + sts_reg,
+				 val, NULL);
+}
+
 static int ub960_reset(struct ub960_data *priv, bool reset_regs)
 {
 	struct device *dev = &priv->client->dev;
@@ -2017,6 +2027,8 @@ static int ub960_rxport_add_serializer(struct ub960_data *priv, u8 nport)
 		.platform_data = ser_pdata,
 	};
 
+	ser_pdata->deser_priv = priv;
+	ser_pdata->read_sensor_sts = ub960_read_sensor_sts;
 	ser_pdata->port = nport;
 	ser_pdata->atr = priv->atr;
 	if (priv->hw_data->is_ub9702)
