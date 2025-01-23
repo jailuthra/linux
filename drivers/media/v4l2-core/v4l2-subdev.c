@@ -2479,6 +2479,9 @@ int v4l2_get_frame_desc_passthrough(struct v4l2_subdev *sd, unsigned int pad,
 	const struct media_pad *pads = sd->entity.pads;
 	struct media_pad *local_sink_pad;
 
+// TODO: don't set fd->type. E.g. UB960 can have different input types, but always csi-2 output
+// needs a variant that doesn't lock_and_get, so that the caller can customize pre and post call.
+
 	if (WARN_ON(pads[pad].flags & MEDIA_PAD_FL_INTERNAL))
 		return -EINVAL;
 
