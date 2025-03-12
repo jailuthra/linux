@@ -62,6 +62,7 @@
 #define TI_CSI2RX_MAX_PADS		(1 + TI_CSI2RX_MAX_SOURCE_PADS)
 
 #define DRAIN_BUFFER_SIZE		SZ_32K
+#define DRAIN_TIMEOUT_MS		50
 
 #define CSI2RX_BRIDGE_SOURCE_PAD	1
 
@@ -137,6 +138,7 @@ struct ti_csi2rx_dev {
 		size_t			len;
 	} drain;
 	bool				vc_cached;
+	struct completion drain_complete;
 };
 
 static inline struct ti_csi2rx_dev *to_csi2rx_dev(struct v4l2_subdev *sd)
@@ -648,12 +650,14 @@ static void ti_csi2rx_setup_shim(struct ti_csi2rx_ctx *ctx)
 static void ti_csi2rx_drain_callback(void *param)
 {
 	struct ti_csi2rx_ctx *ctx = param;
+	struct ti_csi2rx_dev *csi = ctx->csi;
 	struct ti_csi2rx_dma *dma = &ctx->dma;
 	unsigned long flags;
 
 	spin_lock_irqsave(&dma->lock, flags);
 
 	if (dma->state == TI_CSI2RX_DMA_STOPPED) {
+		complete(&csi->drain_complete);
 		spin_unlock_irqrestore(&dma->lock, flags);
 		return;
 	}
@@ -798,6 +802,7 @@ static int ti_csi2rx_start_dma(struct ti_csi2rx_ctx *ctx,
 static void ti_csi2rx_stop_dma(struct ti_csi2rx_ctx *ctx)
 {
 	struct ti_csi2rx_dma *dma = &ctx->dma;
+	struct ti_csi2rx_dev *csi = ctx->csi;
 	enum ti_csi2rx_dma_state state;
 	unsigned long flags;
 	int ret;
@@ -806,6 +811,8 @@ static void ti_csi2rx_stop_dma(struct ti_csi2rx_ctx *ctx)
 	state = ctx->dma.state;
 	dma->state = TI_CSI2RX_DMA_STOPPED;
 	spin_unlock_irqrestore(&dma->lock, flags);
+
+	init_completion(&csi->drain_complete);
 
 	if (state != TI_CSI2RX_DMA_STOPPED) {
 		/*
@@ -819,6 +826,10 @@ static void ti_csi2rx_stop_dma(struct ti_csi2rx_ctx *ctx)
 			dev_warn(ctx->csi->dev,
 				 "Failed to drain DMA. Next frame might be bogus\n");
 	}
+
+	if (!wait_for_completion_timeout(&csi->drain_complete,
+					 msecs_to_jiffies(DRAIN_TIMEOUT_MS)))
+		dev_dbg(csi->dev, "DMA transfer timed out for drain buffer\n");
 
 	ret = dmaengine_terminate_sync(ctx->dma.chan);
 	if (ret)
