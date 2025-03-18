@@ -429,9 +429,13 @@ static int csi_async_notifier_complete(struct v4l2_async_notifier *notifier)
 	if (ret)
 		return ret;
 
-	ret = media_create_pad_link(&csi->source->entity, CSI2RX_BRIDGE_SOURCE_PAD,
-				    &vdev->entity, csi->pad.index,
-				    MEDIA_LNK_FL_IMMUTABLE | MEDIA_LNK_FL_ENABLED);
+	if (fwnode_graph_get_endpoint_count(csi->dev->fwnode, 0))
+		ret = v4l2_create_fwnode_links_to_pad(csi->source, &csi->pad,
+			MEDIA_LNK_FL_IMMUTABLE | MEDIA_LNK_FL_ENABLED);
+	else
+		ret = media_create_pad_link(&csi->source->entity,
+			CSI2RX_BRIDGE_SOURCE_PAD, &vdev->entity, csi->pad.index,
+			MEDIA_LNK_FL_IMMUTABLE | MEDIA_LNK_FL_ENABLED);
 
 	if (ret) {
 		video_unregister_device(vdev);

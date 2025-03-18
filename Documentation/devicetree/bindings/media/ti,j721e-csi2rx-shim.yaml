@@ -29,6 +29,16 @@ properties:
   reg:
     maxItems: 1
 
+  ports:
+    $ref: /schemas/graph.yaml#/properties/ports
+
+    properties:
+      port@0:
+        $ref: /schemas/graph.yaml#/properties/port
+        description:
+          Incoming pixel stream that will be processed and transferred to DDR
+          using DMA engine.
+
   power-domains:
     maxItems: 1
 
