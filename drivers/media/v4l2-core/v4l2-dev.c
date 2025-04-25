@@ -163,6 +163,65 @@ void video_device_release_empty(struct video_device *vdev)
 }
 EXPORT_SYMBOL(video_device_release_empty);
 
+struct video_device_state *
+__video_device_state_alloc(struct video_device *vdev)
+{
+	struct video_device_state *state =
+		kzalloc(sizeof(struct video_device_state), GFP_KERNEL);
+	int ret;
+
+	if (!state)
+		return ERR_PTR(-ENOMEM);
+
+	if (vdev->vdev_ops && vdev->vdev_ops->init_state) {
+		ret = vdev->vdev_ops->init_state(state);
+
+		if (ret)
+			goto err;
+	}
+
+	return state;
+
+err:
+	if (state)
+		kfree(state);
+
+	return ERR_PTR(ret);
+}
+EXPORT_SYMBOL_GPL(__video_device_state_alloc);
+
+void __video_device_state_free(struct video_device_state *state)
+{
+	if (!state)
+		return;
+
+	kfree(state);
+}
+EXPORT_SYMBOL_GPL(__video_device_state_free);
+
+struct v4l2_format *video_device_state_get_fmt(struct video_device_state *state)
+{
+	if (WARN_ON_ONCE(!state))
+		return NULL;
+
+	return &state->fmt;
+}
+EXPORT_SYMBOL_GPL(video_device_state_get_fmt);
+
+int video_device_g_fmt(struct file *file, void *priv, struct v4l2_format *fmt)
+{
+	struct video_device_state *state = priv;
+	struct v4l2_format *vfmt = video_device_state_get_fmt(state);
+
+	if (!vfmt)
+		return -EINVAL;
+
+	*fmt = *vfmt;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(video_device_g_fmt);
+
 static inline void video_get(struct video_device *vdev)
 {
 	get_device(&vdev->dev);
@@ -927,6 +986,10 @@ int __video_register_device(struct video_device *vdev,
 	spin_lock_init(&vdev->fh_lock);
 	INIT_LIST_HEAD(&vdev->fh_list);
 
+	/* state support */
+	if (test_bit(V4L2_FL_USES_STATE, &vdev->flags))
+		vdev->state = __video_device_state_alloc(vdev);
+
 	/* Part 1: check device type */
 	switch (type) {
 	case VFL_TYPE_VIDEO:
@@ -1116,6 +1179,8 @@ void video_unregister_device(struct video_device *vdev)
 	mutex_unlock(&videodev_lock);
 	if (test_bit(V4L2_FL_USES_V4L2_FH, &vdev->flags))
 		v4l2_event_wake_all(vdev);
+	if (test_bit(V4L2_FL_USES_STATE, &vdev->flags))
+		__video_device_state_free(vdev->state);
 	device_unregister(&vdev->dev);
 }
 EXPORT_SYMBOL(video_unregister_device);
