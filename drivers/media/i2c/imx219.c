@@ -105,6 +105,7 @@
 #define IMX219_REG_BINNING_MODE		CCI_REG16(0x0174)
 #define IMX219_BINNING_NONE		0x0000
 #define IMX219_BINNING_2X2_NORMAL	0x0101
+#define IMX219_BINNING_4X4		0x0202
 #define IMX219_BINNING_2X2_SPECIAL	0x0303
 
 #define IMX219_REG_CSI_DATA_FORMAT_A	CCI_REG16(0x018c)
@@ -175,6 +176,7 @@ enum pad_types {
 enum binning_mode {
 	BINNING_NONE,
 	BINNING_NORMAL_2x2,
+	BINNING_4x4,
 	BINNING_SPECIAL_2x2,
 };
 
@@ -288,10 +290,10 @@ static const struct cci_reg_sequence mode_1640_1232_regs[] = {
 };
 
 static const struct cci_reg_sequence mode_640_480_regs[] = {
-	{ IMX219_REG_X_ADD_STA_A, 1000 },
-	{ IMX219_REG_X_ADD_END_A, 2279 },
-	{ IMX219_REG_Y_ADD_STA_A, 752 },
-	{ IMX219_REG_Y_ADD_END_A, 1711 },
+	{ IMX219_REG_X_ADD_STA_A, 360 },
+	{ IMX219_REG_X_ADD_END_A, 2919 },
+	{ IMX219_REG_Y_ADD_STA_A, 272 },
+	{ IMX219_REG_Y_ADD_END_A, 2191 },
 	{ IMX219_REG_X_OUTPUT_SIZE, 640 },
 	{ IMX219_REG_Y_OUTPUT_SIZE, 480 },
 	{ IMX219_REG_TP_WINDOW_WIDTH, 1640 },
@@ -485,10 +487,10 @@ static const struct imx219_mode supported_modes[] = {
 		.width = 640,
 		.height = 480,
 		.crop = {
-			.left = 1008,
-			.top = 760,
-			.width = 1280,
-			.height = 960
+			.left = 368,
+			.top = 280,
+			.width = 2560,
+			.height = 1920
 		},
 		.vts_def = IMX219_VTS_30FPS_640x480,
 		.reg_list = {
@@ -496,8 +498,8 @@ static const struct imx219_mode supported_modes[] = {
 			.regs = mode_640_480_regs,
 		},
 		.binning = {
-			[BINNING_IDX_8_BIT] = BINNING_SPECIAL_2x2,
-			[BINNING_IDX_10_BIT] = BINNING_SPECIAL_2x2,
+			[BINNING_IDX_8_BIT] = BINNING_4x4,
+			[BINNING_IDX_10_BIT] = BINNING_4x4,
 		},
 	},
 };
@@ -598,6 +600,7 @@ static int imx219_get_rate_factor(struct imx219 *imx219,
 	switch (binning) {
 	case BINNING_NONE:
 	case BINNING_NORMAL_2x2:
+	case BINNING_4x4:
 		return 1;
 	case BINNING_SPECIAL_2x2:
 		return 2;
@@ -834,7 +837,7 @@ static int imx219_set_pad_format(struct v4l2_subdev *sd,
 
 		format = v4l2_subdev_get_pad_format(sd, sd_state, 0);
 		crop = v4l2_subdev_get_pad_crop(sd, sd_state, 0);
-		
+
 		*format = fmt->format;
 		*crop = mode->crop;
 
@@ -920,6 +923,9 @@ static int imx219_set_binning(struct imx219 *imx219,
 	case BINNING_NORMAL_2x2:
 		return cci_write(imx219->regmap, IMX219_REG_BINNING_MODE,
 				 IMX219_BINNING_2X2_NORMAL, NULL);
+	case BINNING_4x4:
+		return cci_write(imx219->regmap, IMX219_REG_BINNING_MODE,
+				 IMX219_BINNING_4X4, NULL);
 	case BINNING_SPECIAL_2x2:
 		return cci_write(imx219->regmap, IMX219_REG_BINNING_MODE,
 				 IMX219_BINNING_2X2_SPECIAL, NULL);
