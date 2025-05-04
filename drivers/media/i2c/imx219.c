@@ -298,6 +298,8 @@ static const struct cci_reg_sequence mode_640_480_regs[] = {
 	{ IMX219_REG_Y_OUTPUT_SIZE, 480 },
 	{ IMX219_REG_TP_WINDOW_WIDTH, 1640 },
 	{ IMX219_REG_TP_WINDOW_HEIGHT, 1232 },
+	{ IMX219_REG_PLL_VT_MPY, 109 },
+	{ IMX219_REG_PLL_OP_MPY, 218 },
 };
 
 static const struct cci_reg_sequence raw8_framefmt_regs[] = {
