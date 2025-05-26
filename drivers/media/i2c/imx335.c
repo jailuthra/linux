@@ -1278,6 +1278,7 @@ static int imx335_power_on(struct device *dev)
 		return ret;
 	}
 
+	usleep_range(10000, 20000); /* T2: Rising time of all power supplies */
 	usleep_range(500, 550); /* Tlow */
 
 	gpiod_set_value_cansleep(imx335->reset_gpio, 0);
