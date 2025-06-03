@@ -856,6 +856,36 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 		return rval;
 	}
 
+	case VIDIOC_SUBDEV_G_CTRL: {
+		struct v4l2_subdev_control *sd_ctrl = arg;
+		struct v4l2_control ctrl = {
+			.id = sd_ctrl->id,
+			.value = sd_ctrl->value,
+		};
+		struct v4l2_ctrl_handler *ctrl_handler =
+			__v4l2_subdev_state_get_ctrl_handler(state,
+							     sd_ctrl->pad, 0);
+
+		return v4l2_g_ctrl(ctrl_handler, &ctrl);
+	}
+
+	case VIDIOC_SUBDEV_S_CTRL: {
+		struct v4l2_subdev_control *sd_ctrl = arg;
+		struct v4l2_control ctrl = {
+			.id = sd_ctrl->id,
+			.value = sd_ctrl->value,
+		};
+		struct v4l2_ctrl_handler *ctrl_handler =
+			__v4l2_subdev_state_get_ctrl_handler(state,
+							     sd_ctrl->pad, 0);
+
+		/*
+		 * TODO: Figure out why fh is passed, and if it can be same for
+		 * different pad control handlers
+		 */
+		return v4l2_s_ctrl(vfh, ctrl_handler, &ctrl);
+	}
+
 	case VIDIOC_SUBDEV_ENUM_MBUS_CODE: {
 		struct v4l2_subdev_mbus_code_enum *code = arg;
 
@@ -1846,6 +1876,37 @@ __v4l2_subdev_state_get_interval(struct v4l2_subdev_state *state,
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(__v4l2_subdev_state_get_interval);
+
+struct v4l2_ctrl_handler *
+__v4l2_subdev_state_get_ctrl_handler(struct v4l2_subdev_state *state,
+				     unsigned int pad, u32 stream)
+
+{
+	struct v4l2_subdev_ctrl_configs *ctrl_configs;
+	int i;
+
+	if (WARN_ON(!state))
+		return NULL;
+
+	/* TODO: Locking? */
+
+	if (stream)
+		return NULL;
+
+	if (pad >= state->sd->entity.num_pads)
+		return NULL;
+
+	ctrl_configs = &state->ctrl_configs;
+
+	/* TODO: streams? */
+	for (i = 0; i < ctrl_configs->num_configs; ++i) {
+		if (ctrl_configs->configs[i].pad == pad)
+			return ctrl_configs->configs[i].ctrl_handler;
+	}
+
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(__v4l2_subdev_state_get_ctrl_handler);
 
 #if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
 

@@ -63,6 +63,35 @@ struct v4l2_subdev_crop {
 	__u32 reserved[7];
 };
 
+
+/**
+ * enum v4l2_subdev_control_whence - Media bus control type
+ * @V4L2_SUBDEV_CTRL_TRY: try control, for negotiation only
+ * @V4L2_SUBDEV_CTRL_ACTIVE: active control, applied to the device
+ */
+enum v4l2_subdev_control_whence {
+	V4L2_SUBDEV_CTRL_TRY = 0,
+	V4L2_SUBDEV_CTRL_ACTIVE = 1,
+};
+
+/**
+ * struct v4l2_subdev_control - Pad-level control
+ * @which: control type (from enum v4l2_subdev_control_whence)
+ * @id: control id
+ * @value: control value
+ * @flags: optional flags, currently zeroed by applications
+ * @pad: pad number, as reported by the media API
+ * @reserved: drivers and applications must zero this array
+ */
+struct v4l2_subdev_control {
+	__u32 which;
+	__u32 id;
+	__u32 value;
+	__u32 flags;
+	__u32 pad;
+	__u32 reserved[7];
+};
+
 #define V4L2_SUBDEV_MBUS_CODE_CSC_COLORSPACE	0x00000001
 #define V4L2_SUBDEV_MBUS_CODE_CSC_XFER_FUNC	0x00000002
 #define V4L2_SUBDEV_MBUS_CODE_CSC_YCBCR_ENC	0x00000004
@@ -296,6 +325,8 @@ struct v4l2_subdev_client_capability {
 #define VIDIOC_SUBDEV_S_ROUTING			_IOWR('V', 39, struct v4l2_subdev_routing)
 #define VIDIOC_SUBDEV_G_CLIENT_CAP		_IOR('V',  101, struct v4l2_subdev_client_capability)
 #define VIDIOC_SUBDEV_S_CLIENT_CAP		_IOWR('V',  102, struct v4l2_subdev_client_capability)
+#define VIDIOC_SUBDEV_G_CTRL			_IOWR('V',  104, struct v4l2_subdev_control)
+#define VIDIOC_SUBDEV_S_CTRL			_IOWR('V',  105, struct v4l2_subdev_control)
 
 /* The following ioctls are identical to the ioctls in videodev2.h */
 #define VIDIOC_SUBDEV_G_STD			_IOR('V', 23, v4l2_std_id)

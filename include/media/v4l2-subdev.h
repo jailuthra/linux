@@ -710,6 +710,17 @@ struct v4l2_subdev_krouting {
 	struct v4l2_subdev_route *routes;
 };
 
+
+struct v4l2_subdev_ctrl_config {
+	u32 pad;
+	struct v4l2_ctrl_handler *ctrl_handler;
+};
+
+struct v4l2_subdev_ctrl_configs {
+	u32 num_configs;
+	struct v4l2_subdev_ctrl_config *configs;
+};
+
 /**
  * struct v4l2_subdev_state - Used for storing subdev state information.
  *
@@ -732,6 +743,7 @@ struct v4l2_subdev_state {
 	struct v4l2_subdev_pad_config *pads;
 	struct v4l2_subdev_krouting routing;
 	struct v4l2_subdev_stream_configs stream_configs;
+	struct v4l2_subdev_ctrl_configs ctrl_configs;
 };
 
 /**
@@ -1445,6 +1457,10 @@ __v4l2_subdev_state_get_compose(struct v4l2_subdev_state *state,
 struct v4l2_fract *
 __v4l2_subdev_state_get_interval(struct v4l2_subdev_state *state,
 				 unsigned int pad, u32 stream);
+
+struct v4l2_ctrl_handler *
+__v4l2_subdev_state_get_ctrl_handler(struct v4l2_subdev_state *state,
+				     unsigned int pad, u32 stream);
 
 #if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
 
