@@ -149,6 +149,7 @@
 
 /* Pixel rate is fixed for all the modes */
 #define IMX219_PIXEL_RATE		182400000
+#define IMX219_PIXEL_RATE_HIGH_PLL	348800000
 #define IMX219_PIXEL_RATE_4LANE		281600000
 
 #define IMX219_DEFAULT_LINK_FREQ	456000000
@@ -812,8 +813,15 @@ static int imx219_enum_frame_size(struct v4l2_subdev *sd,
 static unsigned long imx219_get_pixel_rate(struct imx219 *imx219,
 					   const struct v4l2_mbus_framefmt *format)
 {
-	return ((imx219->lanes == 2) ? IMX219_PIXEL_RATE :
-		IMX219_PIXEL_RATE_4LANE) * imx219_get_rate_factor(imx219, format);
+	unsigned long pixel_rate = IMX219_PIXEL_RATE;
+
+	if (imx219->lanes == 4)
+		pixel_rate = IMX219_PIXEL_RATE_4LANE;
+
+	if (imx219->mode->height == 480)
+		pixel_rate = IMX219_PIXEL_RATE_HIGH_PLL;
+
+	return pixel_rate * imx219_get_rate_factor(imx219, format);
 }
 
 static int imx219_set_pad_format(struct v4l2_subdev *sd,
