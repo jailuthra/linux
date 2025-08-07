@@ -873,7 +873,7 @@
 };
 
 &mcu_r5fss0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &mcu_r5fss0_core0 {
