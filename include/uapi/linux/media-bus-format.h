@@ -188,10 +188,14 @@
 /* Sensor ancillary metadata formats - next is 0x7002 */
 #define MEDIA_BUS_FMT_SENSOR_DATA		0x7002
 
-/* Generic (CFA independent) pixel data formats. Next is 0x9005. */
+/* Generic (CFA independent) pixel data formats. Next is 0x9009. */
 #define MEDIA_BUS_FMT_RAW_8			0x9001
 #define MEDIA_BUS_FMT_RAW_10			0x9002
 #define MEDIA_BUS_FMT_RAW_12			0x9003
 #define MEDIA_BUS_FMT_RAW_14			0x9004
+#define MEDIA_BUS_FMT_RAW_16			0x9005
+#define MEDIA_BUS_FMT_RAW_20			0x9006
+#define MEDIA_BUS_FMT_RAW_24			0x9007
+#define MEDIA_BUS_FMT_RAW_28			0x9008
 
 #endif /* __LINUX_MEDIA_BUS_FORMAT_H */
