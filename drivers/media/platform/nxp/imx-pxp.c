@@ -1127,7 +1127,8 @@ static irqreturn_t pxp_irq_handler(int irq, void *dev_id)
 /*
  * video ioctls
  */
-static int pxp_querycap(struct file *file, void *priv,
+static int pxp_querycap(struct file *file,
+			struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, MEM2MEM_NAME, sizeof(cap->driver));
@@ -1166,13 +1167,15 @@ static int pxp_enum_fmt(struct v4l2_fmtdesc *f, u32 type)
 	return -EINVAL;
 }
 
-static int pxp_enum_fmt_vid_cap(struct file *file, void *priv,
+static int pxp_enum_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	return pxp_enum_fmt(f, MEM2MEM_CAPTURE);
 }
 
-static int pxp_enum_fmt_vid_out(struct file *file, void *priv,
+static int pxp_enum_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	return pxp_enum_fmt(f, MEM2MEM_OUTPUT);
@@ -1203,13 +1206,15 @@ static int pxp_g_fmt(struct pxp_ctx *ctx, struct v4l2_format *f)
 	return 0;
 }
 
-static int pxp_g_fmt_vid_out(struct file *file, void *priv,
+static int pxp_g_fmt_vid_out(struct file *file,
+			     struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	return pxp_g_fmt(file2ctx(file), f);
 }
 
-static int pxp_g_fmt_vid_cap(struct file *file, void *priv,
+static int pxp_g_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	return pxp_g_fmt(file2ctx(file), f);
@@ -1271,7 +1276,8 @@ pxp_fixup_colorimetry_cap(struct pxp_ctx *ctx, u32 dst_fourcc,
 	}
 }
 
-static int pxp_try_fmt_vid_cap(struct file *file, void *priv,
+static int pxp_try_fmt_vid_cap(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct pxp_fmt *fmt;
@@ -1299,7 +1305,8 @@ static int pxp_try_fmt_vid_cap(struct file *file, void *priv,
 	return pxp_try_fmt(f, fmt);
 }
 
-static int pxp_try_fmt_vid_out(struct file *file, void *priv,
+static int pxp_try_fmt_vid_out(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct pxp_fmt *fmt;
@@ -1354,13 +1361,14 @@ static int pxp_s_fmt(struct pxp_ctx *ctx, struct v4l2_format *f)
 	return 0;
 }
 
-static int pxp_s_fmt_vid_cap(struct file *file, void *priv,
+static int pxp_s_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct pxp_ctx *ctx = file2ctx(file);
 	int ret;
 
-	ret = pxp_try_fmt_vid_cap(file, priv, f);
+	ret = pxp_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -1374,13 +1382,14 @@ static int pxp_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int pxp_s_fmt_vid_out(struct file *file, void *priv,
+static int pxp_s_fmt_vid_out(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct pxp_ctx *ctx = file2ctx(file);
 	int ret;
 
-	ret = pxp_try_fmt_vid_out(file, priv, f);
+	ret = pxp_try_fmt_vid_out(file, state, f);
 	if (ret)
 		return ret;
 
@@ -1400,7 +1409,8 @@ static int pxp_s_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int pxp_enum_framesizes(struct file *file, void *fh,
+static int pxp_enum_framesizes(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_frmsizeenum *fsize)
 {
 	if (fsize->index > 0)

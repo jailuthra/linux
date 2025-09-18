@@ -20,7 +20,7 @@ MODULE_PARM_DESC(vbi_debug, "enable debug messages [vbi]");
 
 /* ------------------------------------------------------------------ */
 
-int cx8800_vbi_fmt(struct file *file, void *priv,
+int cx8800_vbi_fmt(struct file *file, struct video_device_state *state,
 		   struct v4l2_format *f)
 {
 	struct cx8800_dev *dev = video_drvdata(file);

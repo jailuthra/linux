@@ -863,7 +863,8 @@ static const struct vb2_ops rcar_drif_vb2_ops = {
 	.stop_streaming         = rcar_drif_stop_streaming,
 };
 
-static int rcar_drif_querycap(struct file *file, void *fh,
+static int rcar_drif_querycap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_capability *cap)
 {
 	struct rcar_drif_sdr *sdr = video_drvdata(file);
@@ -893,7 +894,8 @@ static int rcar_drif_set_default_format(struct rcar_drif_sdr *sdr)
 	return -EINVAL;
 }
 
-static int rcar_drif_enum_fmt_sdr_cap(struct file *file, void *priv,
+static int rcar_drif_enum_fmt_sdr_cap(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_fmtdesc *f)
 {
 	if (f->index >= ARRAY_SIZE(formats))
@@ -904,7 +906,8 @@ static int rcar_drif_enum_fmt_sdr_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rcar_drif_g_fmt_sdr_cap(struct file *file, void *priv,
+static int rcar_drif_g_fmt_sdr_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct rcar_drif_sdr *sdr = video_drvdata(file);
@@ -915,7 +918,8 @@ static int rcar_drif_g_fmt_sdr_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rcar_drif_s_fmt_sdr_cap(struct file *file, void *priv,
+static int rcar_drif_s_fmt_sdr_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct rcar_drif_sdr *sdr = video_drvdata(file);
@@ -956,7 +960,8 @@ static int rcar_drif_s_fmt_sdr_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rcar_drif_try_fmt_sdr_cap(struct file *file, void *priv,
+static int rcar_drif_try_fmt_sdr_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	unsigned int i;
@@ -976,7 +981,8 @@ static int rcar_drif_try_fmt_sdr_cap(struct file *file, void *priv,
 }
 
 /* Tuner subdev ioctls */
-static int rcar_drif_enum_freq_bands(struct file *file, void *priv,
+static int rcar_drif_enum_freq_bands(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_frequency_band *band)
 {
 	struct rcar_drif_sdr *sdr = video_drvdata(file);
@@ -984,7 +990,8 @@ static int rcar_drif_enum_freq_bands(struct file *file, void *priv,
 	return v4l2_subdev_call(sdr->ep.subdev, tuner, enum_freq_bands, band);
 }
 
-static int rcar_drif_g_frequency(struct file *file, void *priv,
+static int rcar_drif_g_frequency(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_frequency *f)
 {
 	struct rcar_drif_sdr *sdr = video_drvdata(file);
@@ -992,7 +999,8 @@ static int rcar_drif_g_frequency(struct file *file, void *priv,
 	return v4l2_subdev_call(sdr->ep.subdev, tuner, g_frequency, f);
 }
 
-static int rcar_drif_s_frequency(struct file *file, void *priv,
+static int rcar_drif_s_frequency(struct file *file,
+				 struct video_device_state *state,
 				 const struct v4l2_frequency *f)
 {
 	struct rcar_drif_sdr *sdr = video_drvdata(file);
@@ -1000,7 +1008,8 @@ static int rcar_drif_s_frequency(struct file *file, void *priv,
 	return v4l2_subdev_call(sdr->ep.subdev, tuner, s_frequency, f);
 }
 
-static int rcar_drif_g_tuner(struct file *file, void *priv,
+static int rcar_drif_g_tuner(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_tuner *vt)
 {
 	struct rcar_drif_sdr *sdr = video_drvdata(file);
@@ -1008,7 +1017,8 @@ static int rcar_drif_g_tuner(struct file *file, void *priv,
 	return v4l2_subdev_call(sdr->ep.subdev, tuner, g_tuner, vt);
 }
 
-static int rcar_drif_s_tuner(struct file *file, void *priv,
+static int rcar_drif_s_tuner(struct file *file,
+			     struct video_device_state *state,
 			     const struct v4l2_tuner *vt)
 {
 	struct rcar_drif_sdr *sdr = video_drvdata(file);

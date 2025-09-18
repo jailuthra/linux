@@ -242,10 +242,11 @@ static int comp_set_format(struct most_video_dev *mdev, unsigned int cmd,
 	return 0;
 }
 
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
-	struct comp_fh *fh = priv;
+	struct comp_fh *fh = state;
 	struct most_video_dev *mdev = fh->mdev;
 
 	strscpy(cap->driver, "v4l2_component", sizeof(cap->driver));
@@ -255,7 +256,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	if (f->index)
@@ -269,41 +271,46 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	comp_set_format_struct(f);
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
-	struct comp_fh *fh = priv;
+	struct comp_fh *fh = state;
 	struct most_video_dev *mdev = fh->mdev;
 
 	return comp_set_format(mdev, VIDIOC_TRY_FMT, f);
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
-	struct comp_fh *fh = priv;
+	struct comp_fh *fh = state;
 	struct most_video_dev *mdev = fh->mdev;
 
 	return comp_set_format(mdev, VIDIOC_S_FMT, f);
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *norm)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *norm)
 {
 	*norm = V4L2_STD_UNKNOWN;
 	return 0;
 }
 
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_input *input)
 {
-	struct comp_fh *fh = priv;
+	struct comp_fh *fh = state;
 	struct most_video_dev *mdev = fh->mdev;
 
 	if (input->index >= V4L2_CMP_MAX_INPUT)
@@ -318,17 +325,19 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
-	struct comp_fh *fh = priv;
+	struct comp_fh *fh = state;
 	struct most_video_dev *mdev = fh->mdev;
 	*i = mdev->ctrl_input;
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int index)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int index)
 {
-	struct comp_fh *fh = priv;
+	struct comp_fh *fh = state;
 	struct most_video_dev *mdev = fh->mdev;
 
 	if (index >= V4L2_CMP_MAX_INPUT)

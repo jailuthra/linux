@@ -453,7 +453,8 @@ static const struct vb2_ops vdec_vb2_ops = {
 };
 
 static int
-vdec_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+vdec_querycap(struct file *file, struct video_device_state *state,
+	      struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "meson-vdec", sizeof(cap->driver));
 	strscpy(cap->card, "Amlogic Video Decoder", sizeof(cap->card));
@@ -556,7 +557,8 @@ vdec_try_fmt_common(struct amvdec_session *sess, u32 size,
 	return fmt_out;
 }
 
-static int vdec_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int vdec_try_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct amvdec_session *sess = file_to_amvdec_session(file);
 
@@ -565,7 +567,8 @@ static int vdec_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int vdec_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int vdec_g_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct amvdec_session *sess = file_to_amvdec_session(file);
 	struct v4l2_pix_format_mplane *pixmp = &f->fmt.pix_mp;
@@ -592,7 +595,8 @@ static int vdec_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int vdec_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int vdec_s_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct amvdec_session *sess = file_to_amvdec_session(file);
 	struct v4l2_pix_format_mplane *pixmp = &f->fmt.pix_mp;
@@ -653,7 +657,8 @@ static int vdec_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int vdec_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int vdec_enum_fmt(struct file *file, struct video_device_state *state,
+			 struct v4l2_fmtdesc *f)
 {
 	struct amvdec_session *sess = file_to_amvdec_session(file);
 	const struct vdec_platform *platform = sess->core->platform;
@@ -681,7 +686,8 @@ static int vdec_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 	return 0;
 }
 
-static int vdec_enum_framesizes(struct file *file, void *fh,
+static int vdec_enum_framesizes(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_frmsizeenum *fsize)
 {
 	struct amvdec_session *sess = file_to_amvdec_session(file);
@@ -706,14 +712,15 @@ static int vdec_enum_framesizes(struct file *file, void *fh,
 }
 
 static int
-vdec_decoder_cmd(struct file *file, void *fh, struct v4l2_decoder_cmd *cmd)
+vdec_decoder_cmd(struct file *file, struct video_device_state *state,
+		 struct v4l2_decoder_cmd *cmd)
 {
 	struct amvdec_session *sess = file_to_amvdec_session(file);
 	struct amvdec_codec_ops *codec_ops = sess->fmt_out->codec_ops;
 	struct device *dev = sess->core->dev;
 	int ret;
 
-	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, fh, cmd);
+	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, state, cmd);
 	if (ret)
 		return ret;
 
@@ -764,7 +771,8 @@ static int vdec_subscribe_event(struct v4l2_fh *fh,
 	}
 }
 
-static int vdec_g_pixelaspect(struct file *file, void *fh, int type,
+static int vdec_g_pixelaspect(struct file *file,
+			      struct video_device_state *state, int type,
 			      struct v4l2_fract *f)
 {
 	struct amvdec_session *sess = file_to_amvdec_session(file);

@@ -201,7 +201,9 @@ static int hexium_set_standard(struct hexium *hexium, struct hexium_data *vdec)
 	return 0;
 }
 
-static int vidioc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_input *i)
 {
 	DEB_EE("VIDIOC_ENUMINPUT %d\n", i->index);
 
@@ -214,7 +216,8 @@ static int vidioc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *fh, unsigned int *input)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *input)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct hexium *hexium = (struct hexium *) dev->ext_priv;
@@ -225,7 +228,8 @@ static int vidioc_g_input(struct file *file, void *fh, unsigned int *input)
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *fh, unsigned int input)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int input)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct hexium *hexium = (struct hexium *) dev->ext_priv;

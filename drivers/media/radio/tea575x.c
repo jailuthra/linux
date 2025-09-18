@@ -217,7 +217,8 @@ EXPORT_SYMBOL(snd_tea575x_set_freq);
  * Linux Video interface
  */
 
-static int vidioc_querycap(struct file *file, void  *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_capability *v)
 {
 	struct snd_tea575x *tea = video_drvdata(file);
@@ -262,7 +263,8 @@ int snd_tea575x_enum_freq_bands(struct snd_tea575x *tea,
 }
 EXPORT_SYMBOL(snd_tea575x_enum_freq_bands);
 
-static int vidioc_enum_freq_bands(struct file *file, void *priv,
+static int vidioc_enum_freq_bands(struct file *file,
+				  struct video_device_state *state,
 					 struct v4l2_frequency_band *band)
 {
 	struct snd_tea575x *tea = video_drvdata(file);
@@ -294,7 +296,8 @@ int snd_tea575x_g_tuner(struct snd_tea575x *tea, struct v4l2_tuner *v)
 }
 EXPORT_SYMBOL(snd_tea575x_g_tuner);
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 					struct v4l2_tuner *v)
 {
 	struct snd_tea575x *tea = video_drvdata(file);
@@ -302,7 +305,8 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return snd_tea575x_g_tuner(tea, v);
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 					const struct v4l2_tuner *v)
 {
 	struct snd_tea575x *tea = video_drvdata(file);
@@ -320,7 +324,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 					struct v4l2_frequency *f)
 {
 	struct snd_tea575x *tea = video_drvdata(file);
@@ -332,7 +337,8 @@ static int vidioc_g_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 					const struct v4l2_frequency *f)
 {
 	struct snd_tea575x *tea = video_drvdata(file);
@@ -440,7 +446,8 @@ int snd_tea575x_s_hw_freq_seek(struct file *file, struct snd_tea575x *tea,
 }
 EXPORT_SYMBOL(snd_tea575x_s_hw_freq_seek);
 
-static int vidioc_s_hw_freq_seek(struct file *file, void *fh,
+static int vidioc_s_hw_freq_seek(struct file *file,
+				 struct video_device_state *state,
 					const struct v4l2_hw_freq_seek *a)
 {
 	struct snd_tea575x *tea = video_drvdata(file);

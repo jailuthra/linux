@@ -1129,7 +1129,8 @@ static irqreturn_t npcm_video_irq(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-static int npcm_video_querycap(struct file *file, void *fh,
+static int npcm_video_querycap(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, DEVICE_NAME, sizeof(cap->driver));
@@ -1138,7 +1139,8 @@ static int npcm_video_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int npcm_video_enum_format(struct file *file, void *fh,
+static int npcm_video_enum_format(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_fmtdesc *f)
 {
 	struct npcm_video *video = video_drvdata(file);
@@ -1155,7 +1157,8 @@ static int npcm_video_enum_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int npcm_video_try_format(struct file *file, void *fh,
+static int npcm_video_try_format(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct npcm_video *video = video_drvdata(file);
@@ -1178,7 +1181,8 @@ static int npcm_video_try_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int npcm_video_get_format(struct file *file, void *fh,
+static int npcm_video_get_format(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct npcm_video *video = video_drvdata(file);
@@ -1187,13 +1191,14 @@ static int npcm_video_get_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int npcm_video_set_format(struct file *file, void *fh,
+static int npcm_video_set_format(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct npcm_video *video = video_drvdata(file);
 	int ret;
 
-	ret = npcm_video_try_format(file, fh, f);
+	ret = npcm_video_try_format(file, state, f);
 	if (ret)
 		return ret;
 
@@ -1206,7 +1211,8 @@ static int npcm_video_set_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int npcm_video_enum_input(struct file *file, void *fh,
+static int npcm_video_enum_input(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_input *inp)
 {
 	struct npcm_video *video = video_drvdata(file);
@@ -1222,14 +1228,18 @@ static int npcm_video_enum_input(struct file *file, void *fh,
 	return 0;
 }
 
-static int npcm_video_get_input(struct file *file, void *fh, unsigned int *i)
+static int npcm_video_get_input(struct file *file,
+				struct video_device_state *state,
+				unsigned int *i)
 {
 	*i = 0;
 
 	return 0;
 }
 
-static int npcm_video_set_input(struct file *file, void *fh, unsigned int i)
+static int npcm_video_set_input(struct file *file,
+				struct video_device_state *state,
+				unsigned int i)
 {
 	if (i)
 		return -EINVAL;
@@ -1237,7 +1247,8 @@ static int npcm_video_set_input(struct file *file, void *fh, unsigned int i)
 	return 0;
 }
 
-static int npcm_video_set_dv_timings(struct file *file, void *fh,
+static int npcm_video_set_dv_timings(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_dv_timings *timings)
 {
 	struct npcm_video *video = video_drvdata(file);
@@ -1261,7 +1272,8 @@ static int npcm_video_set_dv_timings(struct file *file, void *fh,
 	return 0;
 }
 
-static int npcm_video_get_dv_timings(struct file *file, void *fh,
+static int npcm_video_get_dv_timings(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_dv_timings *timings)
 {
 	struct npcm_video *video = video_drvdata(file);
@@ -1272,7 +1284,8 @@ static int npcm_video_get_dv_timings(struct file *file, void *fh,
 	return 0;
 }
 
-static int npcm_video_query_dv_timings(struct file *file, void *fh,
+static int npcm_video_query_dv_timings(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_dv_timings *timings)
 {
 	struct npcm_video *video = video_drvdata(file);
@@ -1284,14 +1297,16 @@ static int npcm_video_query_dv_timings(struct file *file, void *fh,
 	return video->v4l2_input_status ? -ENOLINK : 0;
 }
 
-static int npcm_video_enum_dv_timings(struct file *file, void *fh,
+static int npcm_video_enum_dv_timings(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_enum_dv_timings *timings)
 {
 	return v4l2_enum_dv_timings_cap(timings, &npcm_video_timings_cap,
 					NULL, NULL);
 }
 
-static int npcm_video_dv_timings_cap(struct file *file, void *fh,
+static int npcm_video_dv_timings_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_dv_timings_cap *cap)
 {
 	*cap = npcm_video_timings_cap;

@@ -11,9 +11,17 @@
 ssize_t vivid_radio_rx_read(struct file *, char __user *, size_t, loff_t *);
 __poll_t vivid_radio_rx_poll(struct file *file, struct poll_table_struct *wait);
 
-int vivid_radio_rx_enum_freq_bands(struct file *file, void *priv, struct v4l2_frequency_band *band);
-int vivid_radio_rx_s_hw_freq_seek(struct file *file, void *priv, const struct v4l2_hw_freq_seek *a);
-int vivid_radio_rx_g_tuner(struct file *file, void *priv, struct v4l2_tuner *vt);
-int vivid_radio_rx_s_tuner(struct file *file, void *priv, const struct v4l2_tuner *vt);
+int vivid_radio_rx_enum_freq_bands(struct file *file,
+				   struct video_device_state *state,
+				   struct v4l2_frequency_band *band);
+int vivid_radio_rx_s_hw_freq_seek(struct file *file,
+				  struct video_device_state *state,
+				  const struct v4l2_hw_freq_seek *a);
+int vivid_radio_rx_g_tuner(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_tuner *vt);
+int vivid_radio_rx_s_tuner(struct file *file,
+			   struct video_device_state *state,
+			   const struct v4l2_tuner *vt);
 
 #endif

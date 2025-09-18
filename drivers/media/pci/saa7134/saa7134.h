@@ -795,22 +795,28 @@ void saa7134_vb2_buffer_queue(struct vb2_buffer *vb);
 int saa7134_vb2_start_streaming(struct vb2_queue *vq, unsigned int count);
 void saa7134_vb2_stop_streaming(struct vb2_queue *vq);
 
-int saa7134_s_std(struct file *file, void *priv, v4l2_std_id id);
-int saa7134_g_std(struct file *file, void *priv, v4l2_std_id *id);
-int saa7134_querystd(struct file *file, void *priv, v4l2_std_id *std);
-int saa7134_enum_input(struct file *file, void *priv, struct v4l2_input *i);
-int saa7134_g_input(struct file *file, void *priv, unsigned int *i);
-int saa7134_s_input(struct file *file, void *priv, unsigned int i);
-int saa7134_querycap(struct file *file, void  *priv,
-					struct v4l2_capability *cap);
-int saa7134_g_tuner(struct file *file, void *priv,
-					struct v4l2_tuner *t);
-int saa7134_s_tuner(struct file *file, void *priv,
-					const struct v4l2_tuner *t);
-int saa7134_g_frequency(struct file *file, void *priv,
-					struct v4l2_frequency *f);
-int saa7134_s_frequency(struct file *file, void *priv,
-					const struct v4l2_frequency *f);
+int saa7134_s_std(struct file *file, struct video_device_state *state,
+		  v4l2_std_id id);
+int saa7134_g_std(struct file *file, struct video_device_state *state,
+		  v4l2_std_id *id);
+int saa7134_querystd(struct file *file, struct video_device_state *state,
+		     v4l2_std_id *std);
+int saa7134_enum_input(struct file *file, struct video_device_state *state,
+		       struct v4l2_input *i);
+int saa7134_g_input(struct file *file, struct video_device_state *state,
+		    unsigned int *i);
+int saa7134_s_input(struct file *file, struct video_device_state *state,
+		    unsigned int i);
+int saa7134_querycap(struct file *file, struct video_device_state *state,
+		     struct v4l2_capability *cap);
+int saa7134_g_tuner(struct file *file, struct video_device_state *state,
+		    struct v4l2_tuner *t);
+int saa7134_s_tuner(struct file *file, struct video_device_state *state,
+		    const struct v4l2_tuner *t);
+int saa7134_g_frequency(struct file *file, struct video_device_state *state,
+			struct v4l2_frequency *f);
+int saa7134_s_frequency(struct file *file, struct video_device_state *state,
+			const struct v4l2_frequency *f);
 
 int saa7134_videoport_init(struct saa7134_dev *dev);
 void saa7134_set_tvnorm_hw(struct saa7134_dev *dev);

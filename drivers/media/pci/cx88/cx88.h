@@ -656,7 +656,7 @@ int cx88_stop_audio_dma(struct cx88_core *core);
 /* cx88-vbi.c                                                  */
 
 /* Can be used as g_vbi_fmt, try_vbi_fmt and s_vbi_fmt */
-int cx8800_vbi_fmt(struct file *file, void *priv,
+int cx8800_vbi_fmt(struct file *file, struct video_device_state *state,
 		   struct v4l2_format *f);
 
 void cx8800_stop_vbi_dma(struct cx8800_dev *dev);

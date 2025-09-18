@@ -272,7 +272,8 @@ static void tea5764_mute(struct tea5764_device *radio, int on)
 }
 
 /* V4L2 vidioc */
-static int vidioc_querycap(struct file *file, void  *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_capability *v)
 {
 	struct tea5764_device *radio = video_drvdata(file);
@@ -285,7 +286,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 				struct v4l2_tuner *v)
 {
 	struct tea5764_device *radio = video_drvdata(file);
@@ -311,7 +313,8 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 				const struct v4l2_tuner *v)
 {
 	struct tea5764_device *radio = video_drvdata(file);
@@ -323,7 +326,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 				const struct v4l2_frequency *f)
 {
 	struct tea5764_device *radio = video_drvdata(file);
@@ -347,7 +351,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_frequency *f)
 {
 	struct tea5764_device *radio = video_drvdata(file);

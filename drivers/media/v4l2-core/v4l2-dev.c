@@ -208,9 +208,9 @@ struct v4l2_format *video_device_state_get_fmt(struct video_device_state *state)
 }
 EXPORT_SYMBOL_GPL(video_device_state_get_fmt);
 
-int video_device_g_fmt(struct file *file, void *priv, struct v4l2_format *fmt)
+int video_device_g_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *fmt)
 {
-	struct video_device_state *state = priv;
 	struct v4l2_format *vfmt = video_device_state_get_fmt(state);
 
 	if (!vfmt)

@@ -639,7 +639,8 @@ static void fimc_lite_try_compose(struct fimc_lite *fimc, struct v4l2_rect *r)
 /*
  * Video node ioctl operations
  */
-static int fimc_lite_querycap(struct file *file, void *priv,
+static int fimc_lite_querycap(struct file *file,
+			      struct video_device_state *state,
 					struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, FIMC_LITE_DRV_NAME, sizeof(cap->driver));
@@ -647,7 +648,8 @@ static int fimc_lite_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int fimc_lite_enum_fmt(struct file *file, void *priv,
+static int fimc_lite_enum_fmt(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_fmtdesc *f)
 {
 	const struct fimc_fmt *fmt;
@@ -661,7 +663,8 @@ static int fimc_lite_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int fimc_lite_g_fmt_mplane(struct file *file, void *fh,
+static int fimc_lite_g_fmt_mplane(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct fimc_lite *fimc = video_drvdata(file);
@@ -726,14 +729,16 @@ static int fimc_lite_try_fmt(struct fimc_lite *fimc,
 	return 0;
 }
 
-static int fimc_lite_try_fmt_mplane(struct file *file, void *fh,
+static int fimc_lite_try_fmt_mplane(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct fimc_lite *fimc = video_drvdata(file);
 	return fimc_lite_try_fmt(fimc, &f->fmt.pix_mp, NULL);
 }
 
-static int fimc_lite_s_fmt_mplane(struct file *file, void *priv,
+static int fimc_lite_s_fmt_mplane(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	const struct v4l2_pix_format_mplane *pixm = &f->fmt.pix_mp;
@@ -807,7 +812,8 @@ static int fimc_pipeline_validate(struct fimc_lite *fimc)
 	return 0;
 }
 
-static int fimc_lite_streamon(struct file *file, void *priv,
+static int fimc_lite_streamon(struct file *file,
+			      struct video_device_state *state,
 			      enum v4l2_buf_type type)
 {
 	struct fimc_lite *fimc = video_drvdata(file);
@@ -826,7 +832,7 @@ static int fimc_lite_streamon(struct file *file, void *priv,
 
 	fimc->sensor = fimc_find_remote_sensor(&fimc->subdev.entity);
 
-	ret = vb2_ioctl_streamon(file, priv, type);
+	ret = vb2_ioctl_streamon(file, state, type);
 	if (!ret) {
 		fimc->streaming = true;
 		return ret;
@@ -837,13 +843,14 @@ err_p_stop:
 	return 0;
 }
 
-static int fimc_lite_streamoff(struct file *file, void *priv,
+static int fimc_lite_streamoff(struct file *file,
+			       struct video_device_state *state,
 			       enum v4l2_buf_type type)
 {
 	struct fimc_lite *fimc = video_drvdata(file);
 	int ret;
 
-	ret = vb2_ioctl_streamoff(file, priv, type);
+	ret = vb2_ioctl_streamoff(file, state, type);
 	if (ret < 0)
 		return ret;
 
@@ -852,21 +859,23 @@ static int fimc_lite_streamoff(struct file *file, void *priv,
 	return 0;
 }
 
-static int fimc_lite_reqbufs(struct file *file, void *priv,
+static int fimc_lite_reqbufs(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_requestbuffers *reqbufs)
 {
 	struct fimc_lite *fimc = video_drvdata(file);
 	int ret;
 
 	reqbufs->count = max_t(u32, FLITE_REQ_BUFS_MIN, reqbufs->count);
-	ret = vb2_ioctl_reqbufs(file, priv, reqbufs);
+	ret = vb2_ioctl_reqbufs(file, state, reqbufs);
 	if (!ret)
 		fimc->reqbufs_count = reqbufs->count;
 
 	return ret;
 }
 
-static int fimc_lite_g_selection(struct file *file, void *fh,
+static int fimc_lite_g_selection(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_selection *sel)
 {
 	struct fimc_lite *fimc = video_drvdata(file);
@@ -892,7 +901,8 @@ static int fimc_lite_g_selection(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-static int fimc_lite_s_selection(struct file *file, void *fh,
+static int fimc_lite_s_selection(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_selection *sel)
 {
 	struct fimc_lite *fimc = video_drvdata(file);

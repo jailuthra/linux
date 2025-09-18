@@ -360,7 +360,8 @@ int atomisp_pipe_check(struct atomisp_video_pipe *pipe, bool settings_change)
  * v4l2 ioctls
  * return ISP capabilities
  */
-static int atomisp_querycap(struct file *file, void *fh,
+static int atomisp_querycap(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_capability *cap)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -376,7 +377,8 @@ static int atomisp_querycap(struct file *file, void *fh,
 /*
  * enum input are used to check primary/secondary camera
  */
-static int atomisp_enum_input(struct file *file, void *fh,
+static int atomisp_enum_input(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_input *input)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -403,7 +405,9 @@ static int atomisp_enum_input(struct file *file, void *fh,
 /*
  * get input are used to get current primary/secondary camera
  */
-static int atomisp_g_input(struct file *file, void *fh, unsigned int *input)
+static int atomisp_g_input(struct file *file,
+			   struct video_device_state *state,
+			   unsigned int *input)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_sub_device *asd = atomisp_to_video_pipe(vdev)->asd;
@@ -412,7 +416,8 @@ static int atomisp_g_input(struct file *file, void *fh, unsigned int *input)
 	return 0;
 }
 
-static int atomisp_s_fmt_cap(struct file *file, void *fh,
+static int atomisp_s_fmt_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -423,7 +428,9 @@ static int atomisp_s_fmt_cap(struct file *file, void *fh,
 /*
  * set input are used to set current primary/secondary camera
  */
-static int atomisp_s_input(struct file *file, void *fh, unsigned int input)
+static int atomisp_s_input(struct file *file,
+			   struct video_device_state *state,
+			   unsigned int input)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
@@ -524,7 +531,8 @@ static int atomisp_enum_framesizes_crop(struct atomisp_device *isp,
 	return atomisp_enum_framesizes_crop_inner(isp, fsize, &active, &native, &valid_sizes);
 }
 
-static int atomisp_enum_framesizes(struct file *file, void *priv,
+static int atomisp_enum_framesizes(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_frmsizeenum *fsize)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -560,7 +568,8 @@ static int atomisp_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int atomisp_enum_frameintervals(struct file *file, void *priv,
+static int atomisp_enum_frameintervals(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_frmivalenum *fival)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -594,7 +603,8 @@ static int atomisp_enum_frameintervals(struct file *file, void *priv,
 	return ret;
 }
 
-static int atomisp_enum_fmt_cap(struct file *file, void *fh,
+static int atomisp_enum_fmt_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -648,7 +658,8 @@ static int atomisp_enum_fmt_cap(struct file *file, void *fh,
 }
 
 /* This function looks up the closest available resolution. */
-static int atomisp_try_fmt_cap(struct file *file, void *fh,
+static int atomisp_try_fmt_cap(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -657,7 +668,8 @@ static int atomisp_try_fmt_cap(struct file *file, void *fh,
 	return atomisp_try_fmt(isp, &f->fmt.pix, NULL, NULL);
 }
 
-static int atomisp_g_fmt_cap(struct file *file, void *fh,
+static int atomisp_g_fmt_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -675,7 +687,7 @@ static int atomisp_g_fmt_cap(struct file *file, void *fh,
 	f->fmt.pix.width = 10000;
 	f->fmt.pix.height = 10000;
 
-	return atomisp_try_fmt_cap(file, fh, f);
+	return atomisp_try_fmt_cap(file, state, f);
 }
 
 int atomisp_alloc_css_stat_bufs(struct atomisp_sub_device *asd,
@@ -787,7 +799,9 @@ error:
  * Once this is fixed these wrappers can be removed, replacing them with direct
  * calls to vb2_ioctl_[d]qbuf().
  */
-static int atomisp_qbuf_wrapper(struct file *file, void *fh, struct v4l2_buffer *buf)
+static int atomisp_qbuf_wrapper(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_buffer *buf)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_device *isp = video_get_drvdata(vdev);
@@ -807,10 +821,12 @@ static int atomisp_qbuf_wrapper(struct file *file, void *fh, struct v4l2_buffer 
 		pipe->frame_request_config_id[buf->index] = 0;
 	}
 
-	return vb2_ioctl_qbuf(file, fh, buf);
+	return vb2_ioctl_qbuf(file, state, buf);
 }
 
-static int atomisp_dqbuf_wrapper(struct file *file, void *fh, struct v4l2_buffer *buf)
+static int atomisp_dqbuf_wrapper(struct file *file,
+				 struct video_device_state *state,
+				 struct v4l2_buffer *buf)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct atomisp_video_pipe *pipe = atomisp_to_video_pipe(vdev);
@@ -819,7 +835,7 @@ static int atomisp_dqbuf_wrapper(struct file *file, void *fh, struct v4l2_buffer
 	struct vb2_buffer *vb;
 	int ret;
 
-	ret = vb2_ioctl_dqbuf(file, fh, buf);
+	ret = vb2_ioctl_dqbuf(file, state, buf);
 	if (ret)
 		return ret;
 
@@ -1135,7 +1151,8 @@ static int atomisp_s_ctrl(struct file *file, void *fh,
  * this ioctl with a pointer to this structure. The driver fills
  * the rest of the structure.
  */
-static int atomisp_query_ext_ctrl(struct file *file, void *fh,
+static int atomisp_query_ext_ctrl(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_query_ext_ctrl *qc)
 {
 	int i;
@@ -1191,7 +1208,8 @@ static int atomisp_camera_g_ext_ctrls(struct file *file, void *fh,
 }
 
 /* This ioctl allows the application to get multiple controls by class */
-static int atomisp_g_ext_ctrls(struct file *file, void *fh,
+static int atomisp_g_ext_ctrls(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_ext_controls *c)
 {
 	struct v4l2_control ctrl;
@@ -1201,14 +1219,14 @@ static int atomisp_g_ext_ctrls(struct file *file, void *fh,
 	 * input_lock is not need for the Camera related IOCTLs
 	 * The input_lock downgrade the FPS of 3A
 	 */
-	ret = atomisp_camera_g_ext_ctrls(file, fh, c);
+	ret = atomisp_camera_g_ext_ctrls(file, state, c);
 	if (ret != -EINVAL)
 		return ret;
 
 	for (i = 0; i < c->count; i++) {
 		ctrl.id = c->controls[i].id;
 		ctrl.value = c->controls[i].value;
-		ret = atomisp_g_ctrl(file, fh, &ctrl);
+		ret = atomisp_g_ctrl(file, state, &ctrl);
 		c->controls[i].value = ctrl.value;
 		if (ret) {
 			c->error_idx = i;
@@ -1254,7 +1272,8 @@ static int atomisp_camera_s_ext_ctrls(struct file *file, void *fh,
 }
 
 /* This ioctl allows the application to set multiple controls by class */
-static int atomisp_s_ext_ctrls(struct file *file, void *fh,
+static int atomisp_s_ext_ctrls(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_ext_controls *c)
 {
 	struct v4l2_control ctrl;
@@ -1264,14 +1283,14 @@ static int atomisp_s_ext_ctrls(struct file *file, void *fh,
 	 * input_lock is not need for the Camera related IOCTLs
 	 * The input_lock downgrade the FPS of 3A
 	 */
-	ret = atomisp_camera_s_ext_ctrls(file, fh, c);
+	ret = atomisp_camera_s_ext_ctrls(file, state, c);
 	if (ret != -EINVAL)
 		return ret;
 
 	for (i = 0; i < c->count; i++) {
 		ctrl.id = c->controls[i].id;
 		ctrl.value = c->controls[i].value;
-		ret = atomisp_s_ctrl(file, fh, &ctrl);
+		ret = atomisp_s_ctrl(file, state, &ctrl);
 		c->controls[i].value = ctrl.value;
 		if (ret) {
 			c->error_idx = i;
@@ -1284,7 +1303,8 @@ static int atomisp_s_ext_ctrls(struct file *file, void *fh,
 /*
  * vidioc_g/s_param are used to switch isp running mode
  */
-static int atomisp_g_parm(struct file *file, void *fh,
+static int atomisp_g_parm(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_streamparm *parm)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -1301,7 +1321,8 @@ static int atomisp_g_parm(struct file *file, void *fh,
 	return 0;
 }
 
-static int atomisp_s_parm(struct file *file, void *fh,
+static int atomisp_s_parm(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_streamparm *parm)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -1354,7 +1375,8 @@ static int atomisp_s_parm(struct file *file, void *fh,
 	return rval == -ENOIOCTLCMD ? 0 : rval;
 }
 
-static long atomisp_vidioc_default(struct file *file, void *fh,
+static long atomisp_vidioc_default(struct file *file,
+				   struct video_device_state *state,
 				   bool valid_prio, unsigned int cmd, void *arg)
 {
 	struct video_device *vdev = video_devdata(file);

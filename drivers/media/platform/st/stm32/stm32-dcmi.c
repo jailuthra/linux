@@ -900,7 +900,8 @@ static const struct vb2_ops dcmi_video_qops = {
 	.stop_streaming		= dcmi_stop_streaming,
 };
 
-static int dcmi_g_fmt_vid_cap(struct file *file, void *priv,
+static int dcmi_g_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *fmt)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);
@@ -1086,7 +1087,8 @@ static int dcmi_set_fmt(struct stm32_dcmi *dcmi, struct v4l2_format *f)
 	return 0;
 }
 
-static int dcmi_s_fmt_vid_cap(struct file *file, void *priv,
+static int dcmi_s_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);
@@ -1097,7 +1099,8 @@ static int dcmi_s_fmt_vid_cap(struct file *file, void *priv,
 	return dcmi_set_fmt(dcmi, f);
 }
 
-static int dcmi_try_fmt_vid_cap(struct file *file, void *priv,
+static int dcmi_try_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);
@@ -1105,7 +1108,8 @@ static int dcmi_try_fmt_vid_cap(struct file *file, void *priv,
 	return dcmi_try_fmt(dcmi, f, NULL, NULL);
 }
 
-static int dcmi_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int dcmi_enum_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *f)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);
@@ -1224,7 +1228,8 @@ static int dcmi_get_sensor_bounds(struct stm32_dcmi *dcmi,
 	return 0;
 }
 
-static int dcmi_g_selection(struct file *file, void *fh,
+static int dcmi_g_selection(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_selection *s)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);
@@ -1254,7 +1259,8 @@ static int dcmi_g_selection(struct file *file, void *fh,
 	return 0;
 }
 
-static int dcmi_s_selection(struct file *file, void *priv,
+static int dcmi_s_selection(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_selection *s)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);
@@ -1305,7 +1311,8 @@ static int dcmi_s_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int dcmi_querycap(struct file *file, void *priv,
+static int dcmi_querycap(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, DRV_NAME, sizeof(cap->driver));
@@ -1315,7 +1322,8 @@ static int dcmi_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int dcmi_enum_input(struct file *file, void *priv,
+static int dcmi_enum_input(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_input *i)
 {
 	if (i->index != 0)
@@ -1326,20 +1334,23 @@ static int dcmi_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int dcmi_g_input(struct file *file, void *priv, unsigned int *i)
+static int dcmi_g_input(struct file *file, struct video_device_state *state,
+			unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int dcmi_s_input(struct file *file, void *priv, unsigned int i)
+static int dcmi_s_input(struct file *file, struct video_device_state *state,
+			unsigned int i)
 {
 	if (i > 0)
 		return -EINVAL;
 	return 0;
 }
 
-static int dcmi_enum_framesizes(struct file *file, void *fh,
+static int dcmi_enum_framesizes(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_frmsizeenum *fsize)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);
@@ -1368,7 +1379,8 @@ static int dcmi_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int dcmi_g_parm(struct file *file, void *priv,
+static int dcmi_g_parm(struct file *file,
+		       struct video_device_state *state,
 		       struct v4l2_streamparm *p)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);
@@ -1376,7 +1388,8 @@ static int dcmi_g_parm(struct file *file, void *priv,
 	return v4l2_g_parm_cap(video_devdata(file), dcmi->source, p);
 }
 
-static int dcmi_s_parm(struct file *file, void *priv,
+static int dcmi_s_parm(struct file *file,
+		       struct video_device_state *state,
 		       struct v4l2_streamparm *p)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);
@@ -1384,7 +1397,8 @@ static int dcmi_s_parm(struct file *file, void *priv,
 	return v4l2_s_parm_cap(video_devdata(file), dcmi->source, p);
 }
 
-static int dcmi_enum_frameintervals(struct file *file, void *fh,
+static int dcmi_enum_frameintervals(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_frmivalenum *fival)
 {
 	struct stm32_dcmi *dcmi = video_drvdata(file);

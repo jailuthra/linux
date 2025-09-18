@@ -380,7 +380,8 @@ static irqreturn_t emmaprp_irq(int irq_emma, void *data)
 /*
  * video ioctls
  */
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, MEM2MEM_NAME, sizeof(cap->driver));
@@ -417,13 +418,15 @@ static int enum_fmt(struct v4l2_fmtdesc *f, u32 type)
 	return -EINVAL;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return enum_fmt(f, MEM2MEM_CAPTURE);
 }
 
-static int vidioc_enum_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return enum_fmt(f, MEM2MEM_OUTPUT);
@@ -453,13 +456,15 @@ static int vidioc_g_fmt(struct emmaprp_ctx *ctx, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	return vidioc_g_fmt(file_to_emmaprp_ctx(file), f);
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	return vidioc_g_fmt(file_to_emmaprp_ctx(file), f);
@@ -499,7 +504,8 @@ static int vidioc_try_fmt(struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct emmaprp_ctx *ctx = file_to_emmaprp_ctx(file);
@@ -516,7 +522,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return vidioc_try_fmt(f);
 }
 
-static int vidioc_try_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_out(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct emmaprp_ctx *ctx = file_to_emmaprp_ctx(file);
@@ -571,24 +578,26 @@ static int vidioc_s_fmt(struct emmaprp_ctx *ctx, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	int ret;
 
-	ret = vidioc_try_fmt_vid_cap(file, priv, f);
+	ret = vidioc_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
 	return vidioc_s_fmt(file_to_emmaprp_ctx(file), f);
 }
 
-static int vidioc_s_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	int ret;
 
-	ret = vidioc_try_fmt_vid_out(file, priv, f);
+	ret = vidioc_try_fmt_vid_out(file, state, f);
 	if (ret)
 		return ret;
 

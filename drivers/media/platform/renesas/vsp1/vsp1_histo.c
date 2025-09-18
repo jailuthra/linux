@@ -389,7 +389,8 @@ static const struct v4l2_subdev_ops histo_ops = {
  * V4L2 ioctls
  */
 
-static int histo_v4l2_querycap(struct file *file, void *fh,
+static int histo_v4l2_querycap(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_capability *cap)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
@@ -406,7 +407,8 @@ static int histo_v4l2_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int histo_v4l2_enum_format(struct file *file, void *fh,
+static int histo_v4l2_enum_format(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_fmtdesc *f)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
@@ -420,7 +422,8 @@ static int histo_v4l2_enum_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int histo_v4l2_get_format(struct file *file, void *fh,
+static int histo_v4l2_get_format(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *format)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);

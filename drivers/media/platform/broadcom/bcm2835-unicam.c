@@ -1831,7 +1831,8 @@ static const struct vb2_ops unicam_video_qops = {
  *  V4L2 video device operations
  */
 
-static int unicam_querycap(struct file *file, void *priv,
+static int unicam_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, UNICAM_MODULE_NAME, sizeof(cap->driver));
@@ -1842,7 +1843,8 @@ static int unicam_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int unicam_enum_fmt_vid(struct file *file, void  *priv,
+static int unicam_enum_fmt_vid(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_fmtdesc *f)
 {
 	unsigned int index;
@@ -1873,7 +1875,8 @@ static int unicam_enum_fmt_vid(struct file *file, void  *priv,
 	return -EINVAL;
 }
 
-static int unicam_g_fmt_vid(struct file *file, void *priv,
+static int unicam_g_fmt_vid(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct unicam_node *node = video_drvdata(file);
@@ -1905,7 +1908,8 @@ static void __unicam_try_fmt_vid(struct unicam_node *node,
 		pix->field = V4L2_FIELD_NONE;
 }
 
-static int unicam_try_fmt_vid(struct file *file, void *priv,
+static int unicam_try_fmt_vid(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct unicam_node *node = video_drvdata(file);
@@ -1914,7 +1918,8 @@ static int unicam_try_fmt_vid(struct file *file, void *priv,
 	return 0;
 }
 
-static int unicam_s_fmt_vid(struct file *file, void *priv,
+static int unicam_s_fmt_vid(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct unicam_node *node = video_drvdata(file);
@@ -1928,7 +1933,8 @@ static int unicam_s_fmt_vid(struct file *file, void *priv,
 	return 0;
 }
 
-static int unicam_enum_fmt_meta(struct file *file, void *priv,
+static int unicam_enum_fmt_meta(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	unsigned int i, index;
@@ -1950,7 +1956,8 @@ static int unicam_enum_fmt_meta(struct file *file, void *priv,
 	return -EINVAL;
 }
 
-static int unicam_g_fmt_meta(struct file *file, void *priv,
+static int unicam_g_fmt_meta(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct unicam_node *node = video_drvdata(file);
@@ -1981,7 +1988,8 @@ __unicam_try_fmt_meta(struct unicam_node *node, struct v4l2_meta_format *meta)
 	return fmtinfo;
 }
 
-static int unicam_try_fmt_meta(struct file *file, void *priv,
+static int unicam_try_fmt_meta(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct unicam_node *node = video_drvdata(file);
@@ -1990,7 +1998,8 @@ static int unicam_try_fmt_meta(struct file *file, void *priv,
 	return 0;
 }
 
-static int unicam_s_fmt_meta(struct file *file, void *priv,
+static int unicam_s_fmt_meta(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct unicam_node *node = video_drvdata(file);
@@ -2004,7 +2013,8 @@ static int unicam_s_fmt_meta(struct file *file, void *priv,
 	return 0;
 }
 
-static int unicam_enum_framesizes(struct file *file, void *fh,
+static int unicam_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	struct unicam_node *node = video_drvdata(file);
@@ -2042,7 +2052,8 @@ static int unicam_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int unicam_log_status(struct file *file, void *fh)
+static int unicam_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct unicam_node *node = video_drvdata(file);
 	struct unicam_device *unicam = node->dev;

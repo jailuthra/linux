@@ -228,7 +228,8 @@ static int e5010_set_input_subsampling(void __iomem *core_base, int subsampling)
 	};
 }
 
-static int e5010_querycap(struct file *file, void *priv, struct v4l2_capability *cap)
+static int e5010_querycap(struct file *file, struct video_device_state *state,
+			  struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, E5010_MODULE_NAME, sizeof(cap->driver));
 	strscpy(cap->card, E5010_MODULE_NAME, sizeof(cap->card));
@@ -249,7 +250,8 @@ static struct e5010_fmt *find_format(struct v4l2_format *f)
 	return NULL;
 }
 
-static int e5010_enum_fmt(struct file *file, void *priv, struct v4l2_fmtdesc *f)
+static int e5010_enum_fmt(struct file *file, struct video_device_state *state,
+			  struct v4l2_fmtdesc *f)
 {
 	int i, index = 0;
 	struct e5010_fmt *fmt = NULL;
@@ -277,7 +279,8 @@ static int e5010_enum_fmt(struct file *file, void *priv, struct v4l2_fmtdesc *f)
 	return 0;
 }
 
-static int e5010_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int e5010_g_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f)
 {
 	struct e5010_context *ctx = to_e5010_context(file);
 	struct e5010_q_data *queue;
@@ -378,14 +381,16 @@ static int e5010_jpeg_try_fmt(struct v4l2_format *f, struct e5010_context *ctx)
 	return 0;
 }
 
-static int e5010_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int e5010_try_fmt(struct file *file, struct video_device_state *state,
+			 struct v4l2_format *f)
 {
 	struct e5010_context *ctx = to_e5010_context(file);
 
 	return e5010_jpeg_try_fmt(f, ctx);
 }
 
-static int e5010_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int e5010_s_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f)
 {
 	struct e5010_context *ctx = to_e5010_context(file);
 	struct vb2_queue *vq;
@@ -434,7 +439,9 @@ static int e5010_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int e5010_enum_framesizes(struct file *file, void *priv, struct v4l2_frmsizeenum *fsize)
+static int e5010_enum_framesizes(struct file *file,
+				 struct video_device_state *state,
+				 struct v4l2_frmsizeenum *fsize)
 {
 	struct v4l2_format f;
 	struct e5010_fmt *fmt;
@@ -460,7 +467,9 @@ static int e5010_enum_framesizes(struct file *file, void *priv, struct v4l2_frms
 	return 0;
 }
 
-static int e5010_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
+static int e5010_g_selection(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_selection *s)
 {
 	struct e5010_context *ctx = to_e5010_context(file);
 	struct e5010_q_data *queue;
@@ -488,7 +497,9 @@ static int e5010_g_selection(struct file *file, void *fh, struct v4l2_selection 
 	return 0;
 }
 
-static int e5010_s_selection(struct file *file, void *fh, struct v4l2_selection *s)
+static int e5010_s_selection(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_selection *s)
 {
 	struct e5010_context *ctx = to_e5010_context(file);
 	struct e5010_q_data *queue;
@@ -1258,7 +1269,8 @@ static void e5010_buf_queue(struct vb2_buffer *vb)
 	v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, vbuf);
 }
 
-static int e5010_encoder_cmd(struct file *file, void *priv,
+static int e5010_encoder_cmd(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_encoder_cmd *cmd)
 {
 	struct e5010_context *ctx = to_e5010_context(file);
@@ -1267,7 +1279,7 @@ static int e5010_encoder_cmd(struct file *file, void *priv,
 
 	cap_vq = v4l2_m2m_get_vq(ctx->fh.m2m_ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 
-	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, &ctx->fh, cmd);
+	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, state, cmd);
 	if (ret < 0)
 		return ret;
 
@@ -1275,7 +1287,7 @@ static int e5010_encoder_cmd(struct file *file, void *priv,
 	    !vb2_is_streaming(v4l2_m2m_get_dst_vq(ctx->fh.m2m_ctx)))
 		return 0;
 
-	ret = v4l2_m2m_ioctl_encoder_cmd(file, &ctx->fh, cmd);
+	ret = v4l2_m2m_ioctl_encoder_cmd(file, state, cmd);
 	if (ret < 0)
 		return ret;
 

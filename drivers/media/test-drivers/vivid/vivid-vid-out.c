@@ -308,8 +308,8 @@ static enum tpg_pixel_aspect vivid_get_pixel_aspect(const struct vivid_dev *dev)
 	return TPG_PIXEL_ASPECT_SQUARE;
 }
 
-int vivid_g_fmt_vid_out(struct file *file, void *priv,
-					struct v4l2_format *f)
+int vivid_g_fmt_vid_out(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	struct v4l2_pix_format_mplane *mp = &f->fmt.pix_mp;
@@ -340,8 +340,8 @@ int vivid_g_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_try_fmt_vid_out(struct file *file, void *priv,
-			struct v4l2_format *f)
+int vivid_try_fmt_vid_out(struct file *file, struct video_device_state *state,
+			  struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	struct v4l2_bt_timings *bt = &dev->dv_timings_out.bt;
@@ -438,15 +438,15 @@ int vivid_try_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_s_fmt_vid_out(struct file *file, void *priv,
-					struct v4l2_format *f)
+int vivid_s_fmt_vid_out(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *mp = &f->fmt.pix_mp;
 	struct vivid_dev *dev = video_drvdata(file);
 	struct v4l2_rect *crop = &dev->crop_out;
 	struct v4l2_rect *compose = &dev->compose_out;
 	struct vb2_queue *q = &dev->vb_vid_out_q;
-	int ret = vivid_try_fmt_vid_out(file, priv, f);
+	int ret = vivid_try_fmt_vid_out(file, state, f);
 	unsigned factor = 1;
 	unsigned p;
 
@@ -568,67 +568,70 @@ set_colorspace:
 	return 0;
 }
 
-int vidioc_g_fmt_vid_out_mplane(struct file *file, void *priv,
-					struct v4l2_format *f)
+int vidioc_g_fmt_vid_out_mplane(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (!dev->multiplanar)
 		return -ENOTTY;
-	return vivid_g_fmt_vid_out(file, priv, f);
+	return vivid_g_fmt_vid_out(file, state, f);
 }
 
-int vidioc_try_fmt_vid_out_mplane(struct file *file, void *priv,
-			struct v4l2_format *f)
+int vidioc_try_fmt_vid_out_mplane(struct file *file,
+				  struct video_device_state *state,
+				  struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (!dev->multiplanar)
 		return -ENOTTY;
-	return vivid_try_fmt_vid_out(file, priv, f);
+	return vivid_try_fmt_vid_out(file, state, f);
 }
 
-int vidioc_s_fmt_vid_out_mplane(struct file *file, void *priv,
-			struct v4l2_format *f)
+int vidioc_s_fmt_vid_out_mplane(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (!dev->multiplanar)
 		return -ENOTTY;
-	return vivid_s_fmt_vid_out(file, priv, f);
+	return vivid_s_fmt_vid_out(file, state, f);
 }
 
-int vidioc_g_fmt_vid_out(struct file *file, void *priv,
-					struct v4l2_format *f)
+int vidioc_g_fmt_vid_out(struct file *file, struct video_device_state *state,
+			 struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (dev->multiplanar)
 		return -ENOTTY;
-	return fmt_sp2mp_func(file, priv, f, vivid_g_fmt_vid_out);
+	return fmt_sp2mp_func(file, state, f, vivid_g_fmt_vid_out);
 }
 
-int vidioc_try_fmt_vid_out(struct file *file, void *priv,
-			struct v4l2_format *f)
+int vidioc_try_fmt_vid_out(struct file *file, struct video_device_state *state,
+			   struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (dev->multiplanar)
 		return -ENOTTY;
-	return fmt_sp2mp_func(file, priv, f, vivid_try_fmt_vid_out);
+	return fmt_sp2mp_func(file, state, f, vivid_try_fmt_vid_out);
 }
 
-int vidioc_s_fmt_vid_out(struct file *file, void *priv,
-			struct v4l2_format *f)
+int vidioc_s_fmt_vid_out(struct file *file, struct video_device_state *state,
+			 struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (dev->multiplanar)
 		return -ENOTTY;
-	return fmt_sp2mp_func(file, priv, f, vivid_s_fmt_vid_out);
+	return fmt_sp2mp_func(file, state, f, vivid_s_fmt_vid_out);
 }
 
-int vivid_vid_out_g_selection(struct file *file, void *priv,
+int vivid_vid_out_g_selection(struct file *file, struct video_device_state *state,
 			      struct v4l2_selection *sel)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -672,7 +675,9 @@ int vivid_vid_out_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_vid_out_s_selection(struct file *file, void *priv, struct v4l2_selection *s)
+int vivid_vid_out_s_selection(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_selection *s)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	struct v4l2_rect *crop = &dev->crop_out;
@@ -798,7 +803,7 @@ int vivid_vid_out_s_selection(struct file *file, void *priv, struct v4l2_selecti
 	return 0;
 }
 
-int vivid_vid_out_g_pixelaspect(struct file *file, void *priv,
+int vivid_vid_out_g_pixelaspect(struct file *file, struct video_device_state *state,
 				int type, struct v4l2_fract *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -821,8 +826,9 @@ int vivid_vid_out_g_pixelaspect(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_g_fmt_vid_out_overlay(struct file *file, void *priv,
-					struct v4l2_format *f)
+int vidioc_g_fmt_vid_out_overlay(struct file *file,
+				 struct video_device_state *state,
+				 struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	const struct v4l2_rect *compose = &dev->compose_out;
@@ -840,8 +846,9 @@ int vidioc_g_fmt_vid_out_overlay(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_try_fmt_vid_out_overlay(struct file *file, void *priv,
-					struct v4l2_format *f)
+int vidioc_try_fmt_vid_out_overlay(struct file *file,
+				   struct video_device_state *state,
+				   struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	const struct v4l2_rect *compose = &dev->compose_out;
@@ -863,12 +870,13 @@ int vidioc_try_fmt_vid_out_overlay(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_s_fmt_vid_out_overlay(struct file *file, void *priv,
-					struct v4l2_format *f)
+int vidioc_s_fmt_vid_out_overlay(struct file *file,
+				 struct video_device_state *state,
+				 struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	struct v4l2_window *win = &f->fmt.win;
-	int ret = vidioc_try_fmt_vid_out_overlay(file, priv, f);
+	int ret = vidioc_try_fmt_vid_out_overlay(file, state, f);
 
 	if (ret)
 		return ret;
@@ -880,7 +888,8 @@ int vidioc_s_fmt_vid_out_overlay(struct file *file, void *priv,
 	return ret;
 }
 
-int vivid_vid_out_overlay(struct file *file, void *priv, unsigned i)
+int vivid_vid_out_overlay(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -893,8 +902,8 @@ int vivid_vid_out_overlay(struct file *file, void *priv, unsigned i)
 	return 0;
 }
 
-int vivid_vid_out_g_fbuf(struct file *file, void *priv,
-				struct v4l2_framebuffer *a)
+int vivid_vid_out_g_fbuf(struct file *file, struct video_device_state *state,
+			 struct v4l2_framebuffer *a)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -920,8 +929,8 @@ int vivid_vid_out_g_fbuf(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_vid_out_s_fbuf(struct file *file, void *priv,
-				const struct v4l2_framebuffer *a)
+int vivid_vid_out_s_fbuf(struct file *file, struct video_device_state *state,
+			 const struct v4l2_framebuffer *a)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	const unsigned chroma_flags = V4L2_FBUF_FLAG_CHROMAKEY |
@@ -952,8 +961,8 @@ static const struct v4l2_audioout vivid_audio_outputs[] = {
 	{ 1, "Line-Out 2" },
 };
 
-int vidioc_enum_output(struct file *file, void *priv,
-				struct v4l2_output *out)
+int vidioc_enum_output(struct file *file, struct video_device_state *state,
+		       struct v4l2_output *out)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -979,7 +988,8 @@ int vidioc_enum_output(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_g_output(struct file *file, void *priv, unsigned *o)
+int vidioc_g_output(struct file *file, struct video_device_state *state,
+		    unsigned int *o)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -987,7 +997,8 @@ int vidioc_g_output(struct file *file, void *priv, unsigned *o)
 	return 0;
 }
 
-int vidioc_s_output(struct file *file, void *priv, unsigned o)
+int vidioc_s_output(struct file *file, struct video_device_state *state,
+		    unsigned int o)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1016,7 +1027,8 @@ int vidioc_s_output(struct file *file, void *priv, unsigned o)
 	return 0;
 }
 
-int vidioc_enumaudout(struct file *file, void *priv, struct v4l2_audioout *vout)
+int vidioc_enumaudout(struct file *file, struct video_device_state *state,
+		      struct v4l2_audioout *vout)
 {
 	if (vout->index >= ARRAY_SIZE(vivid_audio_outputs))
 		return -EINVAL;
@@ -1024,7 +1036,8 @@ int vidioc_enumaudout(struct file *file, void *priv, struct v4l2_audioout *vout)
 	return 0;
 }
 
-int vidioc_g_audout(struct file *file, void *priv, struct v4l2_audioout *vout)
+int vidioc_g_audout(struct file *file, struct video_device_state *state,
+		    struct v4l2_audioout *vout)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1034,7 +1047,8 @@ int vidioc_g_audout(struct file *file, void *priv, struct v4l2_audioout *vout)
 	return 0;
 }
 
-int vidioc_s_audout(struct file *file, void *priv, const struct v4l2_audioout *vout)
+int vidioc_s_audout(struct file *file, struct video_device_state *state,
+		    const struct v4l2_audioout *vout)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1046,7 +1060,8 @@ int vidioc_s_audout(struct file *file, void *priv, const struct v4l2_audioout *v
 	return 0;
 }
 
-int vivid_vid_out_s_std(struct file *file, void *priv, v4l2_std_id id)
+int vivid_vid_out_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id id)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1072,8 +1087,9 @@ static bool valid_cvt_gtf_timings(struct v4l2_dv_timings *timings)
 	return false;
 }
 
-int vivid_vid_out_s_dv_timings(struct file *file, void *priv,
-				    struct v4l2_dv_timings *timings)
+int vivid_vid_out_s_dv_timings(struct file *file,
+			       struct video_device_state *state,
+			       struct v4l2_dv_timings *timings)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	if (!vivid_is_hdmi_out(dev))
@@ -1091,8 +1107,8 @@ int vivid_vid_out_s_dv_timings(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_vid_out_g_parm(struct file *file, void *priv,
-			  struct v4l2_streamparm *parm)
+int vivid_vid_out_g_parm(struct file *file, struct video_device_state *state,
+			 struct v4l2_streamparm *parm)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1109,7 +1125,7 @@ int vivid_vid_out_g_parm(struct file *file, void *priv,
 }
 
 int vidioc_subscribe_event(struct v4l2_fh *fh,
-			const struct v4l2_event_subscription *sub)
+			   const struct v4l2_event_subscription *sub)
 {
 	switch (sub->type) {
 	case V4L2_EVENT_SOURCE_CHANGE:

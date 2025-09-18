@@ -736,8 +736,8 @@ static const struct v4l2_file_operations viacam_fops = {
 /*
  * Only one input.
  */
-static int viacam_enum_input(struct file *filp, void *priv,
-		struct v4l2_input *input)
+static int viacam_enum_input(struct file *filp,
+			     struct video_device_state *state, struct v4l2_input *input)
 {
 	if (input->index != 0)
 		return -EINVAL;
@@ -747,13 +747,15 @@ static int viacam_enum_input(struct file *filp, void *priv,
 	return 0;
 }
 
-static int viacam_g_input(struct file *filp, void *priv, unsigned int *i)
+static int viacam_g_input(struct file *filp, struct video_device_state *state,
+			  unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int viacam_s_input(struct file *filp, void *priv, unsigned int i)
+static int viacam_s_input(struct file *filp, struct video_device_state *state,
+			  unsigned int i)
 {
 	if (i != 0)
 		return -EINVAL;
@@ -776,8 +778,8 @@ static const struct v4l2_pix_format viacam_def_pix_format = {
 
 static const u32 via_def_mbus_code = MEDIA_BUS_FMT_YUYV8_2X8;
 
-static int viacam_enum_fmt_vid_cap(struct file *filp, void *priv,
-		struct v4l2_fmtdesc *fmt)
+static int viacam_enum_fmt_vid_cap(struct file *filp,
+				   struct video_device_state *state, struct v4l2_fmtdesc *fmt)
 {
 	if (fmt->index >= N_VIA_FMTS)
 		return -EINVAL;
@@ -850,8 +852,8 @@ static int viacam_do_try_fmt(struct via_camera *cam,
 
 
 
-static int viacam_try_fmt_vid_cap(struct file *filp, void *priv,
-		struct v4l2_format *fmt)
+static int viacam_try_fmt_vid_cap(struct file *filp,
+				  struct video_device_state *state, struct v4l2_format *fmt)
 {
 	struct via_camera *cam = video_drvdata(filp);
 	struct v4l2_format sfmt;
@@ -860,8 +862,8 @@ static int viacam_try_fmt_vid_cap(struct file *filp, void *priv,
 }
 
 
-static int viacam_g_fmt_vid_cap(struct file *filp, void *priv,
-		struct v4l2_format *fmt)
+static int viacam_g_fmt_vid_cap(struct file *filp,
+				struct video_device_state *state, struct v4l2_format *fmt)
 {
 	struct via_camera *cam = video_drvdata(filp);
 
@@ -869,8 +871,8 @@ static int viacam_g_fmt_vid_cap(struct file *filp, void *priv,
 	return 0;
 }
 
-static int viacam_s_fmt_vid_cap(struct file *filp, void *priv,
-		struct v4l2_format *fmt)
+static int viacam_s_fmt_vid_cap(struct file *filp,
+				struct video_device_state *state, struct v4l2_format *fmt)
 {
 	struct via_camera *cam = video_drvdata(filp);
 	int ret;
@@ -902,8 +904,8 @@ static int viacam_s_fmt_vid_cap(struct file *filp, void *priv,
 	return ret;
 }
 
-static int viacam_querycap(struct file *filp, void *priv,
-		struct v4l2_capability *cap)
+static int viacam_querycap(struct file *filp,
+			   struct video_device_state *state, struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "via-camera", sizeof(cap->driver));
 	strscpy(cap->card, "via-camera", sizeof(cap->card));
@@ -913,7 +915,8 @@ static int viacam_querycap(struct file *filp, void *priv,
 
 /* G/S_PARM */
 
-static int viacam_g_parm(struct file *filp, void *priv,
+static int viacam_g_parm(struct file *filp,
+			 struct video_device_state *state,
 		struct v4l2_streamparm *parm)
 {
 	struct via_camera *cam = video_drvdata(filp);
@@ -921,7 +924,8 @@ static int viacam_g_parm(struct file *filp, void *priv,
 	return v4l2_g_parm_cap(video_devdata(filp), cam->sensor, parm);
 }
 
-static int viacam_s_parm(struct file *filp, void *priv,
+static int viacam_s_parm(struct file *filp,
+			 struct video_device_state *state,
 		struct v4l2_streamparm *parm)
 {
 	struct via_camera *cam = video_drvdata(filp);
@@ -929,7 +933,8 @@ static int viacam_s_parm(struct file *filp, void *priv,
 	return v4l2_s_parm_cap(video_devdata(filp), cam->sensor, parm);
 }
 
-static int viacam_enum_framesizes(struct file *filp, void *priv,
+static int viacam_enum_framesizes(struct file *filp,
+				  struct video_device_state *state,
 		struct v4l2_frmsizeenum *sizes)
 {
 	unsigned int i;
@@ -950,7 +955,8 @@ static int viacam_enum_framesizes(struct file *filp, void *priv,
 	return 0;
 }
 
-static int viacam_enum_frameintervals(struct file *filp, void *priv,
+static int viacam_enum_frameintervals(struct file *filp,
+				      struct video_device_state *state,
 		struct v4l2_frmivalenum *interval)
 {
 	struct via_camera *cam = video_drvdata(filp);

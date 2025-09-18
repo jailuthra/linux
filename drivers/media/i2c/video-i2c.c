@@ -558,7 +558,8 @@ static const struct vb2_ops video_i2c_video_qops = {
 	.stop_streaming		= stop_streaming,
 };
 
-static int video_i2c_querycap(struct file *file, void  *priv,
+static int video_i2c_querycap(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_capability *vcap)
 {
 	struct video_i2c_data *data = video_drvdata(file);
@@ -573,19 +574,24 @@ static int video_i2c_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int video_i2c_g_input(struct file *file, void *fh, unsigned int *inp)
+static int video_i2c_g_input(struct file *file,
+			     struct video_device_state *state,
+			     unsigned int *inp)
 {
 	*inp = 0;
 
 	return 0;
 }
 
-static int video_i2c_s_input(struct file *file, void *fh, unsigned int inp)
+static int video_i2c_s_input(struct file *file,
+			     struct video_device_state *state,
+			     unsigned int inp)
 {
 	return (inp > 0) ? -EINVAL : 0;
 }
 
-static int video_i2c_enum_input(struct file *file, void *fh,
+static int video_i2c_enum_input(struct file *file,
+				struct video_device_state *state,
 				  struct v4l2_input *vin)
 {
 	if (vin->index > 0)
@@ -598,7 +604,8 @@ static int video_i2c_enum_input(struct file *file, void *fh,
 	return 0;
 }
 
-static int video_i2c_enum_fmt_vid_cap(struct file *file, void *fh,
+static int video_i2c_enum_fmt_vid_cap(struct file *file,
+				      struct video_device_state *state,
 					struct v4l2_fmtdesc *fmt)
 {
 	struct video_i2c_data *data = video_drvdata(file);
@@ -613,7 +620,8 @@ static int video_i2c_enum_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int video_i2c_enum_framesizes(struct file *file, void *fh,
+static int video_i2c_enum_framesizes(struct file *file,
+				     struct video_device_state *state,
 				       struct v4l2_frmsizeenum *fsize)
 {
 	const struct video_i2c_data *data = video_drvdata(file);
@@ -633,7 +641,8 @@ static int video_i2c_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int video_i2c_enum_frameintervals(struct file *file, void *priv,
+static int video_i2c_enum_frameintervals(struct file *file,
+					 struct video_device_state *state,
 					   struct v4l2_frmivalenum *fe)
 {
 	const struct video_i2c_data *data = video_drvdata(file);
@@ -651,7 +660,8 @@ static int video_i2c_enum_frameintervals(struct file *file, void *priv,
 	return 0;
 }
 
-static int video_i2c_try_fmt_vid_cap(struct file *file, void *fh,
+static int video_i2c_try_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				       struct v4l2_format *fmt)
 {
 	const struct video_i2c_data *data = video_drvdata(file);
@@ -670,7 +680,8 @@ static int video_i2c_try_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int video_i2c_s_fmt_vid_cap(struct file *file, void *fh,
+static int video_i2c_s_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				     struct v4l2_format *fmt)
 {
 	struct video_i2c_data *data = video_drvdata(file);
@@ -678,10 +689,11 @@ static int video_i2c_s_fmt_vid_cap(struct file *file, void *fh,
 	if (vb2_is_busy(&data->vb_vidq))
 		return -EBUSY;
 
-	return video_i2c_try_fmt_vid_cap(file, fh, fmt);
+	return video_i2c_try_fmt_vid_cap(file, state, fmt);
 }
 
-static int video_i2c_g_parm(struct file *filp, void *priv,
+static int video_i2c_g_parm(struct file *filp,
+			    struct video_device_state *state,
 			      struct v4l2_streamparm *parm)
 {
 	struct video_i2c_data *data = video_drvdata(filp);
@@ -696,7 +708,8 @@ static int video_i2c_g_parm(struct file *filp, void *priv,
 	return 0;
 }
 
-static int video_i2c_s_parm(struct file *filp, void *priv,
+static int video_i2c_s_parm(struct file *filp,
+			    struct video_device_state *state,
 			      struct v4l2_streamparm *parm)
 {
 	struct video_i2c_data *data = video_drvdata(filp);
@@ -709,7 +722,7 @@ static int video_i2c_s_parm(struct file *filp, void *priv,
 	}
 	data->frame_interval = data->chip->frame_intervals[i];
 
-	return video_i2c_g_parm(filp, priv, parm);
+	return video_i2c_g_parm(filp, state, parm);
 }
 
 static const struct v4l2_ioctl_ops video_i2c_ioctl_ops = {

@@ -457,7 +457,9 @@ static void wave5_vpu_dec_finish_decode(struct vpu_instance *inst)
 	}
 }
 
-static int wave5_vpu_dec_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+static int wave5_vpu_dec_querycap(struct file *file,
+				  struct video_device_state *state,
+				  struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, VPU_DEC_DRV_NAME, sizeof(cap->driver));
 	strscpy(cap->card, VPU_DEC_DRV_NAME, sizeof(cap->card));
@@ -465,7 +467,9 @@ static int wave5_vpu_dec_querycap(struct file *file, void *fh, struct v4l2_capab
 	return 0;
 }
 
-static int wave5_vpu_dec_enum_framesizes(struct file *f, void *fh, struct v4l2_frmsizeenum *fsize)
+static int wave5_vpu_dec_enum_framesizes(struct file *f,
+					 struct video_device_state *state,
+					 struct v4l2_frmsizeenum *fsize)
 {
 	const struct vpu_format *vpu_fmt;
 
@@ -490,7 +494,9 @@ static int wave5_vpu_dec_enum_framesizes(struct file *f, void *fh, struct v4l2_f
 	return 0;
 }
 
-static int wave5_vpu_dec_enum_fmt_cap(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int wave5_vpu_dec_enum_fmt_cap(struct file *file,
+				      struct video_device_state *state,
+				      struct v4l2_fmtdesc *f)
 {
 	const struct vpu_format *vpu_fmt;
 
@@ -504,7 +510,9 @@ static int wave5_vpu_dec_enum_fmt_cap(struct file *file, void *fh, struct v4l2_f
 	return 0;
 }
 
-static int wave5_vpu_dec_try_fmt_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int wave5_vpu_dec_try_fmt_cap(struct file *file,
+				     struct video_device_state *state,
+				     struct v4l2_format *f)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 	struct dec_info *p_dec_info = &inst->codec_info->dec_info;
@@ -545,7 +553,9 @@ static int wave5_vpu_dec_try_fmt_cap(struct file *file, void *fh, struct v4l2_fo
 	return 0;
 }
 
-static int wave5_vpu_dec_s_fmt_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int wave5_vpu_dec_s_fmt_cap(struct file *file,
+				   struct video_device_state *state,
+				   struct v4l2_format *f)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 	int i, ret;
@@ -555,7 +565,7 @@ static int wave5_vpu_dec_s_fmt_cap(struct file *file, void *fh, struct v4l2_form
 		__func__, f->fmt.pix_mp.pixelformat, f->fmt.pix_mp.width, f->fmt.pix_mp.height,
 		f->fmt.pix_mp.num_planes, f->fmt.pix_mp.colorspace, f->fmt.pix_mp.field);
 
-	ret = wave5_vpu_dec_try_fmt_cap(file, fh, f);
+	ret = wave5_vpu_dec_try_fmt_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -604,7 +614,9 @@ static int wave5_vpu_dec_s_fmt_cap(struct file *file, void *fh, struct v4l2_form
 	return 0;
 }
 
-static int wave5_vpu_dec_g_fmt_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int wave5_vpu_dec_g_fmt_cap(struct file *file,
+				   struct video_device_state *state,
+				   struct v4l2_format *f)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 	int i;
@@ -628,7 +640,9 @@ static int wave5_vpu_dec_g_fmt_cap(struct file *file, void *fh, struct v4l2_form
 	return 0;
 }
 
-static int wave5_vpu_dec_enum_fmt_out(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int wave5_vpu_dec_enum_fmt_out(struct file *file,
+				      struct video_device_state *state,
+				      struct v4l2_fmtdesc *f)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 	const struct vpu_format *vpu_fmt;
@@ -645,7 +659,9 @@ static int wave5_vpu_dec_enum_fmt_out(struct file *file, void *fh, struct v4l2_f
 	return 0;
 }
 
-static int wave5_vpu_dec_try_fmt_out(struct file *file, void *fh, struct v4l2_format *f)
+static int wave5_vpu_dec_try_fmt_out(struct file *file,
+				     struct video_device_state *state,
+				     struct v4l2_format *f)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 	const struct v4l2_frmsize_stepwise *frmsize;
@@ -676,7 +692,9 @@ static int wave5_vpu_dec_try_fmt_out(struct file *file, void *fh, struct v4l2_fo
 	return 0;
 }
 
-static int wave5_vpu_dec_s_fmt_out(struct file *file, void *fh, struct v4l2_format *f)
+static int wave5_vpu_dec_s_fmt_out(struct file *file,
+				   struct video_device_state *state,
+				   struct v4l2_format *f)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 	const struct vpu_format *vpu_fmt;
@@ -687,7 +705,7 @@ static int wave5_vpu_dec_s_fmt_out(struct file *file, void *fh, struct v4l2_form
 		__func__, f->fmt.pix_mp.pixelformat, f->fmt.pix_mp.width, f->fmt.pix_mp.height,
 		f->fmt.pix_mp.num_planes, f->fmt.pix_mp.field);
 
-	ret = wave5_vpu_dec_try_fmt_out(file, fh, f);
+	ret = wave5_vpu_dec_try_fmt_out(file, state, f);
 	if (ret)
 		return ret;
 
@@ -725,7 +743,9 @@ static int wave5_vpu_dec_s_fmt_out(struct file *file, void *fh, struct v4l2_form
 	return 0;
 }
 
-static int wave5_vpu_dec_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
+static int wave5_vpu_dec_g_selection(struct file *file,
+				     struct video_device_state *state,
+				     struct v4l2_selection *s)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 
@@ -759,7 +779,9 @@ static int wave5_vpu_dec_g_selection(struct file *file, void *fh, struct v4l2_se
 	return 0;
 }
 
-static int wave5_vpu_dec_s_selection(struct file *file, void *fh, struct v4l2_selection *s)
+static int wave5_vpu_dec_s_selection(struct file *file,
+				     struct video_device_state *state,
+				     struct v4l2_selection *s)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 
@@ -870,7 +892,9 @@ unlock_and_return:
 	return ret;
 }
 
-static int wave5_vpu_dec_decoder_cmd(struct file *file, void *fh, struct v4l2_decoder_cmd *dc)
+static int wave5_vpu_dec_decoder_cmd(struct file *file,
+				     struct video_device_state *state,
+				     struct v4l2_decoder_cmd *dc)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 	struct v4l2_m2m_ctx *m2m_ctx = inst->v4l2_fh.m2m_ctx;
@@ -878,7 +902,7 @@ static int wave5_vpu_dec_decoder_cmd(struct file *file, void *fh, struct v4l2_de
 
 	dev_dbg(inst->dev->dev, "decoder command: %u\n", dc->cmd);
 
-	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, fh, dc);
+	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, state, dc);
 	if (ret)
 		return ret;
 

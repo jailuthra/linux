@@ -1173,7 +1173,8 @@ static int au0828_set_format(struct au0828_dev *dev, unsigned int cmd,
 	return 0;
 }
 
-static int vidioc_querycap(struct file *file, void  *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1193,7 +1194,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 					struct v4l2_fmtdesc *f)
 {
 	if (f->index)
@@ -1206,7 +1208,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1224,7 +1227,8 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1235,7 +1239,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return au0828_set_format(dev, VIDIOC_TRY_FMT, f);
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1259,7 +1264,8 @@ out:
 	return rc;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id norm)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id norm)
 {
 	struct au0828_dev *dev = video_drvdata(file);
 
@@ -1291,7 +1297,8 @@ static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id norm)
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *norm)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *norm)
 {
 	struct au0828_dev *dev = video_drvdata(file);
 
@@ -1302,7 +1309,8 @@ static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *norm)
 	return 0;
 }
 
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 				struct v4l2_input *input)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1343,7 +1351,8 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct au0828_dev *dev = video_drvdata(file);
 
@@ -1410,7 +1419,8 @@ static void au0828_s_input(struct au0828_dev *dev, int index)
 			AUVI_INPUT(index).amux, 0, 0);
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int index)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int index)
 {
 	struct au0828_dev *dev = video_drvdata(file);
 	struct video_device *vfd = video_devdata(file);
@@ -1436,7 +1446,9 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int index)
 	return v4l_enable_media_source(vfd);
 }
 
-static int vidioc_enumaudio(struct file *file, void *priv, struct v4l2_audio *a)
+static int vidioc_enumaudio(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_audio *a)
 {
 	if (a->index > 1)
 		return -EINVAL;
@@ -1452,7 +1464,8 @@ static int vidioc_enumaudio(struct file *file, void *priv, struct v4l2_audio *a)
 	return 0;
 }
 
-static int vidioc_g_audio(struct file *file, void *priv, struct v4l2_audio *a)
+static int vidioc_g_audio(struct file *file, struct video_device_state *state,
+			  struct v4l2_audio *a)
 {
 	struct au0828_dev *dev = video_drvdata(file);
 
@@ -1469,7 +1482,8 @@ static int vidioc_g_audio(struct file *file, void *priv, struct v4l2_audio *a)
 	return 0;
 }
 
-static int vidioc_s_audio(struct file *file, void *priv, const struct v4l2_audio *a)
+static int vidioc_s_audio(struct file *file, struct video_device_state *state,
+			  const struct v4l2_audio *a)
 {
 	struct au0828_dev *dev = video_drvdata(file);
 
@@ -1481,7 +1495,8 @@ static int vidioc_s_audio(struct file *file, void *priv, const struct v4l2_audio
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
+static int vidioc_g_tuner(struct file *file, struct video_device_state *state,
+			  struct v4l2_tuner *t)
 {
 	struct au0828_dev *dev = video_drvdata(file);
 	struct video_device *vfd = video_devdata(file);
@@ -1506,7 +1521,8 @@ static int vidioc_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 				const struct v4l2_tuner *t)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1529,7 +1545,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_frequency *freq)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1542,7 +1559,8 @@ static int vidioc_g_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 				const struct v4l2_frequency *freq)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1572,7 +1590,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 
 /* RAW VBI ioctls */
 
-static int vidioc_g_fmt_vbi_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vbi_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *format)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1595,8 +1614,9 @@ static int vidioc_g_fmt_vbi_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_pixelaspect(struct file *file, void *priv,
-				int type, struct v4l2_fract *f)
+static int vidioc_g_pixelaspect(struct file *file,
+				struct video_device_state *state, int type,
+				struct v4l2_fract *f)
 {
 	struct au0828_dev *dev = video_drvdata(file);
 
@@ -1612,7 +1632,8 @@ static int vidioc_g_pixelaspect(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_selection(struct file *file, void *priv,
+static int vidioc_g_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *s)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1635,7 +1656,8 @@ static int vidioc_g_selection(struct file *file, void *priv,
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int vidioc_g_register(struct file *file, void *priv,
+static int vidioc_g_register(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_dbg_register *reg)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1648,7 +1670,8 @@ static int vidioc_g_register(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_register(struct file *file, void *priv,
+static int vidioc_s_register(struct file *file,
+			     struct video_device_state *state,
 			     const struct v4l2_dbg_register *reg)
 {
 	struct au0828_dev *dev = video_drvdata(file);
@@ -1660,13 +1683,14 @@ static int vidioc_s_register(struct file *file, void *priv,
 }
 #endif
 
-static int vidioc_log_status(struct file *file, void *fh)
+static int vidioc_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct video_device *vdev = video_devdata(file);
 
 	dprintk(1, "%s called\n", __func__);
 
-	v4l2_ctrl_log_status(file, fh);
+	v4l2_ctrl_log_status(file, state);
 	v4l2_device_call_all(vdev->v4l2_dev, 0, core, log_status);
 	return 0;
 }

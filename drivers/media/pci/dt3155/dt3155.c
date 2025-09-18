@@ -285,7 +285,8 @@ static const struct v4l2_file_operations dt3155_fops = {
 	.poll = vb2_fop_poll
 };
 
-static int dt3155_querycap(struct file *filp, void *p,
+static int dt3155_querycap(struct file *filp,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, DT3155_NAME, sizeof(cap->driver));
@@ -294,7 +295,8 @@ static int dt3155_querycap(struct file *filp, void *p,
 }
 
 static int dt3155_enum_fmt_vid_cap(struct file *filp,
-				   void *p, struct v4l2_fmtdesc *f)
+				   struct video_device_state *state,
+				   struct v4l2_fmtdesc *f)
 {
 	if (f->index)
 		return -EINVAL;
@@ -302,7 +304,9 @@ static int dt3155_enum_fmt_vid_cap(struct file *filp,
 	return 0;
 }
 
-static int dt3155_fmt_vid_cap(struct file *filp, void *p, struct v4l2_format *f)
+static int dt3155_fmt_vid_cap(struct file *filp,
+			      struct video_device_state *state,
+			      struct v4l2_format *f)
 {
 	struct dt3155_priv *pd = video_drvdata(filp);
 
@@ -316,7 +320,8 @@ static int dt3155_fmt_vid_cap(struct file *filp, void *p, struct v4l2_format *f)
 	return 0;
 }
 
-static int dt3155_g_std(struct file *filp, void *p, v4l2_std_id *norm)
+static int dt3155_g_std(struct file *filp, struct video_device_state *state,
+			v4l2_std_id *norm)
 {
 	struct dt3155_priv *pd = video_drvdata(filp);
 
@@ -324,7 +329,8 @@ static int dt3155_g_std(struct file *filp, void *p, v4l2_std_id *norm)
 	return 0;
 }
 
-static int dt3155_s_std(struct file *filp, void *p, v4l2_std_id norm)
+static int dt3155_s_std(struct file *filp, struct video_device_state *state,
+			v4l2_std_id norm)
 {
 	struct dt3155_priv *pd = video_drvdata(filp);
 
@@ -345,7 +351,8 @@ static int dt3155_s_std(struct file *filp, void *p, v4l2_std_id norm)
 	return 0;
 }
 
-static int dt3155_enum_input(struct file *filp, void *p,
+static int dt3155_enum_input(struct file *filp,
+			     struct video_device_state *state,
 			     struct v4l2_input *input)
 {
 	if (input->index > 3)
@@ -361,7 +368,8 @@ static int dt3155_enum_input(struct file *filp, void *p,
 	return 0;
 }
 
-static int dt3155_g_input(struct file *filp, void *p, unsigned int *i)
+static int dt3155_g_input(struct file *filp, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct dt3155_priv *pd = video_drvdata(filp);
 
@@ -369,7 +377,8 @@ static int dt3155_g_input(struct file *filp, void *p, unsigned int *i)
 	return 0;
 }
 
-static int dt3155_s_input(struct file *filp, void *p, unsigned int i)
+static int dt3155_s_input(struct file *filp, struct video_device_state *state,
+			  unsigned int i)
 {
 	struct dt3155_priv *pd = video_drvdata(filp);
 

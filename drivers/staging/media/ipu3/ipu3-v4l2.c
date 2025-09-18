@@ -621,7 +621,8 @@ static const struct imgu_fmt *find_format(struct v4l2_format *f, u32 type)
 				     &formats[DEF_VID_OUTPUT];
 }
 
-static int imgu_vidioc_querycap(struct file *file, void *fh,
+static int imgu_vidioc_querycap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_capability *cap)
 {
 	struct imgu_device *imgu = video_drvdata(file);
@@ -657,7 +658,8 @@ static int enum_fmts(struct v4l2_fmtdesc *f, u32 type)
 	return -EINVAL;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
@@ -666,7 +668,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
 	return enum_fmts(f, VID_CAPTURE);
 }
 
-static int vidioc_enum_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	if (f->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
@@ -676,7 +679,8 @@ static int vidioc_enum_fmt_vid_out(struct file *file, void *priv,
 }
 
 /* Propagate forward always the format from the CIO2 subdev */
-static int imgu_vidioc_g_fmt(struct file *file, void *fh,
+static int imgu_vidioc_g_fmt(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct imgu_video_device *node = file_to_intel_imgu_node(file);
@@ -815,7 +819,8 @@ static int imgu_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int imgu_vidioc_try_fmt(struct file *file, void *fh,
+static int imgu_vidioc_try_fmt(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct imgu_device *imgu = video_drvdata(file);
@@ -827,14 +832,16 @@ static int imgu_vidioc_try_fmt(struct file *file, void *fh,
 	dev_dbg(dev, "%s [%ux%u] for node %u\n", __func__,
 		pix_mp->width, pix_mp->height, node->id);
 
-	r = imgu_try_fmt(file, fh, f);
+	r = imgu_try_fmt(file, state, f);
 	if (r)
 		return r;
 
 	return imgu_fmt(imgu, node->pipe, node->id, f, true);
 }
 
-static int imgu_vidioc_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int imgu_vidioc_s_fmt(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_format *f)
 {
 	struct imgu_device *imgu = video_drvdata(file);
 	struct device *dev = &imgu->pci_dev->dev;
@@ -845,7 +852,7 @@ static int imgu_vidioc_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	dev_dbg(dev, "%s [%ux%u] for node %u\n", __func__,
 		pix_mp->width, pix_mp->height, node->id);
 
-	r = imgu_try_fmt(file, fh, f);
+	r = imgu_try_fmt(file, state, f);
 	if (r)
 		return r;
 
@@ -863,7 +870,8 @@ static const struct imgu_meta_fmt meta_fmts[] = {
 	{ V4L2_META_FMT_IPU3_STAT_3A, "IPU3 3A statistics" },
 };
 
-static int imgu_meta_enum_format(struct file *file, void *fh,
+static int imgu_meta_enum_format(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *fmt)
 {
 	struct imgu_video_device *node = file_to_intel_imgu_node(file);
@@ -882,7 +890,8 @@ static int imgu_meta_enum_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int imgu_vidioc_g_meta_fmt(struct file *file, void *fh,
+static int imgu_vidioc_g_meta_fmt(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct imgu_video_device *node = file_to_intel_imgu_node(file);

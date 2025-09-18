@@ -1428,7 +1428,8 @@ static void aspeed_video_stop(struct aspeed_video *video)
 	video->flags = 0;
 }
 
-static int aspeed_video_querycap(struct file *file, void *fh,
+static int aspeed_video_querycap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, DEVICE_NAME, sizeof(cap->driver));
@@ -1439,7 +1440,8 @@ static int aspeed_video_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_enum_format(struct file *file, void *fh,
+static int aspeed_video_enum_format(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_fmtdesc *f)
 {
 	struct aspeed_video *video = video_drvdata(file);
@@ -1452,7 +1454,8 @@ static int aspeed_video_enum_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_get_format(struct file *file, void *fh,
+static int aspeed_video_get_format(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct aspeed_video *video = video_drvdata(file);
@@ -1462,7 +1465,8 @@ static int aspeed_video_get_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_set_format(struct file *file, void *fh,
+static int aspeed_video_set_format(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct aspeed_video *video = video_drvdata(file);
@@ -1485,7 +1489,8 @@ static int aspeed_video_set_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_enum_input(struct file *file, void *fh,
+static int aspeed_video_enum_input(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_input *inp)
 {
 	struct aspeed_video *video = video_drvdata(file);
@@ -1501,7 +1506,9 @@ static int aspeed_video_enum_input(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_get_input(struct file *file, void *fh, unsigned int *i)
+static int aspeed_video_get_input(struct file *file,
+				  struct video_device_state *state,
+				  unsigned int *i)
 {
 	struct aspeed_video *video = video_drvdata(file);
 
@@ -1510,7 +1517,9 @@ static int aspeed_video_get_input(struct file *file, void *fh, unsigned int *i)
 	return 0;
 }
 
-static int aspeed_video_set_input(struct file *file, void *fh, unsigned int i)
+static int aspeed_video_set_input(struct file *file,
+				  struct video_device_state *state,
+				  unsigned int i)
 {
 	struct aspeed_video *video = video_drvdata(file);
 
@@ -1557,7 +1566,8 @@ static int aspeed_video_set_input(struct file *file, void *fh, unsigned int i)
 	return 0;
 }
 
-static int aspeed_video_get_parm(struct file *file, void *fh,
+static int aspeed_video_get_parm(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_streamparm *a)
 {
 	struct aspeed_video *video = video_drvdata(file);
@@ -1573,7 +1583,8 @@ static int aspeed_video_get_parm(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_set_parm(struct file *file, void *fh,
+static int aspeed_video_set_parm(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_streamparm *a)
 {
 	unsigned int frame_rate = 0;
@@ -1601,7 +1612,8 @@ static int aspeed_video_set_parm(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_enum_framesizes(struct file *file, void *fh,
+static int aspeed_video_enum_framesizes(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_frmsizeenum *fsize)
 {
 	struct aspeed_video *video = video_drvdata(file);
@@ -1619,7 +1631,8 @@ static int aspeed_video_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_enum_frameintervals(struct file *file, void *fh,
+static int aspeed_video_enum_frameintervals(struct file *file,
+					    struct video_device_state *state,
 					    struct v4l2_frmivalenum *fival)
 {
 	struct aspeed_video *video = video_drvdata(file);
@@ -1645,7 +1658,8 @@ static int aspeed_video_enum_frameintervals(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_set_dv_timings(struct file *file, void *fh,
+static int aspeed_video_set_dv_timings(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_dv_timings *timings)
 {
 	struct aspeed_video *video = video_drvdata(file);
@@ -1667,7 +1681,8 @@ static int aspeed_video_set_dv_timings(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_get_dv_timings(struct file *file, void *fh,
+static int aspeed_video_get_dv_timings(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_dv_timings *timings)
 {
 	struct aspeed_video *video = video_drvdata(file);
@@ -1678,7 +1693,8 @@ static int aspeed_video_get_dv_timings(struct file *file, void *fh,
 	return 0;
 }
 
-static int aspeed_video_query_dv_timings(struct file *file, void *fh,
+static int aspeed_video_query_dv_timings(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_dv_timings *timings)
 {
 	int rc;
@@ -1706,14 +1722,16 @@ static int aspeed_video_query_dv_timings(struct file *file, void *fh,
 	return video->v4l2_input_status ? -ENOLINK : 0;
 }
 
-static int aspeed_video_enum_dv_timings(struct file *file, void *fh,
+static int aspeed_video_enum_dv_timings(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_enum_dv_timings *timings)
 {
 	return v4l2_enum_dv_timings_cap(timings, &aspeed_video_timings_cap,
 					NULL, NULL);
 }
 
-static int aspeed_video_dv_timings_cap(struct file *file, void *fh,
+static int aspeed_video_dv_timings_cap(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_dv_timings_cap *cap)
 {
 	*cap = aspeed_video_timings_cap;

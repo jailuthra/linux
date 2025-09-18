@@ -176,7 +176,8 @@ static void usb_raremono_disconnect(struct usb_interface *intf)
 /*
  * Linux Video interface
  */
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_capability *v)
 {
 	struct raremono_device *radio = video_drvdata(file);
@@ -187,7 +188,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_freq_bands(struct file *file, void *priv,
+static int vidioc_enum_freq_bands(struct file *file,
+				  struct video_device_state *state,
 		struct v4l2_frequency_band *band)
 {
 	if (band->tuner != 0)
@@ -201,8 +203,8 @@ static int vidioc_enum_freq_bands(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
-		struct v4l2_tuner *v)
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state, struct v4l2_tuner *v)
 {
 	struct raremono_device *radio = video_drvdata(file);
 	int ret;
@@ -230,13 +232,15 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 					const struct v4l2_tuner *v)
 {
 	return v->index ? -EINVAL : 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 				const struct v4l2_frequency *f)
 {
 	struct raremono_device *radio = video_drvdata(file);
@@ -257,7 +261,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 	return raremono_cmd_main(radio, band, freq / 16);
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_frequency *f)
 {
 	struct raremono_device *radio = video_drvdata(file);

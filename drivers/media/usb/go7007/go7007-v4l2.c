@@ -271,7 +271,8 @@ static int set_capture_size(struct go7007 *go, struct v4l2_format *fmt, int try)
 	return 0;
 }
 
-static int vidioc_querycap(struct file *file, void  *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_capability *cap)
 {
 	struct go7007 *go = video_drvdata(file);
@@ -282,7 +283,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 					struct v4l2_fmtdesc *fmt)
 {
 	switch (fmt->index) {
@@ -304,7 +306,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 					struct v4l2_format *fmt)
 {
 	struct go7007 *go = video_drvdata(file);
@@ -321,7 +324,8 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 			struct v4l2_format *fmt)
 {
 	struct go7007 *go = video_drvdata(file);
@@ -329,7 +333,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return set_capture_size(go, fmt, 1);
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 			struct v4l2_format *fmt)
 {
 	struct go7007 *go = video_drvdata(file);
@@ -454,7 +459,8 @@ static const struct vb2_ops go7007_video_qops = {
 	.stop_streaming = go7007_stop_streaming,
 };
 
-static int vidioc_g_parm(struct file *filp, void *priv,
+static int vidioc_g_parm(struct file *filp,
+			 struct video_device_state *state,
 		struct v4l2_streamparm *parm)
 {
 	struct go7007 *go = video_drvdata(filp);
@@ -473,7 +479,8 @@ static int vidioc_g_parm(struct file *filp, void *priv,
 	return 0;
 }
 
-static int vidioc_s_parm(struct file *filp, void *priv,
+static int vidioc_s_parm(struct file *filp,
+			 struct video_device_state *state,
 		struct v4l2_streamparm *parm)
 {
 	struct go7007 *go = video_drvdata(filp);
@@ -490,7 +497,7 @@ static int vidioc_s_parm(struct file *filp, void *priv,
 	else
 		go->fps_scale = 1;
 
-	return vidioc_g_parm(filp, priv, parm);
+	return vidioc_g_parm(filp, state, parm);
 }
 
 /* VIDIOC_ENUMSTD on go7007 were used for enumerating the supported fps and
@@ -503,7 +510,8 @@ static int vidioc_s_parm(struct file *filp, void *priv,
 
    The two functions below implement the newer ioctls
 */
-static int vidioc_enum_framesizes(struct file *filp, void *priv,
+static int vidioc_enum_framesizes(struct file *filp,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	struct go7007 *go = video_drvdata(filp);
@@ -522,7 +530,8 @@ static int vidioc_enum_framesizes(struct file *filp, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_frameintervals(struct file *filp, void *priv,
+static int vidioc_enum_frameintervals(struct file *filp,
+				      struct video_device_state *state,
 				      struct v4l2_frmivalenum *fival)
 {
 	struct go7007 *go = video_drvdata(filp);
@@ -550,7 +559,8 @@ static int vidioc_enum_frameintervals(struct file *filp, void *priv,
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *std)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *std)
 {
 	struct go7007 *go = video_drvdata(file);
 
@@ -573,7 +583,8 @@ static int go7007_s_std(struct go7007 *go)
 	return 0;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id std)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id std)
 {
 	struct go7007 *go = video_drvdata(file);
 
@@ -585,14 +596,16 @@ static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id std)
 	return go7007_s_std(go);
 }
 
-static int vidioc_querystd(struct file *file, void *priv, v4l2_std_id *std)
+static int vidioc_querystd(struct file *file,
+			   struct video_device_state *state, v4l2_std_id *std)
 {
 	struct go7007 *go = video_drvdata(file);
 
 	return call_all(&go->v4l2_dev, video, querystd, std);
 }
 
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 				struct v4l2_input *inp)
 {
 	struct go7007 *go = video_drvdata(file);
@@ -624,7 +637,8 @@ static int vidioc_enum_input(struct file *file, void *priv,
 }
 
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *input)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *input)
 {
 	struct go7007 *go = video_drvdata(file);
 
@@ -633,7 +647,9 @@ static int vidioc_g_input(struct file *file, void *priv, unsigned int *input)
 	return 0;
 }
 
-static int vidioc_enumaudio(struct file *file, void *fh, struct v4l2_audio *a)
+static int vidioc_enumaudio(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_audio *a)
 {
 	struct go7007 *go = video_drvdata(file);
 
@@ -645,7 +661,8 @@ static int vidioc_enumaudio(struct file *file, void *fh, struct v4l2_audio *a)
 	return 0;
 }
 
-static int vidioc_g_audio(struct file *file, void *fh, struct v4l2_audio *a)
+static int vidioc_g_audio(struct file *file, struct video_device_state *state,
+			  struct v4l2_audio *a)
 {
 	struct go7007 *go = video_drvdata(file);
 
@@ -656,8 +673,8 @@ static int vidioc_g_audio(struct file *file, void *fh, struct v4l2_audio *a)
 	return 0;
 }
 
-static int vidioc_s_audio(struct file *file, void *fh,
-	const struct v4l2_audio *a)
+static int vidioc_s_audio(struct file *file,
+			  struct video_device_state *state, const struct v4l2_audio *a)
 {
 	struct go7007 *go = video_drvdata(file);
 
@@ -685,7 +702,8 @@ static void go7007_s_input(struct go7007 *go)
 	}
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int input)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int input)
 {
 	struct go7007 *go = video_drvdata(file);
 
@@ -700,7 +718,8 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int input)
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 				struct v4l2_tuner *t)
 {
 	struct go7007 *go = video_drvdata(file);
@@ -712,7 +731,8 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return call_all(&go->v4l2_dev, tuner, g_tuner, t);
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 				const struct v4l2_tuner *t)
 {
 	struct go7007 *go = video_drvdata(file);
@@ -723,7 +743,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 	return call_all(&go->v4l2_dev, tuner, s_tuner, t);
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_frequency *f)
 {
 	struct go7007 *go = video_drvdata(file);
@@ -734,7 +755,8 @@ static int vidioc_g_frequency(struct file *file, void *priv,
 	return call_all(&go->v4l2_dev, tuner, g_frequency, f);
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 				const struct v4l2_frequency *f)
 {
 	struct go7007 *go = video_drvdata(file);
@@ -745,11 +767,12 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 	return call_all(&go->v4l2_dev, tuner, s_frequency, f);
 }
 
-static int vidioc_log_status(struct file *file, void *priv)
+static int vidioc_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct go7007 *go = video_drvdata(file);
 
-	v4l2_ctrl_log_status(file, priv);
+	v4l2_ctrl_log_status(file, state);
 	return call_all(&go->v4l2_dev, core, log_status);
 }
 

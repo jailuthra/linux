@@ -107,7 +107,8 @@ const struct ipu7_isys_pixelformat *ipu7_isys_get_isys_format(u32 pixelformat)
 	return &ipu7_isys_pfmts[0];
 }
 
-static int ipu7_isys_vidioc_querycap(struct file *file, void *fh,
+static int ipu7_isys_vidioc_querycap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_capability *cap)
 {
 	struct ipu7_isys_video *av = video_drvdata(file);
@@ -118,7 +119,8 @@ static int ipu7_isys_vidioc_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int ipu7_isys_vidioc_enum_fmt(struct file *file, void *fh,
+static int ipu7_isys_vidioc_enum_fmt(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_fmtdesc *f)
 {
 	unsigned int i, num_found;
@@ -144,7 +146,8 @@ static int ipu7_isys_vidioc_enum_fmt(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-static int ipu7_isys_vidioc_enum_framesizes(struct file *file, void *fh,
+static int ipu7_isys_vidioc_enum_framesizes(struct file *file,
+					    struct video_device_state *state,
 					    struct v4l2_frmsizeenum *fsize)
 {
 	unsigned int i;
@@ -170,7 +173,8 @@ static int ipu7_isys_vidioc_enum_framesizes(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-static int ipu7_isys_vidioc_g_fmt_vid_cap(struct file *file, void *fh,
+static int ipu7_isys_vidioc_g_fmt_vid_cap(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_format *f)
 {
 	struct ipu7_isys_video *av = video_drvdata(file);
@@ -226,7 +230,8 @@ static void __ipu_isys_vidioc_try_fmt_vid_cap(struct ipu7_isys_video *av,
 	f->fmt.pix.xfer_func = V4L2_XFER_FUNC_DEFAULT;
 }
 
-static int ipu7_isys_vidioc_try_fmt_vid_cap(struct file *file, void *fh,
+static int ipu7_isys_vidioc_try_fmt_vid_cap(struct file *file,
+					    struct video_device_state *state,
 					    struct v4l2_format *f)
 {
 	struct ipu7_isys_video *av = video_drvdata(file);
@@ -239,18 +244,20 @@ static int ipu7_isys_vidioc_try_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int ipu7_isys_vidioc_s_fmt_vid_cap(struct file *file, void *fh,
+static int ipu7_isys_vidioc_s_fmt_vid_cap(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_format *f)
 {
 	struct ipu7_isys_video *av = video_drvdata(file);
 
-	ipu7_isys_vidioc_try_fmt_vid_cap(file, fh, f);
+	ipu7_isys_vidioc_try_fmt_vid_cap(file, state, f);
 	av->pix_fmt = f->fmt.pix;
 
 	return 0;
 }
 
-static int ipu7_isys_vidioc_reqbufs(struct file *file, void *priv,
+static int ipu7_isys_vidioc_reqbufs(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_requestbuffers *p)
 {
 	struct ipu7_isys_video *av = video_drvdata(file);
@@ -263,10 +270,11 @@ static int ipu7_isys_vidioc_reqbufs(struct file *file, void *priv,
 	if (ret)
 		return ret;
 
-	return vb2_ioctl_reqbufs(file, priv, p);
+	return vb2_ioctl_reqbufs(file, state, p);
 }
 
-static int ipu7_isys_vidioc_create_bufs(struct file *file, void *priv,
+static int ipu7_isys_vidioc_create_bufs(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_create_buffers *p)
 {
 	struct ipu7_isys_video *av = video_drvdata(file);
@@ -279,7 +287,7 @@ static int ipu7_isys_vidioc_create_bufs(struct file *file, void *priv,
 	if (ret)
 		return ret;
 
-	return vb2_ioctl_create_bufs(file, priv, p);
+	return vb2_ioctl_create_bufs(file, state, p);
 }
 
 static int link_validate(struct media_link *link)

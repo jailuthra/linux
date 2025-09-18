@@ -825,7 +825,8 @@ void video_mux(struct cx231xx *dev, int index)
 	IOCTL vidioc handling
    ------------------------------------------------------------------*/
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -853,7 +854,8 @@ static struct cx231xx_fmt *format_by_fourcc(unsigned int fourcc)
 	return NULL;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -885,7 +887,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -894,7 +897,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	};
 	int rc;
 
-	rc = vidioc_try_fmt_vid_cap(file, priv, f);
+	rc = vidioc_try_fmt_vid_cap(file, state, f);
 	if (rc)
 		return rc;
 
@@ -915,7 +918,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	return rc;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *id)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *id)
 {
 	struct cx231xx *dev = video_drvdata(file);
 
@@ -923,7 +927,8 @@ static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *id)
 	return 0;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id norm)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id norm)
 {
 	struct cx231xx *dev = video_drvdata(file);
 	struct v4l2_subdev_format format = {
@@ -1012,7 +1017,8 @@ void cx231xx_v4l2_create_entities(struct cx231xx *dev)
 #endif
 }
 
-int cx231xx_enum_input(struct file *file, void *priv,
+int cx231xx_enum_input(struct file *file,
+		       struct video_device_state *state,
 			     struct v4l2_input *i)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1052,7 +1058,8 @@ int cx231xx_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-int cx231xx_g_input(struct file *file, void *priv, unsigned int *i)
+int cx231xx_g_input(struct file *file, struct video_device_state *state,
+		    unsigned int *i)
 {
 	struct cx231xx *dev = video_drvdata(file);
 
@@ -1061,7 +1068,8 @@ int cx231xx_g_input(struct file *file, void *priv, unsigned int *i)
 	return 0;
 }
 
-int cx231xx_s_input(struct file *file, void *priv, unsigned int i)
+int cx231xx_s_input(struct file *file, struct video_device_state *state,
+		    unsigned int i)
 {
 	struct cx231xx *dev = video_drvdata(file);
 
@@ -1085,7 +1093,8 @@ int cx231xx_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-int cx231xx_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
+int cx231xx_g_tuner(struct file *file, struct video_device_state *state,
+		    struct v4l2_tuner *t)
 {
 	struct cx231xx *dev = video_drvdata(file);
 
@@ -1103,14 +1112,16 @@ int cx231xx_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
 	return 0;
 }
 
-int cx231xx_s_tuner(struct file *file, void *priv, const struct v4l2_tuner *t)
+int cx231xx_s_tuner(struct file *file, struct video_device_state *state,
+		    const struct v4l2_tuner *t)
 {
 	if (0 != t->index)
 		return -EINVAL;
 	return 0;
 }
 
-int cx231xx_g_frequency(struct file *file, void *priv,
+int cx231xx_g_frequency(struct file *file,
+			struct video_device_state *state,
 			      struct v4l2_frequency *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1123,7 +1134,8 @@ int cx231xx_g_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-int cx231xx_s_frequency(struct file *file, void *priv,
+int cx231xx_s_frequency(struct file *file,
+			struct video_device_state *state,
 			      const struct v4l2_frequency *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1194,7 +1206,8 @@ int cx231xx_s_frequency(struct file *file, void *priv,
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 
-int cx231xx_g_chip_info(struct file *file, void *fh,
+int cx231xx_g_chip_info(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_dbg_chip_info *chip)
 {
 	switch (chip->match.addr) {
@@ -1222,7 +1235,8 @@ int cx231xx_g_chip_info(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-int cx231xx_g_register(struct file *file, void *priv,
+int cx231xx_g_register(struct file *file,
+		       struct video_device_state *state,
 			     struct v4l2_dbg_register *reg)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1280,7 +1294,8 @@ int cx231xx_g_register(struct file *file, void *priv,
 	return ret < 0 ? ret : 0;
 }
 
-int cx231xx_s_register(struct file *file, void *priv,
+int cx231xx_s_register(struct file *file,
+		       struct video_device_state *state,
 			     const struct v4l2_dbg_register *reg)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1327,8 +1342,9 @@ int cx231xx_s_register(struct file *file, void *priv,
 }
 #endif
 
-static int vidioc_g_pixelaspect(struct file *file, void *priv,
-				int type, struct v4l2_fract *f)
+static int vidioc_g_pixelaspect(struct file *file,
+				struct video_device_state *state, int type,
+				struct v4l2_fract *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
 	bool is_50hz = dev->norm & V4L2_STD_625_50;
@@ -1342,7 +1358,8 @@ static int vidioc_g_pixelaspect(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_selection(struct file *file, void *priv,
+static int vidioc_g_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *s)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1364,7 +1381,8 @@ static int vidioc_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-int cx231xx_querycap(struct file *file, void *priv,
+int cx231xx_querycap(struct file *file,
+		     struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1394,7 +1412,8 @@ int cx231xx_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	if (unlikely(f->index >= ARRAY_SIZE(format)))
@@ -1407,7 +1426,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
 
 /* RAW VBI ioctls */
 
-static int vidioc_g_fmt_vbi_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vbi_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1429,7 +1449,8 @@ static int vidioc_g_fmt_vbi_cap(struct file *file, void *priv,
 
 }
 
-static int vidioc_try_fmt_vbi_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vbi_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1452,17 +1473,19 @@ static int vidioc_try_fmt_vbi_cap(struct file *file, void *priv,
 
 }
 
-static int vidioc_s_fmt_vbi_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vbi_cap(struct file *file,
+				struct video_device_state *state,
 				  struct v4l2_format *f)
 {
-	return vidioc_try_fmt_vbi_cap(file, priv, f);
+	return vidioc_try_fmt_vbi_cap(file, state, f);
 }
 
 /* ----------------------------------------------------------- */
 /* RADIO ESPECIFIC IOCTLS                                      */
 /* ----------------------------------------------------------- */
 
-static int radio_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
+static int radio_g_tuner(struct file *file, struct video_device_state *state,
+			 struct v4l2_tuner *t)
 {
 	struct cx231xx *dev = video_drvdata(file);
 
@@ -1475,7 +1498,9 @@ static int radio_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
 
 	return 0;
 }
-static int radio_s_tuner(struct file *file, void *priv, const struct v4l2_tuner *t)
+
+static int radio_s_tuner(struct file *file, struct video_device_state *state,
+			 const struct v4l2_tuner *t)
 {
 	struct cx231xx *dev = video_drvdata(file);
 

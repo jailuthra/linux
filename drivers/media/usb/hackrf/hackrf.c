@@ -890,8 +890,8 @@ static const struct vb2_ops hackrf_vb2_ops = {
 	.stop_streaming         = hackrf_stop_streaming,
 };
 
-static int hackrf_querycap(struct file *file, void *fh,
-		struct v4l2_capability *cap)
+static int hackrf_querycap(struct file *file,
+			   struct video_device_state *state, struct v4l2_capability *cap)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
 	struct usb_interface *intf = dev->intf;
@@ -909,7 +909,8 @@ static int hackrf_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int hackrf_s_fmt_sdr(struct file *file, void *priv,
+static int hackrf_s_fmt_sdr(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
@@ -945,7 +946,8 @@ static int hackrf_s_fmt_sdr(struct file *file, void *priv,
 	return 0;
 }
 
-static int hackrf_g_fmt_sdr(struct file *file, void *priv,
+static int hackrf_g_fmt_sdr(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
@@ -959,7 +961,8 @@ static int hackrf_g_fmt_sdr(struct file *file, void *priv,
 	return 0;
 }
 
-static int hackrf_try_fmt_sdr(struct file *file, void *priv,
+static int hackrf_try_fmt_sdr(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
@@ -981,7 +984,8 @@ static int hackrf_try_fmt_sdr(struct file *file, void *priv,
 	return 0;
 }
 
-static int hackrf_enum_fmt_sdr(struct file *file, void *priv,
+static int hackrf_enum_fmt_sdr(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_fmtdesc *f)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
@@ -996,8 +1000,8 @@ static int hackrf_enum_fmt_sdr(struct file *file, void *priv,
 	return 0;
 }
 
-static int hackrf_s_tuner(struct file *file, void *priv,
-		const struct v4l2_tuner *v)
+static int hackrf_s_tuner(struct file *file,
+			  struct video_device_state *state, const struct v4l2_tuner *v)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
 	int ret;
@@ -1014,7 +1018,8 @@ static int hackrf_s_tuner(struct file *file, void *priv,
 	return ret;
 }
 
-static int hackrf_g_tuner(struct file *file, void *priv, struct v4l2_tuner *v)
+static int hackrf_g_tuner(struct file *file, struct video_device_state *state,
+			  struct v4l2_tuner *v)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
 	int ret;
@@ -1042,7 +1047,8 @@ static int hackrf_g_tuner(struct file *file, void *priv, struct v4l2_tuner *v)
 	return ret;
 }
 
-static int hackrf_s_modulator(struct file *file, void *fh,
+static int hackrf_s_modulator(struct file *file,
+			      struct video_device_state *state,
 			      const struct v4l2_modulator *a)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
@@ -1052,7 +1058,8 @@ static int hackrf_s_modulator(struct file *file, void *fh,
 	return a->index > 1 ? -EINVAL : 0;
 }
 
-static int hackrf_g_modulator(struct file *file, void *fh,
+static int hackrf_g_modulator(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_modulator *a)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
@@ -1081,7 +1088,8 @@ static int hackrf_g_modulator(struct file *file, void *fh,
 	return ret;
 }
 
-static int hackrf_s_frequency(struct file *file, void *priv,
+static int hackrf_s_frequency(struct file *file,
+			      struct video_device_state *state,
 		const struct v4l2_frequency *f)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
@@ -1128,8 +1136,8 @@ err:
 	return ret;
 }
 
-static int hackrf_g_frequency(struct file *file, void *priv,
-		struct v4l2_frequency *f)
+static int hackrf_g_frequency(struct file *file,
+			      struct video_device_state *state, struct v4l2_frequency *f)
 {
 	struct hackrf_dev *dev = video_drvdata(file);
 	struct usb_interface *intf = dev->intf;
@@ -1161,7 +1169,8 @@ err:
 	return ret;
 }
 
-static int hackrf_enum_freq_bands(struct file *file, void *priv,
+static int hackrf_enum_freq_bands(struct file *file,
+				  struct video_device_state *state,
 		struct v4l2_frequency_band *band)
 {
 	struct hackrf_dev *dev = video_drvdata(file);

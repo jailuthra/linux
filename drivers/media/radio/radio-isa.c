@@ -29,7 +29,8 @@ MODULE_LICENSE("GPL");
 #define FREQ_LOW  (87U * 16000U)
 #define FREQ_HIGH (108U * 16000U)
 
-static int radio_isa_querycap(struct file *file, void  *priv,
+static int radio_isa_querycap(struct file *file,
+			      struct video_device_state *state,
 					struct v4l2_capability *v)
 {
 	struct radio_isa_card *isa = video_drvdata(file);
@@ -40,7 +41,8 @@ static int radio_isa_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int radio_isa_g_tuner(struct file *file, void *priv,
+static int radio_isa_g_tuner(struct file *file,
+			     struct video_device_state *state,
 				struct v4l2_tuner *v)
 {
 	struct radio_isa_card *isa = video_drvdata(file);
@@ -70,7 +72,8 @@ static int radio_isa_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int radio_isa_s_tuner(struct file *file, void *priv,
+static int radio_isa_s_tuner(struct file *file,
+			     struct video_device_state *state,
 				const struct v4l2_tuner *v)
 {
 	struct radio_isa_card *isa = video_drvdata(file);
@@ -85,7 +88,8 @@ static int radio_isa_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int radio_isa_s_frequency(struct file *file, void *priv,
+static int radio_isa_s_frequency(struct file *file,
+				 struct video_device_state *state,
 				const struct v4l2_frequency *f)
 {
 	struct radio_isa_card *isa = video_drvdata(file);
@@ -101,7 +105,8 @@ static int radio_isa_s_frequency(struct file *file, void *priv,
 	return res;
 }
 
-static int radio_isa_g_frequency(struct file *file, void *priv,
+static int radio_isa_g_frequency(struct file *file,
+				 struct video_device_state *state,
 				struct v4l2_frequency *f)
 {
 	struct radio_isa_card *isa = video_drvdata(file);
@@ -126,7 +131,8 @@ static int radio_isa_s_ctrl(struct v4l2_ctrl *ctrl)
 	return -EINVAL;
 }
 
-static int radio_isa_log_status(struct file *file, void *priv)
+static int radio_isa_log_status(struct file *file,
+				struct video_device_state *state)
 {
 	struct radio_isa_card *isa = video_drvdata(file);
 

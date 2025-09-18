@@ -1597,7 +1597,8 @@ static void radio_enable(struct bttv *btv)
 	}
 }
 
-static int bttv_s_std(struct file *file, void *priv, v4l2_std_id id)
+static int bttv_s_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id id)
 {
 	struct bttv *btv = video_drvdata(file);
 	unsigned int i;
@@ -1612,7 +1613,8 @@ static int bttv_s_std(struct file *file, void *priv, v4l2_std_id id)
 	return 0;
 }
 
-static int bttv_g_std(struct file *file, void *priv, v4l2_std_id *id)
+static int bttv_g_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id *id)
 {
 	struct bttv *btv = video_drvdata(file);
 
@@ -1620,7 +1622,8 @@ static int bttv_g_std(struct file *file, void *priv, v4l2_std_id *id)
 	return 0;
 }
 
-static int bttv_querystd(struct file *file, void *priv, v4l2_std_id *id)
+static int bttv_querystd(struct file *file, struct video_device_state *state,
+			 v4l2_std_id *id)
 {
 	struct bttv *btv = video_drvdata(file);
 
@@ -1631,7 +1634,8 @@ static int bttv_querystd(struct file *file, void *priv, v4l2_std_id *id)
 	return 0;
 }
 
-static int bttv_enum_input(struct file *file, void *priv,
+static int bttv_enum_input(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_input *i)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -1664,7 +1668,8 @@ static int bttv_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int bttv_g_input(struct file *file, void *priv, unsigned int *i)
+static int bttv_g_input(struct file *file, struct video_device_state *state,
+			unsigned int *i)
 {
 	struct bttv *btv = video_drvdata(file);
 
@@ -1673,7 +1678,8 @@ static int bttv_g_input(struct file *file, void *priv, unsigned int *i)
 	return 0;
 }
 
-static int bttv_s_input(struct file *file, void *priv, unsigned int i)
+static int bttv_s_input(struct file *file, struct video_device_state *state,
+			unsigned int i)
 {
 	struct bttv *btv = video_drvdata(file);
 
@@ -1684,7 +1690,8 @@ static int bttv_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-static int bttv_s_tuner(struct file *file, void *priv,
+static int bttv_s_tuner(struct file *file,
+			struct video_device_state *state,
 					const struct v4l2_tuner *t)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -1702,7 +1709,8 @@ static int bttv_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int bttv_g_frequency(struct file *file, void *priv,
+static int bttv_g_frequency(struct file *file,
+			    struct video_device_state *state,
 					struct v4l2_frequency *f)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -1738,7 +1746,8 @@ static void bttv_set_frequency(struct bttv *btv, const struct v4l2_frequency *f)
 	}
 }
 
-static int bttv_s_frequency(struct file *file, void *priv,
+static int bttv_s_frequency(struct file *file,
+			    struct video_device_state *state,
 					const struct v4l2_frequency *f)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -1750,7 +1759,8 @@ static int bttv_s_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-static int bttv_log_status(struct file *file, void *priv)
+static int bttv_log_status(struct file *file,
+			   struct video_device_state *state)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct bttv *btv = video_drvdata(file);
@@ -1761,7 +1771,8 @@ static int bttv_log_status(struct file *file, void *priv)
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int bttv_g_register(struct file *file, void *priv,
+static int bttv_g_register(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_dbg_register *reg)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -1774,7 +1785,8 @@ static int bttv_g_register(struct file *file, void *priv,
 	return 0;
 }
 
-static int bttv_s_register(struct file *file, void *priv,
+static int bttv_s_register(struct file *file,
+			   struct video_device_state *state,
 					const struct v4l2_dbg_register *reg)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -1981,7 +1993,8 @@ pix_format_set_size     (struct v4l2_pix_format *       f,
 	}
 }
 
-static int bttv_g_fmt_vid_cap(struct file *file, void *priv,
+static int bttv_g_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -2007,7 +2020,8 @@ static void bttv_get_width_mask_vid_cap(const struct bttv_format *fmt,
 	}
 }
 
-static int bttv_try_fmt_vid_cap(struct file *file, void *priv,
+static int bttv_try_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 						struct v4l2_format *f)
 {
 	const struct bttv_format *fmt;
@@ -2062,7 +2076,8 @@ static int bttv_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int bttv_s_fmt_vid_cap(struct file *file, void *priv,
+static int bttv_s_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	int retval;
@@ -2076,7 +2091,7 @@ static int bttv_s_fmt_vid_cap(struct file *file, void *priv,
 	if (0 != retval)
 		return retval;
 
-	retval = bttv_try_fmt_vid_cap(file, priv, f);
+	retval = bttv_try_fmt_vid_cap(file, state, f);
 	if (0 != retval)
 		return retval;
 
@@ -2109,7 +2124,8 @@ static int bttv_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int bttv_querycap(struct file *file, void  *priv,
+static int bttv_querycap(struct file *file,
+			 struct video_device_state *state,
 				struct v4l2_capability *cap)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -2140,7 +2156,8 @@ static int bttv_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int bttv_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int bttv_enum_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *f)
 {
 	int index = -1, i;
@@ -2159,7 +2176,8 @@ static int bttv_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int bttv_g_parm(struct file *file, void *priv,
+static int bttv_g_parm(struct file *file,
+		       struct video_device_state *state,
 				struct v4l2_streamparm *parm)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -2173,7 +2191,8 @@ static int bttv_g_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int bttv_g_tuner(struct file *file, void *priv,
+static int bttv_g_tuner(struct file *file,
+			struct video_device_state *state,
 				struct v4l2_tuner *t)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -2195,8 +2214,9 @@ static int bttv_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int bttv_g_pixelaspect(struct file *file, void *priv,
-			      int type, struct v4l2_fract *f)
+static int bttv_g_pixelaspect(struct file *file,
+			      struct video_device_state *state, int type,
+			      struct v4l2_fract *f)
 {
 	struct bttv *btv = video_drvdata(file);
 
@@ -2208,7 +2228,9 @@ static int bttv_g_pixelaspect(struct file *file, void *priv,
 	return 0;
 }
 
-static int bttv_g_selection(struct file *file, void *priv, struct v4l2_selection *sel)
+static int bttv_g_selection(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_selection *sel)
 {
 	struct bttv *btv = video_drvdata(file);
 
@@ -2232,7 +2254,9 @@ static int bttv_g_selection(struct file *file, void *priv, struct v4l2_selection
 	return 0;
 }
 
-static int bttv_s_selection(struct file *file, void *priv, struct v4l2_selection *sel)
+static int bttv_s_selection(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_selection *sel)
 {
 	struct bttv *btv = video_drvdata(file);
 	const struct v4l2_rect *b;
@@ -2398,7 +2422,8 @@ static int radio_release(struct file *file)
 	return 0;
 }
 
-static int radio_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
+static int radio_g_tuner(struct file *file, struct video_device_state *state,
+			 struct v4l2_tuner *t)
 {
 	struct bttv *btv = video_drvdata(file);
 
@@ -2419,7 +2444,8 @@ static int radio_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
 	return 0;
 }
 
-static int radio_s_tuner(struct file *file, void *priv,
+static int radio_s_tuner(struct file *file,
+			 struct video_device_state *state,
 					const struct v4l2_tuner *t)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -2432,7 +2458,8 @@ static int radio_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int radio_s_hw_freq_seek(struct file *file, void *priv,
+static int radio_s_hw_freq_seek(struct file *file,
+				struct video_device_state *state,
 					const struct v4l2_hw_freq_seek *a)
 {
 	struct bttv *btv = video_drvdata(file);
@@ -2443,7 +2470,8 @@ static int radio_s_hw_freq_seek(struct file *file, void *priv,
 	return -ENOTTY;
 }
 
-static int radio_enum_freq_bands(struct file *file, void *priv,
+static int radio_enum_freq_bands(struct file *file,
+				 struct video_device_state *state,
 					 struct v4l2_frequency_band *band)
 {
 	struct bttv *btv = video_drvdata(file);

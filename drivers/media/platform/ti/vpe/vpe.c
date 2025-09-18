@@ -1521,7 +1521,8 @@ handled:
 /*
  * video ioctls
  */
-static int vpe_querycap(struct file *file, void *priv,
+static int vpe_querycap(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, VPE_MODULE_NAME, sizeof(cap->driver));
@@ -1554,7 +1555,8 @@ static int __enum_fmt(struct v4l2_fmtdesc *f, u32 type)
 	return 0;
 }
 
-static int vpe_enum_fmt(struct file *file, void *priv,
+static int vpe_enum_fmt(struct file *file,
+			struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	if (V4L2_TYPE_IS_OUTPUT(f->type))
@@ -1563,7 +1565,8 @@ static int vpe_enum_fmt(struct file *file, void *priv,
 	return __enum_fmt(f, VPE_FMT_TYPE_CAPTURE);
 }
 
-static int vpe_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vpe_g_fmt(struct file *file, struct video_device_state *state,
+		     struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix = &f->fmt.pix_mp;
 	struct vpe_ctx *ctx = to_vpe_ctx(file);
@@ -1721,7 +1724,8 @@ static int __vpe_try_fmt(struct vpe_ctx *ctx, struct v4l2_format *f,
 	return 0;
 }
 
-static int vpe_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vpe_try_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f)
 {
 	struct vpe_ctx *ctx = to_vpe_ctx(file);
 	struct vpe_fmt *fmt = find_format(f);
@@ -1784,12 +1788,13 @@ static int __vpe_s_fmt(struct vpe_ctx *ctx, struct v4l2_format *f)
 	return 0;
 }
 
-static int vpe_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vpe_s_fmt(struct file *file, struct video_device_state *state,
+		     struct v4l2_format *f)
 {
 	int ret;
 	struct vpe_ctx *ctx = to_vpe_ctx(file);
 
-	ret = vpe_try_fmt(file, priv, f);
+	ret = vpe_try_fmt(file, state, f);
 	if (ret)
 		return ret;
 
@@ -1872,8 +1877,8 @@ static int __vpe_try_selection(struct vpe_ctx *ctx, struct v4l2_selection *s)
 	return 0;
 }
 
-static int vpe_g_selection(struct file *file, void *fh,
-		struct v4l2_selection *s)
+static int vpe_g_selection(struct file *file,
+			   struct video_device_state *state, struct v4l2_selection *s)
 {
 	struct vpe_ctx *ctx = to_vpe_ctx(file);
 	struct vpe_q_data *q_data;
@@ -1936,8 +1941,8 @@ static int vpe_g_selection(struct file *file, void *fh,
 }
 
 
-static int vpe_s_selection(struct file *file, void *fh,
-		struct v4l2_selection *s)
+static int vpe_s_selection(struct file *file,
+			   struct video_device_state *state, struct v4l2_selection *s)
 {
 	struct vpe_ctx *ctx = to_vpe_ctx(file);
 	struct vpe_q_data *q_data;

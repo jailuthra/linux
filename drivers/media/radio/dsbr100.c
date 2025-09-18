@@ -160,7 +160,8 @@ static void dsbr100_getstat(struct dsbr100_device *radio)
 	}
 }
 
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_capability *v)
 {
 	struct dsbr100_device *radio = video_drvdata(file);
@@ -171,7 +172,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 				struct v4l2_tuner *v)
 {
 	struct dsbr100_device *radio = video_drvdata(file);
@@ -192,13 +194,15 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 				const struct v4l2_tuner *v)
 {
 	return v->index ? -EINVAL : 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 				const struct v4l2_frequency *f)
 {
 	struct dsbr100_device *radio = video_drvdata(file);
@@ -210,7 +214,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 			FREQ_MIN * FREQ_MUL, FREQ_MAX * FREQ_MUL));
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_frequency *f)
 {
 	struct dsbr100_device *radio = video_drvdata(file);

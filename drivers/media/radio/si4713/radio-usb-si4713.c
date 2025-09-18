@@ -62,7 +62,8 @@ static inline struct si4713_usb_device *to_si4713_dev(struct v4l2_device *v4l2_d
 	return container_of(v4l2_dev, struct si4713_usb_device, v4l2_dev);
 }
 
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_capability *v)
 {
 	struct si4713_usb_device *radio = video_drvdata(file);
@@ -73,7 +74,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_modulator(struct file *file, void *priv,
+static int vidioc_g_modulator(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_modulator *vm)
 {
 	struct si4713_usb_device *radio = video_drvdata(file);
@@ -81,7 +83,8 @@ static int vidioc_g_modulator(struct file *file, void *priv,
 	return v4l2_subdev_call(radio->v4l2_subdev, tuner, g_modulator, vm);
 }
 
-static int vidioc_s_modulator(struct file *file, void *priv,
+static int vidioc_s_modulator(struct file *file,
+			      struct video_device_state *state,
 				const struct v4l2_modulator *vm)
 {
 	struct si4713_usb_device *radio = video_drvdata(file);
@@ -89,7 +92,8 @@ static int vidioc_s_modulator(struct file *file, void *priv,
 	return v4l2_subdev_call(radio->v4l2_subdev, tuner, s_modulator, vm);
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 				const struct v4l2_frequency *vf)
 {
 	struct si4713_usb_device *radio = video_drvdata(file);
@@ -97,7 +101,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 	return v4l2_subdev_call(radio->v4l2_subdev, tuner, s_frequency, vf);
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_frequency *vf)
 {
 	struct si4713_usb_device *radio = video_drvdata(file);

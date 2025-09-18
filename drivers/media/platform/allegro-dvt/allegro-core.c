@@ -3247,7 +3247,8 @@ static int allegro_release(struct file *file)
 	return 0;
 }
 
-static int allegro_querycap(struct file *file, void *fh,
+static int allegro_querycap(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, KBUILD_MODNAME, sizeof(cap->driver));
@@ -3256,7 +3257,8 @@ static int allegro_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int allegro_enum_fmt_vid(struct file *file, void *fh,
+static int allegro_enum_fmt_vid(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	switch (f->type) {
@@ -3279,7 +3281,8 @@ static int allegro_enum_fmt_vid(struct file *file, void *fh,
 	return 0;
 }
 
-static int allegro_g_fmt_vid_cap(struct file *file, void *fh,
+static int allegro_g_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct allegro_channel *channel = file_to_channel(file);
@@ -3300,7 +3303,8 @@ static int allegro_g_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int allegro_try_fmt_vid_cap(struct file *file, void *fh,
+static int allegro_try_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	f->fmt.pix.field = V4L2_FIELD_NONE;
@@ -3321,14 +3325,15 @@ static int allegro_try_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int allegro_s_fmt_vid_cap(struct file *file, void *fh,
+static int allegro_s_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct allegro_channel *channel = file_to_channel(file);
 	struct vb2_queue *vq;
 	int err;
 
-	err = allegro_try_fmt_vid_cap(file, fh, f);
+	err = allegro_try_fmt_vid_cap(file, state, f);
 	if (err)
 		return err;
 
@@ -3345,7 +3350,8 @@ static int allegro_s_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int allegro_g_fmt_vid_out(struct file *file, void *fh,
+static int allegro_g_fmt_vid_out(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct allegro_channel *channel = file_to_channel(file);
@@ -3367,7 +3373,8 @@ static int allegro_g_fmt_vid_out(struct file *file, void *fh,
 	return 0;
 }
 
-static int allegro_try_fmt_vid_out(struct file *file, void *fh,
+static int allegro_try_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	f->fmt.pix.field = V4L2_FIELD_NONE;
@@ -3392,13 +3399,14 @@ static int allegro_try_fmt_vid_out(struct file *file, void *fh,
 	return 0;
 }
 
-static int allegro_s_fmt_vid_out(struct file *file, void *fh,
+static int allegro_s_fmt_vid_out(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct allegro_channel *channel = file_to_channel(file);
 	int err;
 
-	err = allegro_try_fmt_vid_out(file, fh, f);
+	err = allegro_try_fmt_vid_out(file, state, f);
 	if (err)
 		return err;
 
@@ -3433,17 +3441,18 @@ static int allegro_channel_cmd_start(struct allegro_channel *channel)
 	return 0;
 }
 
-static int allegro_encoder_cmd(struct file *file, void *fh,
+static int allegro_encoder_cmd(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_encoder_cmd *cmd)
 {
 	struct allegro_channel *channel = file_to_channel(file);
 	int err;
 
-	err = v4l2_m2m_ioctl_try_encoder_cmd(file, fh, cmd);
+	err = v4l2_m2m_ioctl_try_encoder_cmd(file, state, cmd);
 	if (err)
 		return err;
 
-	err = v4l2_m2m_ioctl_encoder_cmd(file, fh, cmd);
+	err = v4l2_m2m_ioctl_encoder_cmd(file, state, cmd);
 	if (err)
 		return err;
 
@@ -3456,7 +3465,8 @@ static int allegro_encoder_cmd(struct file *file, void *fh,
 	return err;
 }
 
-static int allegro_enum_framesizes(struct file *file, void *fh,
+static int allegro_enum_framesizes(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_frmsizeenum *fsize)
 {
 	switch (fsize->pixel_format) {
@@ -3482,7 +3492,8 @@ static int allegro_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int allegro_ioctl_streamon(struct file *file, void *priv,
+static int allegro_ioctl_streamon(struct file *file,
+				  struct video_device_state *state,
 				  enum v4l2_buf_type type)
 {
 	struct allegro_channel *channel = file_to_channel(file);
@@ -3497,7 +3508,8 @@ static int allegro_ioctl_streamon(struct file *file, void *priv,
 	return v4l2_m2m_streamon(file, channel->fh.m2m_ctx, type);
 }
 
-static int allegro_g_parm(struct file *file, void *fh,
+static int allegro_g_parm(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_streamparm *a)
 {
 	struct allegro_channel *channel = file_to_channel(file);
@@ -3514,7 +3526,8 @@ static int allegro_g_parm(struct file *file, void *fh,
 	return 0;
 }
 
-static int allegro_s_parm(struct file *file, void *fh,
+static int allegro_s_parm(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_streamparm *a)
 {
 	struct allegro_channel *channel = file_to_channel(file);
@@ -3528,7 +3541,7 @@ static int allegro_s_parm(struct file *file, void *fh,
 	timeperframe = &a->parm.output.timeperframe;
 
 	if (timeperframe->numerator == 0 || timeperframe->denominator == 0)
-		return allegro_g_parm(file, fh, a);
+		return allegro_g_parm(file, state, a);
 
 	div = gcd(timeperframe->denominator, timeperframe->numerator);
 	channel->framerate.numerator = timeperframe->denominator / div;

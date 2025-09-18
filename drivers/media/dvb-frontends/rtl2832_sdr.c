@@ -418,8 +418,8 @@ static void rtl2832_sdr_cleanup_queued_bufs(struct rtl2832_sdr_dev *dev)
 	spin_unlock_irqrestore(&dev->queued_bufs_lock, flags);
 }
 
-static int rtl2832_sdr_querycap(struct file *file, void *fh,
-		struct v4l2_capability *cap)
+static int rtl2832_sdr_querycap(struct file *file,
+				struct video_device_state *state, struct v4l2_capability *cap)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
 	struct platform_device *pdev = dev->pdev;
@@ -949,8 +949,8 @@ static const struct vb2_ops rtl2832_sdr_vb2_ops = {
 	.stop_streaming         = rtl2832_sdr_stop_streaming,
 };
 
-static int rtl2832_sdr_g_tuner(struct file *file, void *priv,
-		struct v4l2_tuner *v)
+static int rtl2832_sdr_g_tuner(struct file *file,
+			       struct video_device_state *state, struct v4l2_tuner *v)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
 	struct platform_device *pdev = dev->pdev;
@@ -981,8 +981,8 @@ static int rtl2832_sdr_g_tuner(struct file *file, void *priv,
 	return ret;
 }
 
-static int rtl2832_sdr_s_tuner(struct file *file, void *priv,
-		const struct v4l2_tuner *v)
+static int rtl2832_sdr_s_tuner(struct file *file,
+			       struct video_device_state *state, const struct v4l2_tuner *v)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
 	struct platform_device *pdev = dev->pdev;
@@ -1003,7 +1003,8 @@ static int rtl2832_sdr_s_tuner(struct file *file, void *priv,
 	return ret;
 }
 
-static int rtl2832_sdr_enum_freq_bands(struct file *file, void *priv,
+static int rtl2832_sdr_enum_freq_bands(struct file *file,
+				       struct video_device_state *state,
 		struct v4l2_frequency_band *band)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
@@ -1034,8 +1035,8 @@ static int rtl2832_sdr_enum_freq_bands(struct file *file, void *priv,
 	return ret;
 }
 
-static int rtl2832_sdr_g_frequency(struct file *file, void *priv,
-		struct v4l2_frequency *f)
+static int rtl2832_sdr_g_frequency(struct file *file,
+				   struct video_device_state *state, struct v4l2_frequency *f)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
 	struct platform_device *pdev = dev->pdev;
@@ -1061,7 +1062,8 @@ static int rtl2832_sdr_g_frequency(struct file *file, void *priv,
 	return ret;
 }
 
-static int rtl2832_sdr_s_frequency(struct file *file, void *priv,
+static int rtl2832_sdr_s_frequency(struct file *file,
+				   struct video_device_state *state,
 		const struct v4l2_frequency *f)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
@@ -1105,8 +1107,8 @@ static int rtl2832_sdr_s_frequency(struct file *file, void *priv,
 	return ret;
 }
 
-static int rtl2832_sdr_enum_fmt_sdr_cap(struct file *file, void *priv,
-		struct v4l2_fmtdesc *f)
+static int rtl2832_sdr_enum_fmt_sdr_cap(struct file *file,
+					struct video_device_state *state, struct v4l2_fmtdesc *f)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
 	struct platform_device *pdev = dev->pdev;
@@ -1121,8 +1123,8 @@ static int rtl2832_sdr_enum_fmt_sdr_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rtl2832_sdr_g_fmt_sdr_cap(struct file *file, void *priv,
-		struct v4l2_format *f)
+static int rtl2832_sdr_g_fmt_sdr_cap(struct file *file,
+				     struct video_device_state *state, struct v4l2_format *f)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
 	struct platform_device *pdev = dev->pdev;
@@ -1135,8 +1137,8 @@ static int rtl2832_sdr_g_fmt_sdr_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rtl2832_sdr_s_fmt_sdr_cap(struct file *file, void *priv,
-		struct v4l2_format *f)
+static int rtl2832_sdr_s_fmt_sdr_cap(struct file *file,
+				     struct video_device_state *state, struct v4l2_format *f)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
 	struct platform_device *pdev = dev->pdev;
@@ -1166,8 +1168,8 @@ static int rtl2832_sdr_s_fmt_sdr_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rtl2832_sdr_try_fmt_sdr_cap(struct file *file, void *priv,
-		struct v4l2_format *f)
+static int rtl2832_sdr_try_fmt_sdr_cap(struct file *file,
+				       struct video_device_state *state, struct v4l2_format *f)
 {
 	struct rtl2832_sdr_dev *dev = video_drvdata(file);
 	struct platform_device *pdev = dev->pdev;

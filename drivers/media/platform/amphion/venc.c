@@ -92,7 +92,8 @@ static const struct vpu_format venc_formats[] = {
 	{0, 0, 0, 0},
 };
 
-static int venc_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+static int venc_querycap(struct file *file, struct video_device_state *state,
+			 struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "amphion-vpu", sizeof(cap->driver));
 	strscpy(cap->card, "amphion vpu encoder", sizeof(cap->card));
@@ -101,7 +102,8 @@ static int venc_querycap(struct file *file, void *fh, struct v4l2_capability *ca
 	return 0;
 }
 
-static int venc_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int venc_enum_fmt(struct file *file, struct video_device_state *state,
+			 struct v4l2_fmtdesc *f)
 {
 	struct vpu_inst *inst = to_inst(file);
 	const struct vpu_format *fmt;
@@ -117,7 +119,9 @@ static int venc_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 	return 0;
 }
 
-static int venc_enum_framesizes(struct file *file, void *fh, struct v4l2_frmsizeenum *fsize)
+static int venc_enum_framesizes(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_frmsizeenum *fsize)
 {
 	struct vpu_inst *inst = to_inst(file);
 	const struct vpu_core_resources *res;
@@ -142,7 +146,9 @@ static int venc_enum_framesizes(struct file *file, void *fh, struct v4l2_frmsize
 	return 0;
 }
 
-static int venc_enum_frameintervals(struct file *file, void *fh, struct v4l2_frmivalenum *fival)
+static int venc_enum_frameintervals(struct file *file,
+				    struct video_device_state *state,
+				    struct v4l2_frmivalenum *fival)
 {
 	struct vpu_inst *inst = to_inst(file);
 	const struct vpu_core_resources *res;
@@ -174,7 +180,8 @@ static int venc_enum_frameintervals(struct file *file, void *fh, struct v4l2_frm
 	return 0;
 }
 
-static int venc_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int venc_g_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct venc_t *venc = inst->priv;
@@ -203,7 +210,8 @@ static int venc_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int venc_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int venc_try_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct vpu_format fmt;
@@ -213,7 +221,8 @@ static int venc_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int venc_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int venc_s_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct vpu_format fmt;
@@ -265,7 +274,8 @@ static int venc_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int venc_g_parm(struct file *file, void *fh, struct v4l2_streamparm *parm)
+static int venc_g_parm(struct file *file, struct video_device_state *state,
+		       struct v4l2_streamparm *parm)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct venc_t *venc = inst->priv;
@@ -289,7 +299,8 @@ static int venc_g_parm(struct file *file, void *fh, struct v4l2_streamparm *parm
 	return 0;
 }
 
-static int venc_s_parm(struct file *file, void *fh, struct v4l2_streamparm *parm)
+static int venc_s_parm(struct file *file, struct video_device_state *state,
+		       struct v4l2_streamparm *parm)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct venc_t *venc = inst->priv;
@@ -328,7 +339,9 @@ static int venc_s_parm(struct file *file, void *fh, struct v4l2_streamparm *parm
 	return 0;
 }
 
-static int venc_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
+static int venc_g_selection(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_selection *s)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct venc_t *venc = inst->priv;
@@ -382,7 +395,9 @@ static int venc_valid_crop(struct venc_t *venc, const struct vpu_core_resources 
 	return 0;
 }
 
-static int venc_s_selection(struct file *file, void *fh, struct v4l2_selection *s)
+static int venc_s_selection(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_selection *s)
 {
 	struct vpu_inst *inst = to_inst(file);
 	const struct vpu_core_resources *res;
@@ -449,12 +464,14 @@ static int venc_request_eos(struct vpu_inst *inst)
 	return 0;
 }
 
-static int venc_encoder_cmd(struct file *file, void *fh, struct v4l2_encoder_cmd *cmd)
+static int venc_encoder_cmd(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_encoder_cmd *cmd)
 {
 	struct vpu_inst *inst = to_inst(file);
 	int ret;
 
-	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, fh, cmd);
+	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, state, cmd);
 	if (ret)
 		return ret;
 
@@ -1288,7 +1305,7 @@ static void venc_init(struct file *file)
 	f.fmt.pix_mp.width = 1280;
 	f.fmt.pix_mp.height = 720;
 	f.fmt.pix_mp.field = V4L2_FIELD_NONE;
-	venc_s_fmt(file, &inst->fh, &f);
+	venc_s_fmt(file, NULL, &f);
 
 	memset(&f, 0, sizeof(f));
 	f.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -1296,13 +1313,13 @@ static void venc_init(struct file *file)
 	f.fmt.pix_mp.width = 1280;
 	f.fmt.pix_mp.height = 720;
 	f.fmt.pix_mp.field = V4L2_FIELD_NONE;
-	venc_s_fmt(file, &inst->fh, &f);
+	venc_s_fmt(file, NULL, &f);
 
 	memset(&parm, 0, sizeof(parm));
 	parm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	parm.parm.capture.timeperframe.numerator = 1;
 	parm.parm.capture.timeperframe.denominator = 30;
-	venc_s_parm(file, &inst->fh, &parm);
+	venc_s_parm(file, NULL, &parm);
 }
 
 static int venc_open(struct file *file)

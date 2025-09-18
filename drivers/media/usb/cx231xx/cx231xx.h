@@ -924,23 +924,28 @@ void cx231xx_unregister_extension(struct cx231xx_ops *dev);
 void cx231xx_init_extension(struct cx231xx *dev);
 void cx231xx_close_extension(struct cx231xx *dev);
 void cx231xx_v4l2_create_entities(struct cx231xx *dev);
-int cx231xx_querycap(struct file *file, void *priv,
-			   struct v4l2_capability *cap);
-int cx231xx_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t);
-int cx231xx_s_tuner(struct file *file, void *priv, const struct v4l2_tuner *t);
-int cx231xx_g_frequency(struct file *file, void *priv,
-			      struct v4l2_frequency *f);
-int cx231xx_s_frequency(struct file *file, void *priv,
-			      const struct v4l2_frequency *f);
-int cx231xx_enum_input(struct file *file, void *priv,
-			     struct v4l2_input *i);
-int cx231xx_g_input(struct file *file, void *priv, unsigned int *i);
-int cx231xx_s_input(struct file *file, void *priv, unsigned int i);
-int cx231xx_g_chip_info(struct file *file, void *fh, struct v4l2_dbg_chip_info *chip);
-int cx231xx_g_register(struct file *file, void *priv,
-			     struct v4l2_dbg_register *reg);
-int cx231xx_s_register(struct file *file, void *priv,
-			     const struct v4l2_dbg_register *reg);
+int cx231xx_querycap(struct file *file, struct video_device_state *state,
+		     struct v4l2_capability *cap);
+int cx231xx_g_tuner(struct file *file, struct video_device_state *state,
+		    struct v4l2_tuner *t);
+int cx231xx_s_tuner(struct file *file, struct video_device_state *state,
+		    const struct v4l2_tuner *t);
+int cx231xx_g_frequency(struct file *file, struct video_device_state *state,
+			struct v4l2_frequency *f);
+int cx231xx_s_frequency(struct file *file, struct video_device_state *state,
+			const struct v4l2_frequency *f);
+int cx231xx_enum_input(struct file *file, struct video_device_state *state,
+		       struct v4l2_input *i);
+int cx231xx_g_input(struct file *file, struct video_device_state *state,
+		    unsigned int *i);
+int cx231xx_s_input(struct file *file, struct video_device_state *state,
+		    unsigned int i);
+int cx231xx_g_chip_info(struct file *file, struct video_device_state *state,
+			struct v4l2_dbg_chip_info *chip);
+int cx231xx_g_register(struct file *file, struct video_device_state *state,
+		       struct v4l2_dbg_register *reg);
+int cx231xx_s_register(struct file *file, struct video_device_state *state,
+		       const struct v4l2_dbg_register *reg);
 
 /* Provided by cx231xx-cards.c */
 extern void cx231xx_pre_card_setup(struct cx231xx *dev);

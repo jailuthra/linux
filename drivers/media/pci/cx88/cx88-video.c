@@ -701,7 +701,8 @@ static int cx8800_s_aud_ctrl(struct v4l2_ctrl *ctrl)
 /* ------------------------------------------------------------------ */
 /* VIDEO IOCTLS                                                       */
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -719,7 +720,8 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -765,12 +767,13 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;
-	int err = vidioc_try_fmt_vid_cap(file, priv, f);
+	int err = vidioc_try_fmt_vid_cap(file, state, f);
 
 	if (err != 0)
 		return err;
@@ -800,7 +803,8 @@ int cx88_querycap(struct file *file, struct cx88_core *core,
 }
 EXPORT_SYMBOL(cx88_querycap);
 
-static int vidioc_querycap(struct file *file, void  *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -810,7 +814,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return cx88_querycap(file, core, cap);
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	if (unlikely(f->index >= ARRAY_SIZE(formats)))
@@ -821,7 +826,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *tvnorm)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *tvnorm)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;
@@ -830,7 +836,8 @@ static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *tvnorm)
 	return 0;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id tvnorms)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id tvnorms)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;
@@ -869,7 +876,8 @@ int cx88_enum_input(struct cx88_core  *core, struct v4l2_input *i)
 }
 EXPORT_SYMBOL(cx88_enum_input);
 
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_input *i)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -878,7 +886,8 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	return cx88_enum_input(core, i);
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;
@@ -887,7 +896,8 @@ static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;
@@ -902,7 +912,8 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_tuner *t)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -925,7 +936,8 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 			  const struct v4l2_tuner *t)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -940,7 +952,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_frequency *f)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -981,7 +994,8 @@ int cx88_set_freq(struct cx88_core  *core,
 }
 EXPORT_SYMBOL(cx88_set_freq);
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 			      const struct v4l2_frequency *f)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -991,7 +1005,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int vidioc_g_register(struct file *file, void *fh,
+static int vidioc_g_register(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_dbg_register *reg)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -1003,7 +1018,8 @@ static int vidioc_g_register(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_s_register(struct file *file, void *fh,
+static int vidioc_s_register(struct file *file,
+			     struct video_device_state *state,
 			     const struct v4l2_dbg_register *reg)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -1018,7 +1034,8 @@ static int vidioc_s_register(struct file *file, void *fh,
 /* RADIO ESPECIFIC IOCTLS                                      */
 /* ----------------------------------------------------------- */
 
-static int radio_g_tuner(struct file *file, void *priv,
+static int radio_g_tuner(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_tuner *t)
 {
 	struct cx8800_dev *dev = video_drvdata(file);
@@ -1033,7 +1050,8 @@ static int radio_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int radio_s_tuner(struct file *file, void *priv,
+static int radio_s_tuner(struct file *file,
+			 struct video_device_state *state,
 			 const struct v4l2_tuner *t)
 {
 	struct cx8800_dev *dev = video_drvdata(file);

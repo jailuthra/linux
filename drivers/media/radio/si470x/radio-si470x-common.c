@@ -597,8 +597,8 @@ static int si470x_s_ctrl(struct v4l2_ctrl *ctrl)
 /*
  * si470x_vidioc_g_tuner - get tuner attributes
  */
-static int si470x_vidioc_g_tuner(struct file *file, void *priv,
-		struct v4l2_tuner *tuner)
+static int si470x_vidioc_g_tuner(struct file *file,
+				 struct video_device_state *state, struct v4l2_tuner *tuner)
 {
 	struct si470x_device *radio = video_drvdata(file);
 	int retval = 0;
@@ -657,7 +657,8 @@ static int si470x_vidioc_g_tuner(struct file *file, void *priv,
 /*
  * si470x_vidioc_s_tuner - set tuner attributes
  */
-static int si470x_vidioc_s_tuner(struct file *file, void *priv,
+static int si470x_vidioc_s_tuner(struct file *file,
+				 struct video_device_state *state,
 		const struct v4l2_tuner *tuner)
 {
 	struct si470x_device *radio = video_drvdata(file);
@@ -683,8 +684,8 @@ static int si470x_vidioc_s_tuner(struct file *file, void *priv,
 /*
  * si470x_vidioc_g_frequency - get tuner or modulator radio frequency
  */
-static int si470x_vidioc_g_frequency(struct file *file, void *priv,
-		struct v4l2_frequency *freq)
+static int si470x_vidioc_g_frequency(struct file *file,
+				     struct video_device_state *state, struct v4l2_frequency *freq)
 {
 	struct si470x_device *radio = video_drvdata(file);
 
@@ -699,7 +700,8 @@ static int si470x_vidioc_g_frequency(struct file *file, void *priv,
 /*
  * si470x_vidioc_s_frequency - set tuner or modulator radio frequency
  */
-static int si470x_vidioc_s_frequency(struct file *file, void *priv,
+static int si470x_vidioc_s_frequency(struct file *file,
+				     struct video_device_state *state,
 		const struct v4l2_frequency *freq)
 {
 	struct si470x_device *radio = video_drvdata(file);
@@ -722,7 +724,8 @@ static int si470x_vidioc_s_frequency(struct file *file, void *priv,
 /*
  * si470x_vidioc_s_hw_freq_seek - set hardware frequency seek
  */
-static int si470x_vidioc_s_hw_freq_seek(struct file *file, void *priv,
+static int si470x_vidioc_s_hw_freq_seek(struct file *file,
+					struct video_device_state *state,
 		const struct v4l2_hw_freq_seek *seek)
 {
 	struct si470x_device *radio = video_drvdata(file);
@@ -739,7 +742,8 @@ static int si470x_vidioc_s_hw_freq_seek(struct file *file, void *priv,
 /*
  * si470x_vidioc_enum_freq_bands - enumerate supported bands
  */
-static int si470x_vidioc_enum_freq_bands(struct file *file, void *priv,
+static int si470x_vidioc_enum_freq_bands(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_frequency_band *band)
 {
 	if (band->tuner != 0)
@@ -755,12 +759,13 @@ const struct v4l2_ctrl_ops si470x_ctrl_ops = {
 };
 EXPORT_SYMBOL_GPL(si470x_ctrl_ops);
 
-static int si470x_vidioc_querycap(struct file *file, void *priv,
+static int si470x_vidioc_querycap(struct file *file,
+				  struct video_device_state *state,
 		struct v4l2_capability *capability)
 {
 	struct si470x_device *radio = video_drvdata(file);
 
-	return radio->vidioc_querycap(file, priv, capability);
+	return radio->vidioc_querycap(file, state, capability);
 };
 
 /*

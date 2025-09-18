@@ -1011,8 +1011,9 @@ static __poll_t radio_poll(struct file *file, poll_table *wait)
 
 /* ------------------------------------------------------------------ */
 
-static int saa7134_try_get_set_fmt_vbi_cap(struct file *file, void *priv,
-						struct v4l2_format *f)
+static int saa7134_try_get_set_fmt_vbi_cap(struct file *file,
+					   struct video_device_state *state,
+					   struct v4l2_format *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 	struct saa7134_tvnorm *norm = dev->tvnorm;
@@ -1031,8 +1032,9 @@ static int saa7134_try_get_set_fmt_vbi_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int saa7134_g_fmt_vid_cap(struct file *file, void *priv,
-				struct v4l2_format *f)
+static int saa7134_g_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
+				 struct v4l2_format *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1051,8 +1053,9 @@ static int saa7134_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int saa7134_try_fmt_vid_cap(struct file *file, void *priv,
-						struct v4l2_format *f)
+static int saa7134_try_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
+				   struct v4l2_format *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 	struct saa7134_format *fmt;
@@ -1104,13 +1107,14 @@ static int saa7134_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int saa7134_s_fmt_vid_cap(struct file *file, void *priv,
-					struct v4l2_format *f)
+static int saa7134_s_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
+				 struct v4l2_format *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 	int err;
 
-	err = saa7134_try_fmt_vid_cap(file, priv, f);
+	err = saa7134_try_fmt_vid_cap(file, state, f);
 	if (0 != err)
 		return err;
 
@@ -1121,7 +1125,8 @@ static int saa7134_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-int saa7134_enum_input(struct file *file, void *priv, struct v4l2_input *i)
+int saa7134_enum_input(struct file *file, struct video_device_state *state,
+		       struct v4l2_input *i)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 	unsigned int n;
@@ -1159,7 +1164,8 @@ int saa7134_enum_input(struct file *file, void *priv, struct v4l2_input *i)
 }
 EXPORT_SYMBOL_GPL(saa7134_enum_input);
 
-int saa7134_g_input(struct file *file, void *priv, unsigned int *i)
+int saa7134_g_input(struct file *file, struct video_device_state *state,
+		    unsigned int *i)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1168,7 +1174,8 @@ int saa7134_g_input(struct file *file, void *priv, unsigned int *i)
 }
 EXPORT_SYMBOL_GPL(saa7134_g_input);
 
-int saa7134_s_input(struct file *file, void *priv, unsigned int i)
+int saa7134_s_input(struct file *file, struct video_device_state *state,
+		    unsigned int i)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1181,7 +1188,8 @@ int saa7134_s_input(struct file *file, void *priv, unsigned int i)
 }
 EXPORT_SYMBOL_GPL(saa7134_s_input);
 
-int saa7134_querycap(struct file *file, void *priv,
+int saa7134_querycap(struct file *file,
+		     struct video_device_state *state,
 					struct v4l2_capability *cap)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
@@ -1201,7 +1209,8 @@ int saa7134_querycap(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(saa7134_querycap);
 
-int saa7134_s_std(struct file *file, void *priv, v4l2_std_id id)
+int saa7134_s_std(struct file *file, struct video_device_state *state,
+		  v4l2_std_id id)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 	unsigned int i;
@@ -1245,7 +1254,8 @@ int saa7134_s_std(struct file *file, void *priv, v4l2_std_id id)
 }
 EXPORT_SYMBOL_GPL(saa7134_s_std);
 
-int saa7134_g_std(struct file *file, void *priv, v4l2_std_id *id)
+int saa7134_g_std(struct file *file, struct video_device_state *state,
+		  v4l2_std_id *id)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1275,7 +1285,8 @@ static v4l2_std_id saa7134_read_std(struct saa7134_dev *dev)
 	return result;
 }
 
-int saa7134_querystd(struct file *file, void *priv, v4l2_std_id *std)
+int saa7134_querystd(struct file *file, struct video_device_state *state,
+		     v4l2_std_id *std)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 	*std &= saa7134_read_std(dev);
@@ -1283,8 +1294,9 @@ int saa7134_querystd(struct file *file, void *priv, v4l2_std_id *std)
 }
 EXPORT_SYMBOL_GPL(saa7134_querystd);
 
-static int saa7134_g_pixelaspect(struct file *file, void *priv,
-				 int type, struct v4l2_fract *f)
+static int saa7134_g_pixelaspect(struct file *file,
+				 struct video_device_state *state, int type,
+				 struct v4l2_fract *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1302,7 +1314,9 @@ static int saa7134_g_pixelaspect(struct file *file, void *priv,
 	return 0;
 }
 
-static int saa7134_g_selection(struct file *file, void *priv, struct v4l2_selection *sel)
+static int saa7134_g_selection(struct file *file,
+			       struct video_device_state *state,
+			       struct v4l2_selection *sel)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1325,7 +1339,9 @@ static int saa7134_g_selection(struct file *file, void *priv, struct v4l2_select
 	return 0;
 }
 
-static int saa7134_s_selection(struct file *file, void *priv, struct v4l2_selection *sel)
+static int saa7134_s_selection(struct file *file,
+			       struct video_device_state *state,
+			       struct v4l2_selection *sel)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 	struct v4l2_rect *b = &dev->crop_bounds;
@@ -1358,8 +1374,8 @@ static int saa7134_s_selection(struct file *file, void *priv, struct v4l2_select
 	return 0;
 }
 
-int saa7134_g_tuner(struct file *file, void *priv,
-					struct v4l2_tuner *t)
+int saa7134_g_tuner(struct file *file, struct video_device_state *state,
+		    struct v4l2_tuner *t)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 	int n;
@@ -1391,8 +1407,8 @@ int saa7134_g_tuner(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(saa7134_g_tuner);
 
-int saa7134_s_tuner(struct file *file, void *priv,
-					const struct v4l2_tuner *t)
+int saa7134_s_tuner(struct file *file, struct video_device_state *state,
+		    const struct v4l2_tuner *t)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 	int rx, mode;
@@ -1412,8 +1428,8 @@ int saa7134_s_tuner(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(saa7134_s_tuner);
 
-int saa7134_g_frequency(struct file *file, void *priv,
-					struct v4l2_frequency *f)
+int saa7134_g_frequency(struct file *file, struct video_device_state *state,
+			struct v4l2_frequency *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1426,8 +1442,8 @@ int saa7134_g_frequency(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(saa7134_g_frequency);
 
-int saa7134_s_frequency(struct file *file, void *priv,
-					const struct v4l2_frequency *f)
+int saa7134_s_frequency(struct file *file, struct video_device_state *state,
+			const struct v4l2_frequency *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1441,8 +1457,9 @@ int saa7134_s_frequency(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(saa7134_s_frequency);
 
-static int saa7134_enum_fmt_vid_cap(struct file *file, void  *priv,
-					struct v4l2_fmtdesc *f)
+static int saa7134_enum_fmt_vid_cap(struct file *file,
+				    struct video_device_state *state,
+				    struct v4l2_fmtdesc *f)
 {
 	if (f->index >= FORMATS)
 		return -EINVAL;
@@ -1453,8 +1470,9 @@ static int saa7134_enum_fmt_vid_cap(struct file *file, void  *priv,
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int vidioc_g_register (struct file *file, void *priv,
-			      struct v4l2_dbg_register *reg)
+static int vidioc_g_register(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_dbg_register *reg)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1463,8 +1481,9 @@ static int vidioc_g_register (struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_register (struct file *file, void *priv,
-				const struct v4l2_dbg_register *reg)
+static int vidioc_s_register(struct file *file,
+			     struct video_device_state *state,
+			     const struct v4l2_dbg_register *reg)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1473,8 +1492,8 @@ static int vidioc_s_register (struct file *file, void *priv,
 }
 #endif
 
-static int radio_g_tuner(struct file *file, void *priv,
-					struct v4l2_tuner *t)
+static int radio_g_tuner(struct file *file, struct video_device_state *state,
+			 struct v4l2_tuner *t)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 
@@ -1492,8 +1511,9 @@ static int radio_g_tuner(struct file *file, void *priv,
 	}
 	return 0;
 }
-static int radio_s_tuner(struct file *file, void *priv,
-					const struct v4l2_tuner *t)
+
+static int radio_s_tuner(struct file *file, struct video_device_state *state,
+			 const struct v4l2_tuner *t)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
 

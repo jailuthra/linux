@@ -493,7 +493,8 @@ static void tegra_decode_complete(struct work_struct *work)
 		tegra_job_finish(ctx, VB2_BUF_STATE_DONE);
 }
 
-static int tegra_querycap(struct file *file, void *priv,
+static int tegra_querycap(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_capability *cap)
 {
 	strscpy(cap->bus_info, "platform:tegra-vde", sizeof(cap->bus_info));
@@ -503,7 +504,8 @@ static int tegra_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_enum_decoded_fmt(struct file *file, void *priv,
+static int tegra_enum_decoded_fmt(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_fmtdesc *f)
 {
 	struct tegra_ctx *ctx = file_to_tegra_ctx(file);
@@ -519,7 +521,8 @@ static int tegra_enum_decoded_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_g_decoded_fmt(struct file *file, void *priv,
+static int tegra_g_decoded_fmt(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct tegra_ctx *ctx = file_to_tegra_ctx(file);
@@ -528,7 +531,8 @@ static int tegra_g_decoded_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_try_decoded_fmt(struct file *file, void *priv,
+static int tegra_try_decoded_fmt(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct tegra_ctx *ctx = file_to_tegra_ctx(file);
@@ -568,7 +572,8 @@ static int tegra_try_decoded_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_s_decoded_fmt(struct file *file, void *priv,
+static int tegra_s_decoded_fmt(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct tegra_ctx *ctx = file_to_tegra_ctx(file);
@@ -581,7 +586,7 @@ static int tegra_s_decoded_fmt(struct file *file, void *priv,
 	if (vb2_is_busy(vq))
 		return -EBUSY;
 
-	err = tegra_try_decoded_fmt(file, priv, f);
+	err = tegra_try_decoded_fmt(file, state, f);
 	if (err)
 		return err;
 
@@ -590,7 +595,8 @@ static int tegra_s_decoded_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_enum_coded_fmt(struct file *file, void *priv,
+static int tegra_enum_coded_fmt(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	struct tegra_ctx *ctx = file_to_tegra_ctx(file);
@@ -604,7 +610,8 @@ static int tegra_enum_coded_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_g_coded_fmt(struct file *file, void *priv,
+static int tegra_g_coded_fmt(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct tegra_ctx *ctx = file_to_tegra_ctx(file);
@@ -627,7 +634,8 @@ tegra_find_coded_fmt_desc(struct tegra_ctx *ctx, u32 fourcc)
 	return NULL;
 }
 
-static int tegra_try_coded_fmt(struct file *file, void *priv,
+static int tegra_try_coded_fmt(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
@@ -653,7 +661,8 @@ static int tegra_try_coded_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_s_coded_fmt(struct file *file, void *priv,
+static int tegra_s_coded_fmt(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct tegra_ctx *ctx = file_to_tegra_ctx(file);
@@ -683,7 +692,7 @@ static int tegra_s_coded_fmt(struct file *file, void *priv,
 	if (vb2_is_busy(peer_vq))
 		return -EBUSY;
 
-	err = tegra_try_coded_fmt(file, priv, f);
+	err = tegra_try_coded_fmt(file, state, f);
 	if (err)
 		return err;
 
@@ -715,7 +724,8 @@ static int tegra_s_coded_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_enum_framesizes(struct file *file, void *priv,
+static int tegra_enum_framesizes(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_frmsizeenum *fsize)
 {
 	struct tegra_ctx *ctx = file_to_tegra_ctx(file);
@@ -835,10 +845,10 @@ static int tegra_open(struct file *file)
 	v4l2_fh_add(&ctx->fh, file);
 
 	tegra_reset_coded_fmt(ctx);
-	tegra_try_coded_fmt(file, &ctx->fh, &ctx->coded_fmt);
+	tegra_try_coded_fmt(file, ctx->fh.state, &ctx->coded_fmt);
 
 	tegra_reset_decoded_fmt(ctx);
-	tegra_try_decoded_fmt(file, &ctx->fh, &ctx->decoded_fmt);
+	tegra_try_decoded_fmt(file, ctx->fh.state, &ctx->decoded_fmt);
 
 	return 0;
 

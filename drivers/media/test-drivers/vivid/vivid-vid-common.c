@@ -886,8 +886,8 @@ void fmt_sp2mp(const struct v4l2_format *sp_fmt, struct v4l2_format *mp_fmt)
 	memset(ppix->reserved, 0, sizeof(ppix->reserved));
 }
 
-int fmt_sp2mp_func(struct file *file, void *priv,
-		struct v4l2_format *f, fmtfunc func)
+int fmt_sp2mp_func(struct file *file, struct video_device_state *state, struct v4l2_format *f,
+		   fmtfunc func)
 {
 	struct v4l2_format fmt;
 	struct v4l2_pix_format_mplane *mp = &fmt.fmt.pix_mp;
@@ -898,7 +898,7 @@ int fmt_sp2mp_func(struct file *file, void *priv,
 	/* Converts to a mplane format */
 	fmt_sp2mp(f, &fmt);
 	/* Passes it to the generic mplane format function */
-	ret = func(file, priv, &fmt);
+	ret = func(file, state, &fmt);
 	/* Copies back the mplane data to the single plane format */
 	pix->width = mp->width;
 	pix->height = mp->height;
@@ -963,7 +963,8 @@ int vivid_vid_adjust_sel(unsigned flags, struct v4l2_rect *r)
 	return 0;
 }
 
-int vivid_enum_fmt_vid(struct file *file, void  *priv,
+int vivid_enum_fmt_vid(struct file *file,
+		       struct video_device_state *state,
 					struct v4l2_fmtdesc *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1004,7 +1005,8 @@ int vivid_enum_fmt_vid(struct file *file, void  *priv,
 	return 0;
 }
 
-int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *id)
+int vidioc_g_std(struct file *file, struct video_device_state *state,
+		 v4l2_std_id *id)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	struct video_device *vdev = video_devdata(file);
@@ -1021,7 +1023,8 @@ int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *id)
 	return 0;
 }
 
-int vidioc_g_dv_timings(struct file *file, void *priv,
+int vidioc_g_dv_timings(struct file *file,
+			struct video_device_state *state,
 				    struct v4l2_dv_timings *timings)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1039,7 +1042,8 @@ int vidioc_g_dv_timings(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_enum_dv_timings(struct file *file, void *priv,
+int vidioc_enum_dv_timings(struct file *file,
+			   struct video_device_state *state,
 				    struct v4l2_enum_dv_timings *timings)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1056,7 +1060,8 @@ int vidioc_enum_dv_timings(struct file *file, void *priv,
 			NULL, NULL);
 }
 
-int vidioc_dv_timings_cap(struct file *file, void *priv,
+int vidioc_dv_timings_cap(struct file *file,
+			  struct video_device_state *state,
 				    struct v4l2_dv_timings_cap *cap)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1073,7 +1078,8 @@ int vidioc_dv_timings_cap(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_g_edid(struct file *file, void *priv,
+int vidioc_g_edid(struct file *file,
+		  struct video_device_state *state,
 			 struct v4l2_edid *edid)
 {
 	struct vivid_dev *dev = video_drvdata(file);

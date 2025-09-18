@@ -1245,7 +1245,8 @@ static bool s5p_jpeg_parse_hdr(struct s5p_jpeg_q_data *result,
 	return true;
 }
 
-static int s5p_jpeg_querycap(struct file *file, void *priv,
+static int s5p_jpeg_querycap(struct file *file,
+			     struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct s5p_jpeg_ctx *ctx = file_to_ctx(file);
@@ -1293,7 +1294,8 @@ static int enum_fmt(struct s5p_jpeg_ctx *ctx,
 	return 0;
 }
 
-static int s5p_jpeg_enum_fmt_vid_cap(struct file *file, void *priv,
+static int s5p_jpeg_enum_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	struct s5p_jpeg_ctx *ctx = file_to_ctx(file);
@@ -1306,7 +1308,8 @@ static int s5p_jpeg_enum_fmt_vid_cap(struct file *file, void *priv,
 			SJPEG_FMT_FLAG_DEC_CAPTURE);
 }
 
-static int s5p_jpeg_enum_fmt_vid_out(struct file *file, void *priv,
+static int s5p_jpeg_enum_fmt_vid_out(struct file *file,
+				     struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	struct s5p_jpeg_ctx *ctx = file_to_ctx(file);
@@ -1330,7 +1333,8 @@ static struct s5p_jpeg_q_data *get_q_data(struct s5p_jpeg_ctx *ctx,
 	return NULL;
 }
 
-static int s5p_jpeg_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int s5p_jpeg_g_fmt(struct file *file, struct video_device_state *state,
+			  struct v4l2_format *f)
 {
 	struct vb2_queue *vq;
 	struct s5p_jpeg_q_data *q_data = NULL;
@@ -1472,7 +1476,8 @@ static int vidioc_try_fmt(struct v4l2_format *f, struct s5p_jpeg_fmt *fmt,
 	return 0;
 }
 
-static int s5p_jpeg_try_fmt_vid_cap(struct file *file, void *priv,
+static int s5p_jpeg_try_fmt_vid_cap(struct file *file,
+				    struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct s5p_jpeg_ctx *ctx = file_to_ctx(file);
@@ -1531,7 +1536,8 @@ exit:
 	return vidioc_try_fmt(f, fmt, ctx, FMT_TYPE_CAPTURE);
 }
 
-static int s5p_jpeg_try_fmt_vid_out(struct file *file, void *priv,
+static int s5p_jpeg_try_fmt_vid_out(struct file *file,
+				    struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct s5p_jpeg_ctx *ctx = file_to_ctx(file);
@@ -1672,24 +1678,26 @@ static int s5p_jpeg_s_fmt(struct s5p_jpeg_ctx *ct, struct v4l2_format *f)
 	return 0;
 }
 
-static int s5p_jpeg_s_fmt_vid_cap(struct file *file, void *priv,
+static int s5p_jpeg_s_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	int ret;
 
-	ret = s5p_jpeg_try_fmt_vid_cap(file, priv, f);
+	ret = s5p_jpeg_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
 	return s5p_jpeg_s_fmt(file_to_ctx(file), f);
 }
 
-static int s5p_jpeg_s_fmt_vid_out(struct file *file, void *priv,
+static int s5p_jpeg_s_fmt_vid_out(struct file *file,
+				  struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	int ret;
 
-	ret = s5p_jpeg_try_fmt_vid_out(file, priv, f);
+	ret = s5p_jpeg_try_fmt_vid_out(file, state, f);
 	if (ret)
 		return ret;
 
@@ -1787,7 +1795,8 @@ static int exynos3250_jpeg_try_crop(struct s5p_jpeg_ctx *ctx,
  * V4L2 controls
  */
 
-static int s5p_jpeg_g_selection(struct file *file, void *priv,
+static int s5p_jpeg_g_selection(struct file *file,
+				struct video_device_state *state,
 			 struct v4l2_selection *s)
 {
 	struct s5p_jpeg_ctx *ctx = file_to_ctx(file);
@@ -1824,7 +1833,8 @@ static int s5p_jpeg_g_selection(struct file *file, void *priv,
 /*
  * V4L2 controls
  */
-static int s5p_jpeg_s_selection(struct file *file, void *fh,
+static int s5p_jpeg_s_selection(struct file *file,
+				struct video_device_state *state,
 				  struct v4l2_selection *s)
 {
 	struct s5p_jpeg_ctx *ctx = file_to_ctx(file);

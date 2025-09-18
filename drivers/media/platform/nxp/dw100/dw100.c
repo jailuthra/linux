@@ -686,7 +686,8 @@ static const struct v4l2_file_operations dw100_fops = {
 	.mmap		= v4l2_m2m_fop_mmap,
 };
 
-static int dw100_querycap(struct file *file, void *priv,
+static int dw100_querycap(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, DRV_NAME, sizeof(cap->driver));
@@ -695,7 +696,8 @@ static int dw100_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int dw100_enum_fmt_vid(struct file *file, void *priv,
+static int dw100_enum_fmt_vid(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_fmtdesc *f)
 {
 	int i, num = 0;
@@ -713,7 +715,8 @@ static int dw100_enum_fmt_vid(struct file *file, void *priv,
 	return -EINVAL;
 }
 
-static int dw100_enum_framesizes(struct file *file, void *priv,
+static int dw100_enum_framesizes(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_frmsizeenum *fsize)
 {
 	const struct dw100_fmt *fmt;
@@ -732,7 +735,9 @@ static int dw100_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int dw100_g_fmt_vid(struct file *file, void *priv, struct v4l2_format *f)
+static int dw100_g_fmt_vid(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_format *f)
 {
 	struct dw100_ctx *ctx = dw100_file2ctx(file);
 	struct vb2_queue *vq;
@@ -861,7 +866,8 @@ static int dw100_s_fmt(struct dw100_ctx *ctx, struct v4l2_format *f)
 	return 0;
 }
 
-static int dw100_try_fmt_vid_cap(struct file *file, void *priv,
+static int dw100_try_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
@@ -870,13 +876,14 @@ static int dw100_try_fmt_vid_cap(struct file *file, void *priv,
 	return dw100_try_fmt(file, f);
 }
 
-static int dw100_s_fmt_vid_cap(struct file *file, void *priv,
+static int dw100_s_fmt_vid_cap(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct dw100_ctx *ctx = dw100_file2ctx(file);
 	int ret;
 
-	ret = dw100_try_fmt_vid_cap(file, priv, f);
+	ret = dw100_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -887,7 +894,8 @@ static int dw100_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int dw100_try_fmt_vid_out(struct file *file, void *priv,
+static int dw100_try_fmt_vid_out(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	if (f->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE)
@@ -896,13 +904,14 @@ static int dw100_try_fmt_vid_out(struct file *file, void *priv,
 	return dw100_try_fmt(file, f);
 }
 
-static int dw100_s_fmt_vid_out(struct file *file, void *priv,
+static int dw100_s_fmt_vid_out(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct dw100_ctx *ctx = dw100_file2ctx(file);
 	int ret;
 
-	ret = dw100_try_fmt_vid_out(file, priv, f);
+	ret = dw100_try_fmt_vid_out(file, state, f);
 	if (ret)
 		return ret;
 
@@ -913,7 +922,8 @@ static int dw100_s_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int dw100_g_selection(struct file *file, void *fh,
+static int dw100_g_selection(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_selection *sel)
 {
 	struct dw100_ctx *ctx = dw100_file2ctx(file);
@@ -945,7 +955,8 @@ static int dw100_g_selection(struct file *file, void *fh,
 	return 0;
 }
 
-static int dw100_s_selection(struct file *file, void *fh,
+static int dw100_s_selection(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_selection *sel)
 {
 	struct dw100_ctx *ctx = dw100_file2ctx(file);

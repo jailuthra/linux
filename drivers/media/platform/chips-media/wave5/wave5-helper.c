@@ -140,7 +140,7 @@ int wave5_vpu_subscribe_event(struct v4l2_fh *fh, const struct v4l2_event_subscr
 	}
 }
 
-int wave5_vpu_g_fmt_out(struct file *file, void *fh, struct v4l2_format *f)
+int wave5_vpu_g_fmt_out(struct file *file, struct video_device_state *state, struct v4l2_format *f)
 {
 	struct vpu_instance *inst = file_to_vpu_inst(file);
 	int i;

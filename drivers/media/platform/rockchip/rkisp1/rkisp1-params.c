@@ -2493,7 +2493,8 @@ static const struct rkisp1_params_ops rkisp1_v12_params_ops = {
 	.afm_config = rkisp1_afm_config_v12,
 };
 
-static int rkisp1_params_enum_fmt_meta_out(struct file *file, void *priv,
+static int rkisp1_params_enum_fmt_meta_out(struct file *file,
+					   struct video_device_state *state,
 					   struct v4l2_fmtdesc *f)
 {
 	struct video_device *video = video_devdata(file);
@@ -2507,7 +2508,8 @@ static int rkisp1_params_enum_fmt_meta_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkisp1_params_g_fmt_meta_out(struct file *file, void *fh,
+static int rkisp1_params_g_fmt_meta_out(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct video_device *video = video_devdata(file);
@@ -2522,7 +2524,8 @@ static int rkisp1_params_g_fmt_meta_out(struct file *file, void *fh,
 	return 0;
 }
 
-static int rkisp1_params_try_fmt_meta_out(struct file *file, void *fh,
+static int rkisp1_params_try_fmt_meta_out(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_format *f)
 {
 	struct video_device *video = video_devdata(file);
@@ -2536,7 +2539,8 @@ static int rkisp1_params_try_fmt_meta_out(struct file *file, void *fh,
 	return 0;
 }
 
-static int rkisp1_params_s_fmt_meta_out(struct file *file, void *fh,
+static int rkisp1_params_s_fmt_meta_out(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct video_device *video = video_devdata(file);
@@ -2556,7 +2560,8 @@ static int rkisp1_params_s_fmt_meta_out(struct file *file, void *fh,
 }
 
 static int rkisp1_params_querycap(struct file *file,
-				  void *priv, struct v4l2_capability *cap)
+				  struct video_device_state *state,
+				  struct v4l2_capability *cap)
 {
 	struct video_device *vdev = video_devdata(file);
 

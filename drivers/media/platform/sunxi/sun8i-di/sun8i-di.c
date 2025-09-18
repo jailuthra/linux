@@ -347,7 +347,8 @@ static void deinterlace_prepare_format(struct v4l2_pix_format *pix_fmt)
 	pix_fmt->sizeimage = sizeimage;
 }
 
-static int deinterlace_querycap(struct file *file, void *priv,
+static int deinterlace_querycap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, DEINTERLACE_NAME, sizeof(cap->driver));
@@ -358,7 +359,8 @@ static int deinterlace_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int deinterlace_enum_fmt(struct file *file, void *priv,
+static int deinterlace_enum_fmt(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	if (f->index < ARRAY_SIZE(deinterlace_formats)) {
@@ -370,7 +372,8 @@ static int deinterlace_enum_fmt(struct file *file, void *priv,
 	return -EINVAL;
 }
 
-static int deinterlace_enum_framesizes(struct file *file, void *priv,
+static int deinterlace_enum_framesizes(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_frmsizeenum *fsize)
 {
 	if (fsize->index != 0)
@@ -390,7 +393,8 @@ static int deinterlace_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int deinterlace_g_fmt_vid_cap(struct file *file, void *priv,
+static int deinterlace_g_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct deinterlace_ctx *ctx = deinterlace_file2ctx(file);
@@ -400,7 +404,8 @@ static int deinterlace_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int deinterlace_g_fmt_vid_out(struct file *file, void *priv,
+static int deinterlace_g_fmt_vid_out(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct deinterlace_ctx *ctx = deinterlace_file2ctx(file);
@@ -410,7 +415,8 @@ static int deinterlace_g_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int deinterlace_try_fmt_vid_cap(struct file *file, void *priv,
+static int deinterlace_try_fmt_vid_cap(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	if (!deinterlace_check_format(f->fmt.pix.pixelformat))
@@ -424,7 +430,8 @@ static int deinterlace_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int deinterlace_try_fmt_vid_out(struct file *file, void *priv,
+static int deinterlace_try_fmt_vid_out(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	if (!deinterlace_check_format(f->fmt.pix.pixelformat))
@@ -440,14 +447,15 @@ static int deinterlace_try_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int deinterlace_s_fmt_vid_cap(struct file *file, void *priv,
+static int deinterlace_s_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct deinterlace_ctx *ctx = deinterlace_file2ctx(file);
 	struct vb2_queue *vq;
 	int ret;
 
-	ret = deinterlace_try_fmt_vid_cap(file, priv, f);
+	ret = deinterlace_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -460,14 +468,15 @@ static int deinterlace_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int deinterlace_s_fmt_vid_out(struct file *file, void *priv,
+static int deinterlace_s_fmt_vid_out(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct deinterlace_ctx *ctx = deinterlace_file2ctx(file);
 	struct vb2_queue *vq;
 	int ret;
 
-	ret = deinterlace_try_fmt_vid_out(file, priv, f);
+	ret = deinterlace_try_fmt_vid_out(file, state, f);
 	if (ret)
 		return ret;
 

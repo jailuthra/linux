@@ -196,7 +196,8 @@ static int pcm20_setfreq(struct pcm20 *dev, unsigned long freq)
 	return snd_aci_cmd(aci, ACI_WRITE_TUNE, freql, freqh);
 }
 
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 				struct v4l2_capability *v)
 {
 	strscpy(v->driver, "Miro PCM20", sizeof(v->driver));
@@ -219,7 +220,8 @@ static bool sanitize(char *p, int size)
 	return ret;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 				struct v4l2_tuner *v)
 {
 	struct pcm20 *dev = video_drvdata(file);
@@ -248,7 +250,8 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 				const struct v4l2_tuner *v)
 {
 	struct pcm20 *dev = video_drvdata(file);
@@ -264,7 +267,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_frequency *f)
 {
 	struct pcm20 *dev = video_drvdata(file);
@@ -278,7 +282,8 @@ static int vidioc_g_frequency(struct file *file, void *priv,
 }
 
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 				const struct v4l2_frequency *f)
 {
 	struct pcm20 *dev = video_drvdata(file);

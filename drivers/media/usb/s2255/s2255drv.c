@@ -706,7 +706,8 @@ static const struct vb2_ops s2255_video_qops = {
 	.stop_streaming = stop_streaming,
 };
 
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct s2255_vc *vc = video_drvdata(file);
@@ -718,7 +719,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 			       struct v4l2_fmtdesc *f)
 {
 	int index = f->index;
@@ -732,7 +734,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct s2255_vc *vc = video_drvdata(file);
@@ -752,8 +755,9 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
-			      struct v4l2_format *f)
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
+				  struct v4l2_format *f)
 {
 	const struct s2255_fmt *fmt;
 	enum v4l2_field field;
@@ -803,8 +807,9 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
-			    struct v4l2_format *f)
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_format *f)
 {
 	struct s2255_vc *vc = video_drvdata(file);
 	const struct s2255_fmt *fmt;
@@ -812,7 +817,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	struct s2255_mode mode;
 	int ret;
 
-	ret = vidioc_try_fmt_vid_cap(file, vc, f);
+	ret = vidioc_try_fmt_vid_cap(file, state, f);
 
 	if (ret < 0)
 		return ret;
@@ -1089,7 +1094,8 @@ static void stop_streaming(struct vb2_queue *vq)
 	spin_unlock_irqrestore(&vc->qlock, flags);
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id i)
 {
 	struct s2255_vc *vc = video_drvdata(file);
 	struct s2255_mode mode;
@@ -1130,7 +1136,8 @@ static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id i)
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *i)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *i)
 {
 	struct s2255_vc *vc = video_drvdata(file);
 
@@ -1145,7 +1152,8 @@ static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *i)
    For instance, you cannot do full FPS on more than 2 channels(2 videodevs)
    at once in color(you can do full fps on 4 channels with greyscale.
 */
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_input *inp)
 {
 	struct s2255_vc *vc = video_drvdata(file);
@@ -1179,12 +1187,15 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
-static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	if (i > 0)
 		return -EINVAL;
@@ -1230,7 +1241,8 @@ static int s2255_s_ctrl(struct v4l2_ctrl *ctrl)
 	return 0;
 }
 
-static int vidioc_g_jpegcomp(struct file *file, void *priv,
+static int vidioc_g_jpegcomp(struct file *file,
+			     struct video_device_state *state,
 			 struct v4l2_jpegcompression *jc)
 {
 	struct s2255_vc *vc = video_drvdata(file);
@@ -1241,7 +1253,8 @@ static int vidioc_g_jpegcomp(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_jpegcomp(struct file *file, void *priv,
+static int vidioc_s_jpegcomp(struct file *file,
+			     struct video_device_state *state,
 			 const struct v4l2_jpegcompression *jc)
 {
 	struct s2255_vc *vc = video_drvdata(file);
@@ -1253,7 +1266,8 @@ static int vidioc_s_jpegcomp(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_parm(struct file *file, void *priv,
+static int vidioc_g_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *sp)
 {
 	__u32 def_num, def_dem;
@@ -1290,7 +1304,8 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_parm(struct file *file, void *priv,
+static int vidioc_s_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *sp)
 {
 	struct s2255_vc *vc = video_drvdata(file);
@@ -1344,7 +1359,8 @@ static const struct v4l2_frmsize_discrete pal_sizes[] = {
 	{ 352, 288 },
 };
 
-static int vidioc_enum_framesizes(struct file *file, void *priv,
+static int vidioc_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 			    struct v4l2_frmsizeenum *fe)
 {
 	struct s2255_vc *vc = video_drvdata(file);
@@ -1362,7 +1378,8 @@ static int vidioc_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_frameintervals(struct file *file, void *priv,
+static int vidioc_enum_frameintervals(struct file *file,
+				      struct video_device_state *state,
 			    struct v4l2_frmivalenum *fe)
 {
 	struct s2255_vc *vc = video_drvdata(file);

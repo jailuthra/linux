@@ -294,7 +294,8 @@ static const struct vb2_ops tegra_channel_queue_qops = {
 /*
  * V4L2 ioctl operations
  */
-static int tegra_channel_querycap(struct file *file, void *fh,
+static int tegra_channel_querycap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_capability *cap)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -307,7 +308,8 @@ static int tegra_channel_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int tegra_channel_g_parm(struct file *file, void *fh,
+static int tegra_channel_g_parm(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_streamparm *a)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -317,7 +319,8 @@ static int tegra_channel_g_parm(struct file *file, void *fh,
 	return v4l2_g_parm_cap(&chan->video, subdev, a);
 }
 
-static int tegra_channel_s_parm(struct file *file, void *fh,
+static int tegra_channel_s_parm(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_streamparm *a)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -327,7 +330,8 @@ static int tegra_channel_s_parm(struct file *file, void *fh,
 	return v4l2_s_parm_cap(&chan->video, subdev, a);
 }
 
-static int tegra_channel_enum_framesizes(struct file *file, void *fh,
+static int tegra_channel_enum_framesizes(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_frmsizeenum *sizes)
 {
 	int ret;
@@ -357,7 +361,8 @@ static int tegra_channel_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int tegra_channel_enum_frameintervals(struct file *file, void *fh,
+static int tegra_channel_enum_frameintervals(struct file *file,
+					     struct video_device_state *state,
 					     struct v4l2_frmivalenum *ivals)
 {
 	int ret;
@@ -389,7 +394,8 @@ static int tegra_channel_enum_frameintervals(struct file *file, void *fh,
 	return 0;
 }
 
-static int tegra_channel_enum_format(struct file *file, void *fh,
+static int tegra_channel_enum_format(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_fmtdesc *f)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -410,7 +416,8 @@ static int tegra_channel_enum_format(struct file *file, void *fh,
 	return 0;
 }
 
-static int tegra_channel_get_format(struct file *file, void *fh,
+static int tegra_channel_get_format(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *format)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -505,7 +512,8 @@ static int __tegra_channel_try_format(struct tegra_vi_channel *chan,
 	return 0;
 }
 
-static int tegra_channel_try_format(struct file *file, void *fh,
+static int tegra_channel_try_format(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *format)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -521,7 +529,8 @@ static void tegra_channel_update_gangports(struct tegra_vi_channel *chan)
 		chan->numgangports = chan->totalports;
 }
 
-static int tegra_channel_set_format(struct file *file, void *fh,
+static int tegra_channel_set_format(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *format)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -605,7 +614,8 @@ tegra_channel_subscribe_event(struct v4l2_fh *fh,
 	return v4l2_ctrl_subscribe_event(fh, sub);
 }
 
-static int tegra_channel_g_selection(struct file *file, void *priv,
+static int tegra_channel_g_selection(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_selection *sel)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -647,7 +657,8 @@ static int tegra_channel_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_channel_s_selection(struct file *file, void *fh,
+static int tegra_channel_s_selection(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_selection *sel)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -684,7 +695,8 @@ static int tegra_channel_s_selection(struct file *file, void *fh,
 	return ret;
 }
 
-static int tegra_channel_g_edid(struct file *file, void *fh,
+static int tegra_channel_g_edid(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_edid *edid)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -697,7 +709,8 @@ static int tegra_channel_g_edid(struct file *file, void *fh,
 	return v4l2_subdev_call(subdev, pad, get_edid, edid);
 }
 
-static int tegra_channel_s_edid(struct file *file, void *fh,
+static int tegra_channel_s_edid(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_edid *edid)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -710,7 +723,8 @@ static int tegra_channel_s_edid(struct file *file, void *fh,
 	return v4l2_subdev_call(subdev, pad, set_edid, edid);
 }
 
-static int tegra_channel_g_dv_timings(struct file *file, void *fh,
+static int tegra_channel_g_dv_timings(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_dv_timings *timings)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -724,7 +738,8 @@ static int tegra_channel_g_dv_timings(struct file *file, void *fh,
 					  pad, g_dv_timings, 0, timings);
 }
 
-static int tegra_channel_s_dv_timings(struct file *file, void *fh,
+static int tegra_channel_s_dv_timings(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_dv_timings *timings)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -737,7 +752,7 @@ static int tegra_channel_s_dv_timings(struct file *file, void *fh,
 	if (!v4l2_subdev_has_op(subdev, pad, s_dv_timings))
 		return -ENOTTY;
 
-	ret = tegra_channel_g_dv_timings(file, fh, &curr_timings);
+	ret = tegra_channel_g_dv_timings(file, state, &curr_timings);
 	if (ret)
 		return ret;
 
@@ -762,7 +777,8 @@ static int tegra_channel_s_dv_timings(struct file *file, void *fh,
 	return 0;
 }
 
-static int tegra_channel_query_dv_timings(struct file *file, void *fh,
+static int tegra_channel_query_dv_timings(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_dv_timings *timings)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -776,7 +792,8 @@ static int tegra_channel_query_dv_timings(struct file *file, void *fh,
 					  pad, query_dv_timings, 0, timings);
 }
 
-static int tegra_channel_enum_dv_timings(struct file *file, void *fh,
+static int tegra_channel_enum_dv_timings(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_enum_dv_timings *timings)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -789,7 +806,8 @@ static int tegra_channel_enum_dv_timings(struct file *file, void *fh,
 	return v4l2_subdev_call(subdev, pad, enum_dv_timings, timings);
 }
 
-static int tegra_channel_dv_timings_cap(struct file *file, void *fh,
+static int tegra_channel_dv_timings_cap(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_dv_timings_cap *cap)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -802,7 +820,8 @@ static int tegra_channel_dv_timings_cap(struct file *file, void *fh,
 	return v4l2_subdev_call(subdev, pad, dv_timings_cap, cap);
 }
 
-static int tegra_channel_log_status(struct file *file, void *fh)
+static int tegra_channel_log_status(struct file *file,
+				    struct video_device_state *state)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
 
@@ -811,7 +830,8 @@ static int tegra_channel_log_status(struct file *file, void *fh)
 	return 0;
 }
 
-static int tegra_channel_enum_input(struct file *file, void *fh,
+static int tegra_channel_enum_input(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_input *inp)
 {
 	struct tegra_vi_channel *chan = video_drvdata(file);
@@ -829,7 +849,8 @@ static int tegra_channel_enum_input(struct file *file, void *fh,
 	return 0;
 }
 
-static int tegra_channel_g_input(struct file *file, void *priv,
+static int tegra_channel_g_input(struct file *file,
+				 struct video_device_state *state,
 				 unsigned int *i)
 {
 	*i = 0;
@@ -837,7 +858,8 @@ static int tegra_channel_g_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int tegra_channel_s_input(struct file *file, void *priv,
+static int tegra_channel_s_input(struct file *file,
+				 struct video_device_state *state,
 				 unsigned int input)
 {
 	if (input > 0)

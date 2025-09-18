@@ -526,7 +526,8 @@ static int tw5864_s_ctrl(struct v4l2_ctrl *ctrl)
 	return 0;
 }
 
-static int tw5864_fmt_vid_cap(struct file *file, void *priv,
+static int tw5864_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct tw5864_input *input = video_drvdata(file);
@@ -551,7 +552,8 @@ static int tw5864_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw5864_enum_input(struct file *file, void *priv,
+static int tw5864_enum_input(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_input *i)
 {
 	struct tw5864_input *input = video_drvdata(file);
@@ -582,20 +584,23 @@ static int tw5864_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw5864_g_input(struct file *file, void *priv, unsigned int *i)
+static int tw5864_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int tw5864_s_input(struct file *file, void *priv, unsigned int i)
+static int tw5864_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	if (i)
 		return -EINVAL;
 	return 0;
 }
 
-static int tw5864_querycap(struct file *file, void *priv,
+static int tw5864_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct tw5864_input *input = video_drvdata(file);
@@ -606,7 +611,8 @@ static int tw5864_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw5864_querystd(struct file *file, void *priv, v4l2_std_id *std)
+static int tw5864_querystd(struct file *file,
+			   struct video_device_state *state, v4l2_std_id *std)
 {
 	struct tw5864_input *input = video_drvdata(file);
 	enum tw5864_vid_std tw_std;
@@ -620,7 +626,8 @@ static int tw5864_querystd(struct file *file, void *priv, v4l2_std_id *std)
 	return 0;
 }
 
-static int tw5864_g_std(struct file *file, void *priv, v4l2_std_id *std)
+static int tw5864_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *std)
 {
 	struct tw5864_input *input = video_drvdata(file);
 
@@ -628,7 +635,8 @@ static int tw5864_g_std(struct file *file, void *priv, v4l2_std_id *std)
 	return 0;
 }
 
-static int tw5864_s_std(struct file *file, void *priv, v4l2_std_id std)
+static int tw5864_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id std)
 {
 	struct tw5864_input *input = video_drvdata(file);
 	struct tw5864_dev *dev = input->root;
@@ -639,7 +647,8 @@ static int tw5864_s_std(struct file *file, void *priv, v4l2_std_id std)
 	return 0;
 }
 
-static int tw5864_enum_fmt_vid_cap(struct file *file, void *priv,
+static int tw5864_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	if (f->index)
@@ -727,7 +736,8 @@ static int tw5864_frameinterval_get(struct tw5864_input *input,
 	return 0;
 }
 
-static int tw5864_enum_framesizes(struct file *file, void *priv,
+static int tw5864_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	struct tw5864_input *input = video_drvdata(file);
@@ -744,7 +754,8 @@ static int tw5864_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw5864_enum_frameintervals(struct file *file, void *priv,
+static int tw5864_enum_frameintervals(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_frmivalenum *fintv)
 {
 	struct tw5864_input *input = video_drvdata(file);
@@ -754,7 +765,7 @@ static int tw5864_enum_frameintervals(struct file *file, void *priv,
 		.pixel_format = fintv->pixel_format };
 	int ret;
 
-	ret = tw5864_enum_framesizes(file, priv, &fsize);
+	ret = tw5864_enum_framesizes(file, state, &fsize);
 	if (ret)
 		return ret;
 
@@ -776,7 +787,8 @@ static int tw5864_enum_frameintervals(struct file *file, void *priv,
 	return ret;
 }
 
-static int tw5864_g_parm(struct file *file, void *priv,
+static int tw5864_g_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *sp)
 {
 	struct tw5864_input *input = video_drvdata(file);
@@ -796,7 +808,8 @@ static int tw5864_g_parm(struct file *file, void *priv,
 	return ret;
 }
 
-static int tw5864_s_parm(struct file *file, void *priv,
+static int tw5864_s_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *sp)
 {
 	struct tw5864_input *input = video_drvdata(file);
@@ -821,7 +834,7 @@ static int tw5864_s_parm(struct file *file, void *priv,
 	if (input->frame_interval < 1)
 		input->frame_interval = 1;
 	tw5864_frame_interval_set(input);
-	return tw5864_g_parm(file, priv, sp);
+	return tw5864_g_parm(file, state, sp);
 }
 
 static const struct v4l2_ctrl_ops tw5864_ctrl_ops = {
@@ -842,7 +855,8 @@ static const struct v4l2_file_operations video_fops = {
 
 #define INDIR_SPACE_MAP_SHIFT 0x100000
 
-static int tw5864_g_reg(struct file *file, void *fh,
+static int tw5864_g_reg(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_dbg_register *reg)
 {
 	struct tw5864_input *input = video_drvdata(file);
@@ -864,7 +878,8 @@ static int tw5864_g_reg(struct file *file, void *fh,
 	return 0;
 }
 
-static int tw5864_s_reg(struct file *file, void *fh,
+static int tw5864_s_reg(struct file *file,
+			struct video_device_state *state,
 			const struct v4l2_dbg_register *reg)
 {
 	struct tw5864_input *input = video_drvdata(file);

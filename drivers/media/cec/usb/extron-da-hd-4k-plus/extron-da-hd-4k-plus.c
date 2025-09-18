@@ -1195,7 +1195,8 @@ static const struct cec_adap_ops extron_cec_adap_ops = {
 	.received = extron_received,
 };
 
-static int extron_querycap(struct file *file, void *priv,
+static int extron_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct extron_port *port = video_drvdata(file);
@@ -1206,7 +1207,9 @@ static int extron_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int extron_enum_input(struct file *file, void *priv, struct v4l2_input *inp)
+static int extron_enum_input(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_input *inp)
 {
 	struct extron_port *port = video_drvdata(file);
 
@@ -1219,18 +1222,22 @@ static int extron_enum_input(struct file *file, void *priv, struct v4l2_input *i
 	return 0;
 }
 
-static int extron_g_input(struct file *file, void *priv, unsigned int *i)
+static int extron_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int extron_s_input(struct file *file, void *priv, unsigned int i)
+static int extron_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	return i ? -EINVAL : 0;
 }
 
-static int extron_enum_output(struct file *file, void *priv, struct v4l2_output *out)
+static int extron_enum_output(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_output *out)
 {
 	struct extron_port *port = video_drvdata(file);
 
@@ -1241,18 +1248,21 @@ static int extron_enum_output(struct file *file, void *priv, struct v4l2_output 
 	return 0;
 }
 
-static int extron_g_output(struct file *file, void *priv, unsigned int *o)
+static int extron_g_output(struct file *file,
+			   struct video_device_state *state, unsigned int *o)
 {
 	*o = 0;
 	return 0;
 }
 
-static int extron_s_output(struct file *file, void *priv, unsigned int o)
+static int extron_s_output(struct file *file,
+			   struct video_device_state *state, unsigned int o)
 {
 	return o ? -EINVAL : 0;
 }
 
-static int extron_g_edid(struct file *file, void *priv,
+static int extron_g_edid(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_edid *edid)
 {
 	struct extron_port *port = video_drvdata(file);
@@ -1280,7 +1290,8 @@ static int extron_g_edid(struct file *file, void *priv,
 	return 0;
 }
 
-static int extron_s_edid(struct file *file, void *priv, struct v4l2_edid *edid)
+static int extron_s_edid(struct file *file, struct video_device_state *state,
+			 struct v4l2_edid *edid)
 {
 	struct extron_port *port = video_drvdata(file);
 
@@ -1305,12 +1316,13 @@ static int extron_s_edid(struct file *file, void *priv, struct v4l2_edid *edid)
 	return extron_write_edid(port, edid->edid, edid->blocks);
 }
 
-static int extron_log_status(struct file *file, void *priv)
+static int extron_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct extron_port *port = video_drvdata(file);
 
 	extron_adap_status(port->adap, NULL);
-	return v4l2_ctrl_log_status(file, priv);
+	return v4l2_ctrl_log_status(file, state);
 }
 
 static const struct v4l2_ioctl_ops extron_ioctl_ops = {

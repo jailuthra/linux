@@ -269,7 +269,8 @@ static void ti_csi2rx_fill_fmt(const struct ti_csi2rx_fmt *csi_fmt,
 	pix->sizeimage = pix->bytesperline * pix->height;
 }
 
-static int ti_csi2rx_querycap(struct file *file, void *priv,
+static int ti_csi2rx_querycap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, TI_CSI2RX_MODULE_NAME, sizeof(cap->driver));
@@ -278,7 +279,8 @@ static int ti_csi2rx_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int ti_csi2rx_enum_fmt_vid_cap(struct file *file, void *priv,
+static int ti_csi2rx_enum_fmt_vid_cap(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_fmtdesc *f)
 {
 	const struct ti_csi2rx_fmt *fmt = NULL;
@@ -306,7 +308,8 @@ static int ti_csi2rx_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int ti_csi2rx_g_fmt_vid_cap(struct file *file, void *priv,
+static int ti_csi2rx_g_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct ti_csi2rx_dev *csi = video_drvdata(file);
@@ -316,7 +319,8 @@ static int ti_csi2rx_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int ti_csi2rx_try_fmt_vid_cap(struct file *file, void *priv,
+static int ti_csi2rx_try_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	const struct ti_csi2rx_fmt *fmt;
@@ -337,7 +341,8 @@ static int ti_csi2rx_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int ti_csi2rx_s_fmt_vid_cap(struct file *file, void *priv,
+static int ti_csi2rx_s_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct ti_csi2rx_dev *csi = video_drvdata(file);
@@ -347,7 +352,7 @@ static int ti_csi2rx_s_fmt_vid_cap(struct file *file, void *priv,
 	if (vb2_is_busy(q))
 		return -EBUSY;
 
-	ret = ti_csi2rx_try_fmt_vid_cap(file, priv, f);
+	ret = ti_csi2rx_try_fmt_vid_cap(file, state, f);
 	if (ret < 0)
 		return ret;
 
@@ -356,7 +361,8 @@ static int ti_csi2rx_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int ti_csi2rx_enum_framesizes(struct file *file, void *fh,
+static int ti_csi2rx_enum_framesizes(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_frmsizeenum *fsize)
 {
 	const struct ti_csi2rx_fmt *fmt;

@@ -618,7 +618,8 @@ static const struct v4l2_ctrl_ops ctrl_ops = {
 	.s_ctrl = tw686x_s_ctrl,
 };
 
-static int tw686x_g_fmt_vid_cap(struct file *file, void *priv,
+static int tw686x_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
@@ -634,7 +635,8 @@ static int tw686x_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw686x_try_fmt_vid_cap(struct file *file, void *priv,
+static int tw686x_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
@@ -731,7 +733,8 @@ static int tw686x_set_format(struct tw686x_video_channel *vc,
 	return 0;
 }
 
-static int tw686x_s_fmt_vid_cap(struct file *file, void *priv,
+static int tw686x_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
@@ -743,7 +746,7 @@ static int tw686x_s_fmt_vid_cap(struct file *file, void *priv,
 		return -EBUSY;
 
 	area = vc->width * vc->height;
-	err = tw686x_try_fmt_vid_cap(file, priv, f);
+	err = tw686x_try_fmt_vid_cap(file, state, f);
 	if (err)
 		return err;
 
@@ -753,7 +756,8 @@ static int tw686x_s_fmt_vid_cap(struct file *file, void *priv,
 				 realloc);
 }
 
-static int tw686x_querycap(struct file *file, void *priv,
+static int tw686x_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
@@ -798,7 +802,8 @@ static int tw686x_set_standard(struct tw686x_video_channel *vc, v4l2_std_id id)
 	return 0;
 }
 
-static int tw686x_s_std(struct file *file, void *priv, v4l2_std_id id)
+static int tw686x_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id id)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
 	struct v4l2_format f;
@@ -818,8 +823,8 @@ static int tw686x_s_std(struct file *file, void *priv, v4l2_std_id id)
 	 * calling g_fmt and s_fmt will sanitize the height
 	 * according to the standard.
 	 */
-	tw686x_g_fmt_vid_cap(file, priv, &f);
-	tw686x_s_fmt_vid_cap(file, priv, &f);
+	tw686x_g_fmt_vid_cap(file, state, &f);
+	tw686x_s_fmt_vid_cap(file, state, &f);
 
 	/*
 	 * Frame decimation depends on the chosen standard,
@@ -829,7 +834,8 @@ static int tw686x_s_std(struct file *file, void *priv, v4l2_std_id id)
 	return 0;
 }
 
-static int tw686x_querystd(struct file *file, void *priv, v4l2_std_id *std)
+static int tw686x_querystd(struct file *file,
+			   struct video_device_state *state, v4l2_std_id *std)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
 	struct tw686x_dev *dev = vc->dev;
@@ -887,7 +893,8 @@ static int tw686x_querystd(struct file *file, void *priv, v4l2_std_id *std)
 	return 0;
 }
 
-static int tw686x_g_std(struct file *file, void *priv, v4l2_std_id *id)
+static int tw686x_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *id)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
 
@@ -895,7 +902,8 @@ static int tw686x_g_std(struct file *file, void *priv, v4l2_std_id *id)
 	return 0;
 }
 
-static int tw686x_enum_framesizes(struct file *file, void *priv,
+static int tw686x_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
@@ -912,7 +920,8 @@ static int tw686x_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw686x_enum_frameintervals(struct file *file, void *priv,
+static int tw686x_enum_frameintervals(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_frmivalenum *ival)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
@@ -931,7 +940,8 @@ static int tw686x_enum_frameintervals(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw686x_g_parm(struct file *file, void *priv,
+static int tw686x_g_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *sp)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
@@ -947,7 +957,8 @@ static int tw686x_g_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw686x_s_parm(struct file *file, void *priv,
+static int tw686x_s_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *sp)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
@@ -962,10 +973,11 @@ static int tw686x_s_parm(struct file *file, void *priv,
 	fps = (!numerator || !denominator) ? 0 : denominator / numerator;
 	if (vc->fps != fps)
 		tw686x_set_framerate(vc, fps);
-	return tw686x_g_parm(file, priv, sp);
+	return tw686x_g_parm(file, state, sp);
 }
 
-static int tw686x_enum_fmt_vid_cap(struct file *file, void *priv,
+static int tw686x_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	if (f->index >= ARRAY_SIZE(formats))
@@ -986,7 +998,8 @@ static void tw686x_set_input(struct tw686x_video_channel *vc, unsigned int i)
 	reg_write(vc->dev, VDMA_CHANNEL_CONFIG[vc->ch], val);
 }
 
-static int tw686x_s_input(struct file *file, void *priv, unsigned int i)
+static int tw686x_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
 
@@ -1004,7 +1017,8 @@ static int tw686x_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-static int tw686x_g_input(struct file *file, void *priv, unsigned int *i)
+static int tw686x_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);
 
@@ -1012,7 +1026,8 @@ static int tw686x_g_input(struct file *file, void *priv, unsigned int *i)
 	return 0;
 }
 
-static int tw686x_enum_input(struct file *file, void *priv,
+static int tw686x_enum_input(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_input *i)
 {
 	struct tw686x_video_channel *vc = video_drvdata(file);

@@ -432,7 +432,8 @@ queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *dst_vq)
 }
 
 static int
-vidioc_querycap(struct file *file, void *priv, struct v4l2_capability *cap)
+vidioc_querycap(struct file *file, struct video_device_state *state,
+		struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, GE2D_NAME, sizeof(cap->driver));
 	strscpy(cap->card, GE2D_NAME, sizeof(cap->card));
@@ -441,7 +442,9 @@ vidioc_querycap(struct file *file, void *priv, struct v4l2_capability *cap)
 	return 0;
 }
 
-static int vidioc_enum_fmt(struct file *file, void *priv, struct v4l2_fmtdesc *f)
+static int vidioc_enum_fmt(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_fmtdesc *f)
 {
 	const struct ge2d_fmt *fmt;
 
@@ -454,7 +457,8 @@ static int vidioc_enum_fmt(struct file *file, void *priv, struct v4l2_fmtdesc *f
 	return 0;
 }
 
-static int vidioc_g_selection(struct file *file, void *priv,
+static int vidioc_g_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *s)
 {
 	struct ge2d_ctx *ctx = file_to_ge2d_ctx(file);
@@ -504,7 +508,8 @@ static int vidioc_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_selection(struct file *file, void *priv,
+static int vidioc_s_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *s)
 {
 	struct ge2d_ctx *ctx = file_to_ge2d_ctx(file);
@@ -572,7 +577,9 @@ static void vidioc_setup_cap_fmt(struct ge2d_ctx *ctx, struct v4l2_pix_format *f
 	}
 }
 
-static int vidioc_try_fmt_cap(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_try_fmt_cap(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_format *f)
 {
 	struct ge2d_ctx *ctx = file_to_ge2d_ctx(file);
 	const struct ge2d_fmt *fmt = find_fmt(f);
@@ -593,7 +600,9 @@ static int vidioc_try_fmt_cap(struct file *file, void *priv, struct v4l2_format 
 	return 0;
 }
 
-static int vidioc_s_fmt_cap(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_s_fmt_cap(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_format *f)
 {
 	struct ge2d_ctx *ctx = file_to_ge2d_ctx(file);
 	struct meson_ge2d *ge2d = ctx->ge2d;
@@ -604,7 +613,7 @@ static int vidioc_s_fmt_cap(struct file *file, void *priv, struct v4l2_format *f
 	/* Adjust all values accordingly to the hardware capabilities
 	 * and chosen format.
 	 */
-	ret = vidioc_try_fmt_cap(file, priv, f);
+	ret = vidioc_try_fmt_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -629,7 +638,8 @@ static int vidioc_s_fmt_cap(struct file *file, void *priv, struct v4l2_format *f
 	return 0;
 }
 
-static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_g_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct ge2d_ctx *ctx = file_to_ge2d_ctx(file);
 	struct vb2_queue *vq;
@@ -647,7 +657,9 @@ static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_try_fmt_out(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_try_fmt_out(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_format *f)
 {
 	const struct ge2d_fmt *fmt = find_fmt(f);
 
@@ -668,7 +680,9 @@ static int vidioc_try_fmt_out(struct file *file, void *priv, struct v4l2_format 
 	return 0;
 }
 
-static int vidioc_s_fmt_out(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_s_fmt_out(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_format *f)
 {
 	struct ge2d_ctx *ctx = file_to_ge2d_ctx(file);
 	struct meson_ge2d *ge2d = ctx->ge2d;
@@ -679,7 +693,7 @@ static int vidioc_s_fmt_out(struct file *file, void *priv, struct v4l2_format *f
 	/* Adjust all values accordingly to the hardware capabilities
 	 * and chosen format.
 	 */
-	ret = vidioc_try_fmt_out(file, priv, f);
+	ret = vidioc_try_fmt_out(file, state, f);
 	if (ret)
 		return ret;
 

@@ -329,7 +329,7 @@ static const struct v4l2_file_operations stk1160_fops = {
  * vidioc ioctls
  */
 static int vidioc_querycap(struct file *file,
-		void *priv, struct v4l2_capability *cap)
+		struct video_device_state *state, struct v4l2_capability *cap)
 {
 	struct stk1160 *dev = video_drvdata(file);
 
@@ -339,8 +339,8 @@ static int vidioc_querycap(struct file *file,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
-		struct v4l2_fmtdesc *f)
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state, struct v4l2_fmtdesc *f)
 {
 	if (f->index != 0)
 		return -EINVAL;
@@ -349,7 +349,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct stk1160 *dev = video_drvdata(file);
@@ -468,7 +469,8 @@ static int stk1160_try_fmt(struct stk1160 *dev, struct v4l2_format *f,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct stk1160 *dev = video_drvdata(file);
@@ -476,7 +478,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return stk1160_try_fmt(dev, f, NULL);
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct stk1160 *dev = video_drvdata(file);
@@ -497,14 +500,17 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_querystd(struct file *file, void *priv, v4l2_std_id *norm)
+static int vidioc_querystd(struct file *file,
+			   struct video_device_state *state,
+			   v4l2_std_id *norm)
 {
 	struct stk1160 *dev = video_drvdata(file);
 	v4l2_device_call_all(&dev->v4l2_dev, 0, video, querystd, norm);
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *norm)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *norm)
 {
 	struct stk1160 *dev = video_drvdata(file);
 
@@ -512,7 +518,8 @@ static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *norm)
 	return 0;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id norm)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id norm)
 {
 	struct stk1160 *dev = video_drvdata(file);
 	struct vb2_queue *q = &dev->vb_vidq;
@@ -544,7 +551,8 @@ static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id norm)
 }
 
 
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 				struct v4l2_input *i)
 {
 	struct stk1160 *dev = video_drvdata(file);
@@ -563,14 +571,16 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct stk1160 *dev = video_drvdata(file);
 	*i = dev->ctl_input;
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	struct stk1160 *dev = video_drvdata(file);
 
@@ -585,7 +595,8 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int vidioc_g_register(struct file *file, void *priv,
+static int vidioc_g_register(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_dbg_register *reg)
 {
 	struct stk1160 *dev = video_drvdata(file);
@@ -600,7 +611,8 @@ static int vidioc_g_register(struct file *file, void *priv,
 	return rc;
 }
 
-static int vidioc_s_register(struct file *file, void *priv,
+static int vidioc_s_register(struct file *file,
+			     struct video_device_state *state,
 			     const struct v4l2_dbg_register *reg)
 {
 	struct stk1160 *dev = video_drvdata(file);

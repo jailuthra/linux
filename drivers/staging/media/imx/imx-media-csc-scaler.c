@@ -152,7 +152,8 @@ err:
 /*
  * Video ioctls
  */
-static int ipu_csc_scaler_querycap(struct file *file, void *priv,
+static int ipu_csc_scaler_querycap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, IMX_CSC_SCALER_NAME, sizeof(cap->driver));
@@ -163,7 +164,8 @@ static int ipu_csc_scaler_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int ipu_csc_scaler_enum_fmt(struct file *file, void *fh,
+static int ipu_csc_scaler_enum_fmt(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	u32 fourcc;
@@ -179,7 +181,8 @@ static int ipu_csc_scaler_enum_fmt(struct file *file, void *fh,
 	return 0;
 }
 
-static int ipu_csc_scaler_g_fmt(struct file *file, void *priv,
+static int ipu_csc_scaler_g_fmt(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct ipu_csc_scaler_ctx *ctx = file_to_ctx(file);
@@ -192,7 +195,8 @@ static int ipu_csc_scaler_g_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int ipu_csc_scaler_try_fmt(struct file *file, void *priv,
+static int ipu_csc_scaler_try_fmt(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct ipu_csc_scaler_ctx *ctx = file_to_ctx(file);
@@ -240,7 +244,8 @@ static int ipu_csc_scaler_try_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int ipu_csc_scaler_s_fmt(struct file *file, void *priv,
+static int ipu_csc_scaler_s_fmt(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct ipu_csc_scaler_ctx *ctx = file_to_ctx(file);
@@ -257,7 +262,7 @@ static int ipu_csc_scaler_s_fmt(struct file *file, void *priv,
 
 	q_data = get_q_data(ctx, f->type);
 
-	ret = ipu_csc_scaler_try_fmt(file, priv, f);
+	ret = ipu_csc_scaler_try_fmt(file, state, f);
 	if (ret < 0)
 		return ret;
 
@@ -296,7 +301,8 @@ static int ipu_csc_scaler_s_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int ipu_csc_scaler_g_selection(struct file *file, void *priv,
+static int ipu_csc_scaler_g_selection(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_selection *s)
 {
 	struct ipu_csc_scaler_ctx *ctx = file_to_ctx(file);
@@ -334,7 +340,8 @@ static int ipu_csc_scaler_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int ipu_csc_scaler_s_selection(struct file *file, void *priv,
+static int ipu_csc_scaler_s_selection(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_selection *s)
 {
 	struct ipu_csc_scaler_ctx *ctx = file_to_ctx(file);

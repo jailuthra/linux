@@ -383,7 +383,8 @@ static void c3_isp_cap_return_buffers(struct c3_isp_capture *cap,
 	}
 }
 
-static int c3_isp_cap_querycap(struct file *file, void *fh,
+static int c3_isp_cap_querycap(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, C3_ISP_DRIVER_NAME, sizeof(cap->driver));
@@ -392,7 +393,8 @@ static int c3_isp_cap_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int c3_isp_cap_enum_fmt(struct file *file, void *fh,
+static int c3_isp_cap_enum_fmt(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_fmtdesc *f)
 {
 	const struct c3_isp_cap_format_info *fmt;
@@ -422,7 +424,8 @@ static int c3_isp_cap_enum_fmt(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-static int c3_isp_cap_g_fmt_mplane(struct file *file, void *fh,
+static int c3_isp_cap_g_fmt_mplane(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct c3_isp_capture *cap = video_drvdata(file);
@@ -432,7 +435,8 @@ static int c3_isp_cap_g_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int c3_isp_cap_s_fmt_mplane(struct file *file, void *fh,
+static int c3_isp_cap_s_fmt_mplane(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct c3_isp_capture *cap = video_drvdata(file);
@@ -445,7 +449,8 @@ static int c3_isp_cap_s_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int c3_isp_cap_try_fmt_mplane(struct file *file, void *fh,
+static int c3_isp_cap_try_fmt_mplane(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	c3_cap_try_fmt(&f->fmt.pix_mp);
@@ -453,7 +458,8 @@ static int c3_isp_cap_try_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int c3_isp_cap_enum_frmsize(struct file *file, void *fh,
+static int c3_isp_cap_enum_frmsize(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_frmsizeenum *fsize)
 {
 	const struct c3_isp_cap_format_info *fmt;

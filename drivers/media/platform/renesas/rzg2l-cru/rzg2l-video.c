@@ -951,7 +951,8 @@ static void rzg2l_cru_try_format(struct rzg2l_cru_dev *cru,
 	rzg2l_cru_format_align(cru, pix);
 }
 
-static int rzg2l_cru_querycap(struct file *file, void *priv,
+static int rzg2l_cru_querycap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, KBUILD_MODNAME, sizeof(cap->driver));
@@ -960,7 +961,8 @@ static int rzg2l_cru_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rzg2l_cru_try_fmt_vid_cap(struct file *file, void *priv,
+static int rzg2l_cru_try_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
@@ -970,7 +972,8 @@ static int rzg2l_cru_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rzg2l_cru_s_fmt_vid_cap(struct file *file, void *priv,
+static int rzg2l_cru_s_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
@@ -985,7 +988,8 @@ static int rzg2l_cru_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rzg2l_cru_g_fmt_vid_cap(struct file *file, void *priv,
+static int rzg2l_cru_g_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct rzg2l_cru_dev *cru = video_drvdata(file);
@@ -995,7 +999,8 @@ static int rzg2l_cru_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rzg2l_cru_enum_fmt_vid_cap(struct file *file, void *priv,
+static int rzg2l_cru_enum_fmt_vid_cap(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_fmtdesc *f)
 {
 	const struct rzg2l_cru_ip_format *fmt;
@@ -1009,7 +1014,8 @@ static int rzg2l_cru_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rzg2l_cru_enum_framesizes(struct file *file, void *fh,
+static int rzg2l_cru_enum_framesizes(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_frmsizeenum *fsize)
 {
 	struct rzg2l_cru_dev *cru = video_drvdata(file);

@@ -171,7 +171,8 @@ hantro_get_default_fmt(const struct hantro_ctx *ctx, bool bitstream,
 	return NULL;
 }
 
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct hantro_dev *vpu = video_drvdata(file);
@@ -182,7 +183,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_framesizes(struct file *file, void *priv,
+static int vidioc_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	struct hantro_ctx *ctx = file_to_ctx(file);
@@ -281,19 +283,22 @@ static int vidioc_enum_fmt(struct file *file, void *priv,
 	return -EINVAL;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
-	return vidioc_enum_fmt(file, priv, f, true);
+	return vidioc_enum_fmt(file, state, f, true);
 }
 
-static int vidioc_enum_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
-	return vidioc_enum_fmt(file, priv, f, false);
+	return vidioc_enum_fmt(file, state, f, false);
 }
 
-static int vidioc_g_fmt_out_mplane(struct file *file, void *priv,
+static int vidioc_g_fmt_out_mplane(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
@@ -306,7 +311,8 @@ static int vidioc_g_fmt_out_mplane(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_cap_mplane(struct file *file, void *priv,
+static int vidioc_g_fmt_cap_mplane(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
@@ -395,13 +401,15 @@ static int hantro_try_fmt(const struct hantro_ctx *ctx,
 	return 0;
 }
 
-static int vidioc_try_fmt_cap_mplane(struct file *file, void *priv,
+static int vidioc_try_fmt_cap_mplane(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	return hantro_try_fmt(file_to_ctx(file), &f->fmt.pix_mp, f->type);
 }
 
-static int vidioc_try_fmt_out_mplane(struct file *file, void *priv,
+static int vidioc_try_fmt_out_mplane(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	return hantro_try_fmt(file_to_ctx(file), &f->fmt.pix_mp, f->type);
@@ -646,18 +654,21 @@ static int hantro_set_fmt_cap(struct hantro_ctx *ctx,
 }
 
 static int
-vidioc_s_fmt_out_mplane(struct file *file, void *priv, struct v4l2_format *f)
+vidioc_s_fmt_out_mplane(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	return hantro_set_fmt_out(file_to_ctx(file), &f->fmt.pix_mp, HANTRO_AUTO_POSTPROC);
 }
 
 static int
-vidioc_s_fmt_cap_mplane(struct file *file, void *priv, struct v4l2_format *f)
+vidioc_s_fmt_cap_mplane(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	return hantro_set_fmt_cap(file_to_ctx(file), &f->fmt.pix_mp);
 }
 
-static int vidioc_g_selection(struct file *file, void *priv,
+static int vidioc_g_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *sel)
 {
 	struct hantro_ctx *ctx = file_to_ctx(file);
@@ -687,7 +698,8 @@ static int vidioc_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_selection(struct file *file, void *priv,
+static int vidioc_s_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *sel)
 {
 	struct hantro_ctx *ctx = file_to_ctx(file);
@@ -733,13 +745,14 @@ static const struct v4l2_event hantro_eos_event = {
 	.type = V4L2_EVENT_EOS
 };
 
-static int vidioc_encoder_cmd(struct file *file, void *priv,
+static int vidioc_encoder_cmd(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_encoder_cmd *ec)
 {
 	struct hantro_ctx *ctx = file_to_ctx(file);
 	int ret;
 
-	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, priv, ec);
+	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, state, ec);
 	if (ret < 0)
 		return ret;
 
@@ -747,7 +760,7 @@ static int vidioc_encoder_cmd(struct file *file, void *priv,
 	    !vb2_is_streaming(v4l2_m2m_get_dst_vq(ctx->fh.m2m_ctx)))
 		return 0;
 
-	ret = v4l2_m2m_ioctl_encoder_cmd(file, priv, ec);
+	ret = v4l2_m2m_ioctl_encoder_cmd(file, state, ec);
 	if (ret < 0)
 		return ret;
 

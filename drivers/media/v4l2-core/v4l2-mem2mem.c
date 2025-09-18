@@ -1364,8 +1364,8 @@ EXPORT_SYMBOL_GPL(v4l2_m2m_request_queue);
 
 /* Videobuf2 ioctl helpers */
 
-int v4l2_m2m_ioctl_reqbufs(struct file *file, void *priv,
-				struct v4l2_requestbuffers *rb)
+int v4l2_m2m_ioctl_reqbufs(struct file *file, struct video_device_state *state,
+			   struct v4l2_requestbuffers *rb)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
 
@@ -1373,8 +1373,9 @@ int v4l2_m2m_ioctl_reqbufs(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_reqbufs);
 
-int v4l2_m2m_ioctl_create_bufs(struct file *file, void *priv,
-				struct v4l2_create_buffers *create)
+int v4l2_m2m_ioctl_create_bufs(struct file *file,
+			       struct video_device_state *state,
+			       struct v4l2_create_buffers *create)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
 
@@ -1382,7 +1383,8 @@ int v4l2_m2m_ioctl_create_bufs(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_create_bufs);
 
-int v4l2_m2m_ioctl_remove_bufs(struct file *file, void *priv,
+int v4l2_m2m_ioctl_remove_bufs(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_remove_buffers *remove)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1397,8 +1399,8 @@ int v4l2_m2m_ioctl_remove_bufs(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_remove_bufs);
 
-int v4l2_m2m_ioctl_querybuf(struct file *file, void *priv,
-				struct v4l2_buffer *buf)
+int v4l2_m2m_ioctl_querybuf(struct file *file, struct video_device_state *state,
+			    struct v4l2_buffer *buf)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
 
@@ -1406,8 +1408,8 @@ int v4l2_m2m_ioctl_querybuf(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_querybuf);
 
-int v4l2_m2m_ioctl_qbuf(struct file *file, void *priv,
-				struct v4l2_buffer *buf)
+int v4l2_m2m_ioctl_qbuf(struct file *file, struct video_device_state *state,
+			struct v4l2_buffer *buf)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
 
@@ -1415,8 +1417,8 @@ int v4l2_m2m_ioctl_qbuf(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_qbuf);
 
-int v4l2_m2m_ioctl_dqbuf(struct file *file, void *priv,
-				struct v4l2_buffer *buf)
+int v4l2_m2m_ioctl_dqbuf(struct file *file, struct video_device_state *state,
+			 struct v4l2_buffer *buf)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
 
@@ -1424,7 +1426,8 @@ int v4l2_m2m_ioctl_dqbuf(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_dqbuf);
 
-int v4l2_m2m_ioctl_prepare_buf(struct file *file, void *priv,
+int v4l2_m2m_ioctl_prepare_buf(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_buffer *buf)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1433,7 +1436,8 @@ int v4l2_m2m_ioctl_prepare_buf(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_prepare_buf);
 
-int v4l2_m2m_ioctl_expbuf(struct file *file, void *priv,
+int v4l2_m2m_ioctl_expbuf(struct file *file,
+			  struct video_device_state *state,
 				struct v4l2_exportbuffer *eb)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1442,7 +1446,8 @@ int v4l2_m2m_ioctl_expbuf(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_expbuf);
 
-int v4l2_m2m_ioctl_streamon(struct file *file, void *priv,
+int v4l2_m2m_ioctl_streamon(struct file *file,
+			    struct video_device_state *state,
 				enum v4l2_buf_type type)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1451,7 +1456,8 @@ int v4l2_m2m_ioctl_streamon(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_streamon);
 
-int v4l2_m2m_ioctl_streamoff(struct file *file, void *priv,
+int v4l2_m2m_ioctl_streamoff(struct file *file,
+			     struct video_device_state *state,
 				enum v4l2_buf_type type)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1460,7 +1466,8 @@ int v4l2_m2m_ioctl_streamoff(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_streamoff);
 
-int v4l2_m2m_ioctl_try_encoder_cmd(struct file *file, void *priv,
+int v4l2_m2m_ioctl_try_encoder_cmd(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_encoder_cmd *ec)
 {
 	if (ec->cmd != V4L2_ENC_CMD_STOP && ec->cmd != V4L2_ENC_CMD_START)
@@ -1471,7 +1478,8 @@ int v4l2_m2m_ioctl_try_encoder_cmd(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_try_encoder_cmd);
 
-int v4l2_m2m_ioctl_try_decoder_cmd(struct file *file, void *priv,
+int v4l2_m2m_ioctl_try_decoder_cmd(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_decoder_cmd *dc)
 {
 	if (dc->cmd != V4L2_DEC_CMD_STOP && dc->cmd != V4L2_DEC_CMD_START)
@@ -1535,7 +1543,8 @@ int v4l2_m2m_decoder_cmd(struct file *file, struct v4l2_m2m_ctx *m2m_ctx,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_decoder_cmd);
 
-int v4l2_m2m_ioctl_encoder_cmd(struct file *file, void *priv,
+int v4l2_m2m_ioctl_encoder_cmd(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_encoder_cmd *ec)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1544,7 +1553,8 @@ int v4l2_m2m_ioctl_encoder_cmd(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_encoder_cmd);
 
-int v4l2_m2m_ioctl_decoder_cmd(struct file *file, void *priv,
+int v4l2_m2m_ioctl_decoder_cmd(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_decoder_cmd *dc)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1553,7 +1563,8 @@ int v4l2_m2m_ioctl_decoder_cmd(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_decoder_cmd);
 
-int v4l2_m2m_ioctl_stateless_try_decoder_cmd(struct file *file, void *priv,
+int v4l2_m2m_ioctl_stateless_try_decoder_cmd(struct file *file,
+					     struct video_device_state *state,
 					     struct v4l2_decoder_cmd *dc)
 {
 	if (dc->cmd != V4L2_DEC_CMD_FLUSH)
@@ -1565,7 +1576,8 @@ int v4l2_m2m_ioctl_stateless_try_decoder_cmd(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_ioctl_stateless_try_decoder_cmd);
 
-int v4l2_m2m_ioctl_stateless_decoder_cmd(struct file *file, void *priv,
+int v4l2_m2m_ioctl_stateless_decoder_cmd(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_decoder_cmd *dc)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1574,7 +1586,7 @@ int v4l2_m2m_ioctl_stateless_decoder_cmd(struct file *file, void *priv,
 	unsigned long flags;
 	int ret;
 
-	ret = v4l2_m2m_ioctl_stateless_try_decoder_cmd(file, priv, dc);
+	ret = v4l2_m2m_ioctl_stateless_try_decoder_cmd(file, state, dc);
 	if (ret < 0)
 		return ret;
 

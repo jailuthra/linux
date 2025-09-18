@@ -1035,7 +1035,8 @@ static int imx7_csi_enum_mbus_formats(u32 *code, u32 index)
  * Video Capture Device - IOCTLs
  */
 
-static int imx7_csi_video_querycap(struct file *file, void *fh,
+static int imx7_csi_video_querycap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_capability *cap)
 {
 	struct imx7_csi *csi = video_drvdata(file);
@@ -1048,7 +1049,8 @@ static int imx7_csi_video_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int imx7_csi_video_enum_fmt_vid_cap(struct file *file, void *fh,
+static int imx7_csi_video_enum_fmt_vid_cap(struct file *file,
+					   struct video_device_state *state,
 					   struct v4l2_fmtdesc *f)
 {
 	unsigned int index = f->index;
@@ -1087,7 +1089,8 @@ static int imx7_csi_video_enum_fmt_vid_cap(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-static int imx7_csi_video_enum_framesizes(struct file *file, void *fh,
+static int imx7_csi_video_enum_framesizes(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_frmsizeenum *fsize)
 {
 	const struct imx7_csi_pixfmt *cc;
@@ -1117,7 +1120,8 @@ static int imx7_csi_video_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int imx7_csi_video_g_fmt_vid_cap(struct file *file, void *fh,
+static int imx7_csi_video_g_fmt_vid_cap(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct imx7_csi *csi = video_drvdata(file);
@@ -1167,14 +1171,16 @@ __imx7_csi_video_try_fmt(struct v4l2_pix_format *pixfmt,
 	return cc;
 }
 
-static int imx7_csi_video_try_fmt_vid_cap(struct file *file, void *fh,
+static int imx7_csi_video_try_fmt_vid_cap(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_format *f)
 {
 	__imx7_csi_video_try_fmt(&f->fmt.pix, NULL);
 	return 0;
 }
 
-static int imx7_csi_video_s_fmt_vid_cap(struct file *file, void *fh,
+static int imx7_csi_video_s_fmt_vid_cap(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct imx7_csi *csi = video_drvdata(file);
@@ -1193,7 +1199,8 @@ static int imx7_csi_video_s_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int imx7_csi_video_g_selection(struct file *file, void *fh,
+static int imx7_csi_video_g_selection(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_selection *s)
 {
 	struct imx7_csi *csi = video_drvdata(file);

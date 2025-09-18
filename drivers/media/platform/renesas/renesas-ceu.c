@@ -1121,7 +1121,8 @@ static const struct v4l2_file_operations ceu_fops = {
 
 /* --- Video Device IOCTLs --- */
 
-static int ceu_querycap(struct file *file, void *priv,
+static int ceu_querycap(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_capability *cap)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
@@ -1134,7 +1135,8 @@ static int ceu_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int ceu_enum_fmt_vid_cap(struct file *file, void *priv,
+static int ceu_enum_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	const struct ceu_fmt *fmt;
@@ -1148,7 +1150,8 @@ static int ceu_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int ceu_try_fmt_vid_cap(struct file *file, void *priv,
+static int ceu_try_fmt_vid_cap(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
@@ -1156,7 +1159,8 @@ static int ceu_try_fmt_vid_cap(struct file *file, void *priv,
 	return ceu_try_fmt(ceudev, f);
 }
 
-static int ceu_s_fmt_vid_cap(struct file *file, void *priv,
+static int ceu_s_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
@@ -1167,7 +1171,8 @@ static int ceu_s_fmt_vid_cap(struct file *file, void *priv,
 	return ceu_set_fmt(ceudev, f);
 }
 
-static int ceu_g_fmt_vid_cap(struct file *file, void *priv,
+static int ceu_g_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
@@ -1177,7 +1182,8 @@ static int ceu_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int ceu_enum_input(struct file *file, void *priv,
+static int ceu_enum_input(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_input *inp)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
@@ -1192,7 +1198,8 @@ static int ceu_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int ceu_g_input(struct file *file, void *priv, unsigned int *i)
+static int ceu_g_input(struct file *file, struct video_device_state *state,
+		       unsigned int *i)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
 
@@ -1201,7 +1208,8 @@ static int ceu_g_input(struct file *file, void *priv, unsigned int *i)
 	return 0;
 }
 
-static int ceu_s_input(struct file *file, void *priv, unsigned int i)
+static int ceu_s_input(struct file *file, struct video_device_state *state,
+		       unsigned int i)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
 	struct ceu_subdev *ceu_sd_old;
@@ -1244,21 +1252,24 @@ static int ceu_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-static int ceu_g_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int ceu_g_parm(struct file *file, struct video_device_state *state,
+		      struct v4l2_streamparm *a)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
 
 	return v4l2_g_parm_cap(video_devdata(file), ceudev->sd->v4l2_sd, a);
 }
 
-static int ceu_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int ceu_s_parm(struct file *file, struct video_device_state *state,
+		      struct v4l2_streamparm *a)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
 
 	return v4l2_s_parm_cap(video_devdata(file), ceudev->sd->v4l2_sd, a);
 }
 
-static int ceu_enum_framesizes(struct file *file, void *fh,
+static int ceu_enum_framesizes(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_frmsizeenum *fsize)
 {
 	struct ceu_device *ceudev = video_drvdata(file);
@@ -1290,7 +1301,8 @@ static int ceu_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int ceu_enum_frameintervals(struct file *file, void *fh,
+static int ceu_enum_frameintervals(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_frmivalenum *fival)
 {
 	struct ceu_device *ceudev = video_drvdata(file);

@@ -280,7 +280,8 @@ static const struct vb2_ops gsc_m2m_qops = {
 	.start_streaming = gsc_m2m_start_streaming,
 };
 
-static int gsc_m2m_querycap(struct file *file, void *fh,
+static int gsc_m2m_querycap(struct file *file,
+			    struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, GSC_MODULE_NAME, sizeof(cap->driver));
@@ -288,13 +289,15 @@ static int gsc_m2m_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int gsc_m2m_enum_fmt(struct file *file, void *priv,
+static int gsc_m2m_enum_fmt(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_fmtdesc *f)
 {
 	return gsc_enum_fmt(f);
 }
 
-static int gsc_m2m_g_fmt_mplane(struct file *file, void *fh,
+static int gsc_m2m_g_fmt_mplane(struct file *file,
+				struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
@@ -302,7 +305,8 @@ static int gsc_m2m_g_fmt_mplane(struct file *file, void *fh,
 	return gsc_g_fmt_mplane(ctx, f);
 }
 
-static int gsc_m2m_try_fmt_mplane(struct file *file, void *fh,
+static int gsc_m2m_try_fmt_mplane(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
@@ -310,7 +314,8 @@ static int gsc_m2m_try_fmt_mplane(struct file *file, void *fh,
 	return gsc_try_fmt_mplane(ctx, f);
 }
 
-static int gsc_m2m_s_fmt_mplane(struct file *file, void *fh,
+static int gsc_m2m_s_fmt_mplane(struct file *file,
+				struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
@@ -319,7 +324,7 @@ static int gsc_m2m_s_fmt_mplane(struct file *file, void *fh,
 	struct v4l2_pix_format_mplane *pix;
 	int i, ret = 0;
 
-	ret = gsc_m2m_try_fmt_mplane(file, fh, f);
+	ret = gsc_m2m_try_fmt_mplane(file, state, f);
 	if (ret)
 		return ret;
 
@@ -356,7 +361,8 @@ static int gsc_m2m_s_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int gsc_m2m_reqbufs(struct file *file, void *fh,
+static int gsc_m2m_reqbufs(struct file *file,
+			   struct video_device_state *state,
 			  struct v4l2_requestbuffers *reqbufs)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
@@ -371,35 +377,40 @@ static int gsc_m2m_reqbufs(struct file *file, void *fh,
 	return v4l2_m2m_reqbufs(file, ctx->m2m_ctx, reqbufs);
 }
 
-static int gsc_m2m_expbuf(struct file *file, void *fh,
+static int gsc_m2m_expbuf(struct file *file,
+			  struct video_device_state *state,
 				struct v4l2_exportbuffer *eb)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
 	return v4l2_m2m_expbuf(file, ctx->m2m_ctx, eb);
 }
 
-static int gsc_m2m_querybuf(struct file *file, void *fh,
+static int gsc_m2m_querybuf(struct file *file,
+			    struct video_device_state *state,
 					struct v4l2_buffer *buf)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
 	return v4l2_m2m_querybuf(file, ctx->m2m_ctx, buf);
 }
 
-static int gsc_m2m_qbuf(struct file *file, void *fh,
+static int gsc_m2m_qbuf(struct file *file,
+			struct video_device_state *state,
 			  struct v4l2_buffer *buf)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
 	return v4l2_m2m_qbuf(file, ctx->m2m_ctx, buf);
 }
 
-static int gsc_m2m_dqbuf(struct file *file, void *fh,
+static int gsc_m2m_dqbuf(struct file *file,
+			 struct video_device_state *state,
 			   struct v4l2_buffer *buf)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
 	return v4l2_m2m_dqbuf(file, ctx->m2m_ctx, buf);
 }
 
-static int gsc_m2m_streamon(struct file *file, void *fh,
+static int gsc_m2m_streamon(struct file *file,
+			    struct video_device_state *state,
 			   enum v4l2_buf_type type)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
@@ -415,7 +426,8 @@ static int gsc_m2m_streamon(struct file *file, void *fh,
 	return v4l2_m2m_streamon(file, ctx->m2m_ctx, type);
 }
 
-static int gsc_m2m_streamoff(struct file *file, void *fh,
+static int gsc_m2m_streamoff(struct file *file,
+			     struct video_device_state *state,
 			    enum v4l2_buf_type type)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
@@ -437,7 +449,8 @@ static int is_rectangle_enclosed(struct v4l2_rect *a, struct v4l2_rect *b)
 	return 1;
 }
 
-static int gsc_m2m_g_selection(struct file *file, void *fh,
+static int gsc_m2m_g_selection(struct file *file,
+			       struct video_device_state *state,
 			struct v4l2_selection *s)
 {
 	struct gsc_ctx *ctx = file_to_ctx(file);
@@ -474,7 +487,8 @@ static int gsc_m2m_g_selection(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-static int gsc_m2m_s_selection(struct file *file, void *fh,
+static int gsc_m2m_s_selection(struct file *file,
+			       struct video_device_state *state,
 				struct v4l2_selection *s)
 {
 	struct gsc_frame *frame;

@@ -273,7 +273,8 @@ static const struct vb2_ops mdp_m2m_qops = {
 	.buf_out_validate = mdp_m2m_buf_out_validate,
 };
 
-static int mdp_m2m_querycap(struct file *file, void *fh,
+static int mdp_m2m_querycap(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, MDP_MODULE_NAME, sizeof(cap->driver));
@@ -282,7 +283,8 @@ static int mdp_m2m_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int mdp_m2m_enum_fmt_mplane(struct file *file, void *fh,
+static int mdp_m2m_enum_fmt_mplane(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	struct mdp_m2m_ctx *ctx = file_to_ctx(file);
@@ -290,7 +292,8 @@ static int mdp_m2m_enum_fmt_mplane(struct file *file, void *fh,
 	return mdp_enum_fmt_mplane(ctx->mdp_dev, f);
 }
 
-static int mdp_m2m_g_fmt_mplane(struct file *file, void *fh,
+static int mdp_m2m_g_fmt_mplane(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct mdp_m2m_ctx *ctx = file_to_ctx(file);
@@ -308,7 +311,8 @@ static int mdp_m2m_g_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int mdp_m2m_s_fmt_mplane(struct file *file, void *fh,
+static int mdp_m2m_s_fmt_mplane(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct mdp_m2m_ctx *ctx = file_to_ctx(file);
@@ -351,7 +355,8 @@ static int mdp_m2m_s_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int mdp_m2m_try_fmt_mplane(struct file *file, void *fh,
+static int mdp_m2m_try_fmt_mplane(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct mdp_m2m_ctx *ctx = file_to_ctx(file);
@@ -362,7 +367,8 @@ static int mdp_m2m_try_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int mdp_m2m_g_selection(struct file *file, void *fh,
+static int mdp_m2m_g_selection(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_selection *s)
 {
 	struct mdp_m2m_ctx *ctx = file_to_ctx(file);
@@ -414,7 +420,8 @@ static int mdp_m2m_g_selection(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-static int mdp_m2m_s_selection(struct file *file, void *fh,
+static int mdp_m2m_s_selection(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_selection *s)
 {
 	struct mdp_m2m_ctx *ctx = file_to_ctx(file);
@@ -616,9 +623,9 @@ static int mdp_m2m_open(struct file *file)
 	default_format.fmt.pix_mp.width = limit->out_limit.wmin;
 	default_format.fmt.pix_mp.height = limit->out_limit.hmin;
 	default_format.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_YUV420M;
-	mdp_m2m_s_fmt_mplane(file, &ctx->fh, &default_format);
+	mdp_m2m_s_fmt_mplane(file, NULL, &default_format);
 	default_format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	mdp_m2m_s_fmt_mplane(file, &ctx->fh, &default_format);
+	mdp_m2m_s_fmt_mplane(file, NULL, &default_format);
 
 	dev_dbg(dev, "%s:[%d]", __func__, ctx->id);
 

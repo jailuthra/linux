@@ -27,9 +27,9 @@ struct timbradio {
 	struct mutex		lock;
 };
 
-
-static int timbradio_vidioc_querycap(struct file *file, void  *priv,
-	struct v4l2_capability *v)
+static int timbradio_vidioc_querycap(struct file *file,
+				     struct video_device_state *state,
+				     struct v4l2_capability *v)
 {
 	strscpy(v->driver, DRIVER_NAME, sizeof(v->driver));
 	strscpy(v->card, "Timberdale Radio", sizeof(v->card));
@@ -37,29 +37,33 @@ static int timbradio_vidioc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int timbradio_vidioc_g_tuner(struct file *file, void *priv,
-	struct v4l2_tuner *v)
+static int timbradio_vidioc_g_tuner(struct file *file,
+				    struct video_device_state *state,
+				    struct v4l2_tuner *v)
 {
 	struct timbradio *tr = video_drvdata(file);
 	return v4l2_subdev_call(tr->sd_tuner, tuner, g_tuner, v);
 }
 
-static int timbradio_vidioc_s_tuner(struct file *file, void *priv,
-	const struct v4l2_tuner *v)
+static int timbradio_vidioc_s_tuner(struct file *file,
+				    struct video_device_state *state,
+				    const struct v4l2_tuner *v)
 {
 	struct timbradio *tr = video_drvdata(file);
 	return v4l2_subdev_call(tr->sd_tuner, tuner, s_tuner, v);
 }
 
-static int timbradio_vidioc_s_frequency(struct file *file, void *priv,
-	const struct v4l2_frequency *f)
+static int timbradio_vidioc_s_frequency(struct file *file,
+					struct video_device_state *state,
+					const struct v4l2_frequency *f)
 {
 	struct timbradio *tr = video_drvdata(file);
 	return v4l2_subdev_call(tr->sd_tuner, tuner, s_frequency, f);
 }
 
-static int timbradio_vidioc_g_frequency(struct file *file, void *priv,
-	struct v4l2_frequency *f)
+static int timbradio_vidioc_g_frequency(struct file *file,
+					struct video_device_state *state,
+					struct v4l2_frequency *f)
 {
 	struct timbradio *tr = video_drvdata(file);
 	return v4l2_subdev_call(tr->sd_tuner, tuner, g_frequency, f);

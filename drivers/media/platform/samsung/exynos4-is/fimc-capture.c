@@ -708,7 +708,8 @@ static void fimc_capture_try_selection(struct fimc_ctx *ctx,
 /*
  * The video node ioctl operations
  */
-static int fimc_cap_querycap(struct file *file, void *priv,
+static int fimc_cap_querycap(struct file *file,
+			     struct video_device_state *state,
 					struct v4l2_capability *cap)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
@@ -717,7 +718,8 @@ static int fimc_cap_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int fimc_cap_enum_fmt(struct file *file, void *priv,
+static int fimc_cap_enum_fmt(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_fmtdesc *f)
 {
 	const struct fimc_fmt *fmt;
@@ -885,7 +887,8 @@ static int fimc_get_sensor_frame_desc(struct v4l2_subdev *sensor,
 	return 0;
 }
 
-static int fimc_cap_g_fmt_mplane(struct file *file, void *fh,
+static int fimc_cap_g_fmt_mplane(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
@@ -980,7 +983,8 @@ static int __video_try_or_set_format(struct fimc_dev *fimc,
 	return ret;
 }
 
-static int fimc_cap_try_fmt_mplane(struct file *file, void *fh,
+static int fimc_cap_try_fmt_mplane(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
@@ -1045,7 +1049,8 @@ static int __fimc_capture_set_format(struct fimc_dev *fimc,
 	return ret;
 }
 
-static int fimc_cap_s_fmt_mplane(struct file *file, void *priv,
+static int fimc_cap_s_fmt_mplane(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
@@ -1053,7 +1058,8 @@ static int fimc_cap_s_fmt_mplane(struct file *file, void *priv,
 	return __fimc_capture_set_format(fimc, f);
 }
 
-static int fimc_cap_enum_input(struct file *file, void *priv,
+static int fimc_cap_enum_input(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_input *i)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
@@ -1074,12 +1080,14 @@ static int fimc_cap_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int fimc_cap_s_input(struct file *file, void *priv, unsigned int i)
+static int fimc_cap_s_input(struct file *file,
+			    struct video_device_state *state, unsigned int i)
 {
 	return i == 0 ? i : -EINVAL;
 }
 
-static int fimc_cap_g_input(struct file *file, void *priv, unsigned int *i)
+static int fimc_cap_g_input(struct file *file,
+			    struct video_device_state *state, unsigned int *i)
 {
 	*i = 0;
 	return 0;
@@ -1173,7 +1181,8 @@ static int fimc_pipeline_validate(struct fimc_dev *fimc)
 	return 0;
 }
 
-static int fimc_cap_streamon(struct file *file, void *priv,
+static int fimc_cap_streamon(struct file *file,
+			     struct video_device_state *state,
 			     enum v4l2_buf_type type)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
@@ -1212,7 +1221,7 @@ static int fimc_cap_streamon(struct file *file, void *priv,
 			goto err_p_stop;
 	}
 
-	ret = vb2_ioctl_streamon(file, priv, type);
+	ret = vb2_ioctl_streamon(file, state, type);
 	if (!ret) {
 		vc->streaming = true;
 		return ret;
@@ -1223,14 +1232,15 @@ err_p_stop:
 	return ret;
 }
 
-static int fimc_cap_streamoff(struct file *file, void *priv,
+static int fimc_cap_streamoff(struct file *file,
+			      struct video_device_state *state,
 			    enum v4l2_buf_type type)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
 	struct fimc_vid_cap *vc = &fimc->vid_cap;
 	int ret;
 
-	ret = vb2_ioctl_streamoff(file, priv, type);
+	ret = vb2_ioctl_streamoff(file, state, type);
 	if (ret < 0)
 		return ret;
 
@@ -1242,13 +1252,14 @@ static int fimc_cap_streamoff(struct file *file, void *priv,
 	return 0;
 }
 
-static int fimc_cap_reqbufs(struct file *file, void *priv,
+static int fimc_cap_reqbufs(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_requestbuffers *reqbufs)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
 	int ret;
 
-	ret = vb2_ioctl_reqbufs(file, priv, reqbufs);
+	ret = vb2_ioctl_reqbufs(file, state, reqbufs);
 
 	if (!ret)
 		fimc->vid_cap.reqbufs_count = reqbufs->count;
@@ -1256,7 +1267,8 @@ static int fimc_cap_reqbufs(struct file *file, void *priv,
 	return ret;
 }
 
-static int fimc_cap_g_selection(struct file *file, void *fh,
+static int fimc_cap_g_selection(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_selection *s)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
@@ -1293,7 +1305,8 @@ static int fimc_cap_g_selection(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-static int fimc_cap_s_selection(struct file *file, void *fh,
+static int fimc_cap_s_selection(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_selection *s)
 {
 	struct fimc_dev *fimc = video_drvdata(file);

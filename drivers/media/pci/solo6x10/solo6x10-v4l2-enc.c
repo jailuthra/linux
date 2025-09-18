@@ -758,7 +758,8 @@ static const struct vb2_ops solo_enc_video_qops = {
 	.stop_streaming = solo_enc_stop_streaming,
 };
 
-static int solo_enc_querycap(struct file *file, void  *priv,
+static int solo_enc_querycap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_capability *cap)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -769,7 +770,8 @@ static int solo_enc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int solo_enc_enum_input(struct file *file, void *priv,
+static int solo_enc_enum_input(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_input *input)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -789,7 +791,8 @@ static int solo_enc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_enc_set_input(struct file *file, void *priv,
+static int solo_enc_set_input(struct file *file,
+			      struct video_device_state *state,
 			      unsigned int index)
 {
 	if (index)
@@ -798,7 +801,8 @@ static int solo_enc_set_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_enc_get_input(struct file *file, void *priv,
+static int solo_enc_get_input(struct file *file,
+			      struct video_device_state *state,
 			      unsigned int *index)
 {
 	*index = 0;
@@ -806,7 +810,8 @@ static int solo_enc_get_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_enc_enum_fmt_cap(struct file *file, void *priv,
+static int solo_enc_enum_fmt_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *f)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -839,7 +844,8 @@ static inline int solo_valid_pixfmt(u32 pixfmt, int dev_type)
 		|| pixfmt == V4L2_PIX_FMT_MJPEG ? 0 : -EINVAL;
 }
 
-static int solo_enc_try_fmt_cap(struct file *file, void *priv,
+static int solo_enc_try_fmt_cap(struct file *file,
+				struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -878,7 +884,8 @@ static int solo_enc_try_fmt_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_enc_set_fmt_cap(struct file *file, void *priv,
+static int solo_enc_set_fmt_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -889,7 +896,7 @@ static int solo_enc_set_fmt_cap(struct file *file, void *priv,
 	if (vb2_is_busy(&solo_enc->vidq))
 		return -EBUSY;
 
-	ret = solo_enc_try_fmt_cap(file, priv, f);
+	ret = solo_enc_try_fmt_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -915,7 +922,8 @@ static int solo_enc_set_fmt_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_enc_get_fmt_cap(struct file *file, void *priv,
+static int solo_enc_get_fmt_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -932,7 +940,8 @@ static int solo_enc_get_fmt_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_enc_g_std(struct file *file, void *priv, v4l2_std_id *i)
+static int solo_enc_g_std(struct file *file, struct video_device_state *state,
+			  v4l2_std_id *i)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
 	struct solo_dev *solo_dev = solo_enc->solo_dev;
@@ -944,14 +953,16 @@ static int solo_enc_g_std(struct file *file, void *priv, v4l2_std_id *i)
 	return 0;
 }
 
-static int solo_enc_s_std(struct file *file, void *priv, v4l2_std_id std)
+static int solo_enc_s_std(struct file *file, struct video_device_state *state,
+			  v4l2_std_id std)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
 
 	return solo_set_video_type(solo_enc->solo_dev, std & V4L2_STD_625_50);
 }
 
-static int solo_enum_framesizes(struct file *file, void *priv,
+static int solo_enum_framesizes(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_frmsizeenum *fsize)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -978,7 +989,8 @@ static int solo_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_enum_frameintervals(struct file *file, void *priv,
+static int solo_enum_frameintervals(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_frmivalenum *fintv)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -1008,7 +1020,8 @@ static int solo_enum_frameintervals(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_g_parm(struct file *file, void *priv,
+static int solo_g_parm(struct file *file,
+		       struct video_device_state *state,
 		       struct v4l2_streamparm *sp)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -1034,7 +1047,8 @@ static inline int calc_interval(u8 fps, u32 n, u32 d)
 	return min(15U, n / d + (n % d >= (fps >> 1)));
 }
 
-static int solo_s_parm(struct file *file, void *priv,
+static int solo_s_parm(struct file *file,
+		       struct video_device_state *state,
 		       struct v4l2_streamparm *sp)
 {
 	struct solo_enc_dev *solo_enc = video_drvdata(file);
@@ -1046,7 +1060,7 @@ static int solo_s_parm(struct file *file, void *priv,
 
 	solo_enc->interval = calc_interval(fps, t->numerator, t->denominator);
 	solo_update_mode(solo_enc);
-	return solo_g_parm(file, priv, sp);
+	return solo_g_parm(file, state, sp);
 }
 
 static int solo_s_ctrl(struct v4l2_ctrl *ctrl)

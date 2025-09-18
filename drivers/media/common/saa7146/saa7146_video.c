@@ -251,7 +251,9 @@ static void video_end(struct saa7146_dev *dev)
 	saa7146_res_free(dev, resource);
 }
 
-static int vidioc_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_capability *cap)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 
@@ -264,7 +266,9 @@ static int vidioc_querycap(struct file *file, void *fh, struct v4l2_capability *
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
+				   struct v4l2_fmtdesc *f)
 {
 	if (f->index >= ARRAY_SIZE(formats))
 		return -EINVAL;
@@ -323,7 +327,8 @@ int saa7146_s_ctrl(struct v4l2_ctrl *ctrl)
 	return 0;
 }
 
-static int vidioc_g_parm(struct file *file, void *fh,
+static int vidioc_g_parm(struct file *file,
+			 struct video_device_state *state,
 		struct v4l2_streamparm *parm)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
@@ -337,7 +342,9 @@ static int vidioc_g_parm(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_format *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct saa7146_vv *vv = dev->vv_data;
@@ -346,7 +353,9 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format 
 	return 0;
 }
 
-static int vidioc_g_fmt_vbi_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int vidioc_g_fmt_vbi_cap(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_format *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct saa7146_vv *vv = dev->vv_data;
@@ -355,7 +364,9 @@ static int vidioc_g_fmt_vbi_cap(struct file *file, void *fh, struct v4l2_format 
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
+				  struct v4l2_format *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct saa7146_vv *vv = dev->vv_data;
@@ -364,7 +375,7 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *fh, struct v4l2_forma
 	int maxw, maxh;
 	int calc_bpl;
 
-	DEB_EE("V4L2_BUF_TYPE_VIDEO_CAPTURE: dev:%p, fh:%p\n", dev, fh);
+	DEB_EE("V4L2_BUF_TYPE_VIDEO_CAPTURE: dev:%p, fh:%p\n", dev, state);
 
 	fmt = saa7146_format_by_fourcc(dev, f->fmt.pix.pixelformat);
 	if (NULL == fmt)
@@ -417,7 +428,9 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *fh, struct v4l2_forma
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_format *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct saa7146_vv *vv = dev->vv_data;
@@ -428,7 +441,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format 
 		DEB_EE("streaming capture is active\n");
 		return -EBUSY;
 	}
-	err = vidioc_try_fmt_vid_cap(file, fh, f);
+	err = vidioc_try_fmt_vid_cap(file, state, f);
 	if (0 != err)
 		return err;
 	switch (f->fmt.pix.field) {
@@ -445,7 +458,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format 
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *fh, v4l2_std_id *norm)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *norm)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct saa7146_vv *vv = dev->vv_data;
@@ -454,7 +468,8 @@ static int vidioc_g_std(struct file *file, void *fh, v4l2_std_id *norm)
 	return 0;
 }
 
-static int vidioc_s_std(struct file *file, void *fh, v4l2_std_id id)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id id)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct saa7146_vv *vv = dev->vv_data;

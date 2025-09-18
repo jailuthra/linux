@@ -586,7 +586,8 @@ static const struct vb2_ops mtk_mdp_m2m_qops = {
 	.start_streaming = mtk_mdp_m2m_start_streaming,
 };
 
-static int mtk_mdp_m2m_querycap(struct file *file, void *fh,
+static int mtk_mdp_m2m_querycap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_capability *cap)
 {
 	struct mtk_mdp_ctx *ctx = file_to_ctx(file);
@@ -612,19 +613,22 @@ static int mtk_mdp_enum_fmt(struct v4l2_fmtdesc *f, u32 type)
 	return 0;
 }
 
-static int mtk_mdp_m2m_enum_fmt_vid_cap(struct file *file, void *priv,
+static int mtk_mdp_m2m_enum_fmt_vid_cap(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_fmtdesc *f)
 {
 	return mtk_mdp_enum_fmt(f, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 }
 
-static int mtk_mdp_m2m_enum_fmt_vid_out(struct file *file, void *priv,
+static int mtk_mdp_m2m_enum_fmt_vid_out(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_fmtdesc *f)
 {
 	return mtk_mdp_enum_fmt(f, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 }
 
-static int mtk_mdp_m2m_g_fmt_mplane(struct file *file, void *fh,
+static int mtk_mdp_m2m_g_fmt_mplane(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct mtk_mdp_ctx *ctx = file_to_ctx(file);
@@ -663,7 +667,8 @@ static int mtk_mdp_m2m_g_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int mtk_mdp_m2m_try_fmt_mplane(struct file *file, void *fh,
+static int mtk_mdp_m2m_try_fmt_mplane(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_format *f)
 {
 	struct mtk_mdp_ctx *ctx = file_to_ctx(file);
@@ -673,7 +678,8 @@ static int mtk_mdp_m2m_try_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int mtk_mdp_m2m_s_fmt_mplane(struct file *file, void *fh,
+static int mtk_mdp_m2m_s_fmt_mplane(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct mtk_mdp_ctx *ctx = file_to_ctx(file);
@@ -719,7 +725,8 @@ static int mtk_mdp_m2m_s_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int mtk_mdp_m2m_reqbufs(struct file *file, void *fh,
+static int mtk_mdp_m2m_reqbufs(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_requestbuffers *reqbufs)
 {
 	struct mtk_mdp_ctx *ctx = file_to_ctx(file);
@@ -727,7 +734,8 @@ static int mtk_mdp_m2m_reqbufs(struct file *file, void *fh,
 	return v4l2_m2m_reqbufs(file, ctx->m2m_ctx, reqbufs);
 }
 
-static int mtk_mdp_m2m_streamon(struct file *file, void *fh,
+static int mtk_mdp_m2m_streamon(struct file *file,
+				struct video_device_state *state,
 				enum v4l2_buf_type type)
 {
 	struct mtk_mdp_ctx *ctx = file_to_ctx(file);
@@ -765,7 +773,8 @@ static inline bool mtk_mdp_is_target_crop(u32 target)
 	return false;
 }
 
-static int mtk_mdp_m2m_g_selection(struct file *file, void *fh,
+static int mtk_mdp_m2m_g_selection(struct file *file,
+				   struct video_device_state *state,
 				       struct v4l2_selection *s)
 {
 	struct mtk_mdp_ctx *ctx = file_to_ctx(file);
@@ -832,7 +841,8 @@ static int mtk_mdp_check_scaler_ratio(struct mtk_mdp_variant *var, int src_w,
 	return 0;
 }
 
-static int mtk_mdp_m2m_s_selection(struct file *file, void *fh,
+static int mtk_mdp_m2m_s_selection(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_selection *s)
 {
 	struct mtk_mdp_ctx *ctx = file_to_ctx(file);
@@ -1111,9 +1121,9 @@ static int mtk_mdp_m2m_open(struct file *file)
 	default_format.fmt.pix_mp.width = 32;
 	default_format.fmt.pix_mp.height = 32;
 	default_format.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_YUV420M;
-	mtk_mdp_m2m_s_fmt_mplane(file, &ctx->fh, &default_format);
+	mtk_mdp_m2m_s_fmt_mplane(file, ctx->fh.state, &default_format);
 	default_format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	mtk_mdp_m2m_s_fmt_mplane(file, &ctx->fh, &default_format);
+	mtk_mdp_m2m_s_fmt_mplane(file, ctx->fh.state, &default_format);
 
 	mtk_mdp_dbg(0, "%s [%d]", dev_name(&mdp->pdev->dev), ctx->id);
 

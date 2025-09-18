@@ -217,7 +217,8 @@ int saa7164_s_std(struct saa7164_port *port, v4l2_std_id id)
 	return 0;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id id)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id id)
 {
 	struct saa7164_encoder_fh *fh = to_saa7164_encoder_fh(file);
 
@@ -230,14 +231,16 @@ int saa7164_g_std(struct saa7164_port *port, v4l2_std_id *id)
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *id)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *id)
 {
 	struct saa7164_encoder_fh *fh = to_saa7164_encoder_fh(file);
 
 	return saa7164_g_std(fh->port, id);
 }
 
-int saa7164_enum_input(struct file *file, void *priv, struct v4l2_input *i)
+int saa7164_enum_input(struct file *file, struct video_device_state *state,
+		       struct v4l2_input *i)
 {
 	static const char * const inputs[] = {
 		"tuner", "composite", "svideo", "aux",
@@ -275,7 +278,8 @@ int saa7164_g_input(struct saa7164_port *port, unsigned int *i)
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct saa7164_encoder_fh *fh = to_saa7164_encoder_fh(file);
 
@@ -299,14 +303,16 @@ int saa7164_s_input(struct saa7164_port *port, unsigned int i)
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	struct saa7164_encoder_fh *fh = to_saa7164_encoder_fh(file);
 
 	return saa7164_s_input(fh->port, i);
 }
 
-int saa7164_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
+int saa7164_g_tuner(struct file *file, struct video_device_state *state,
+		    struct v4l2_tuner *t)
 {
 	struct saa7164_encoder_fh *fh = to_saa7164_encoder_fh(file);
 	struct saa7164_port *port = fh->port;
@@ -325,7 +331,8 @@ int saa7164_g_tuner(struct file *file, void *priv, struct v4l2_tuner *t)
 	return 0;
 }
 
-int saa7164_s_tuner(struct file *file, void *priv,
+int saa7164_s_tuner(struct file *file,
+		    struct video_device_state *state,
 			   const struct v4l2_tuner *t)
 {
 	if (0 != t->index)
@@ -344,8 +351,8 @@ int saa7164_g_frequency(struct saa7164_port *port, struct v4l2_frequency *f)
 	return 0;
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
-	struct v4l2_frequency *f)
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state, struct v4l2_frequency *f)
 {
 	struct saa7164_encoder_fh *fh = to_saa7164_encoder_fh(file);
 
@@ -397,7 +404,8 @@ int saa7164_s_frequency(struct saa7164_port *port,
 	return 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 			      const struct v4l2_frequency *f)
 {
 	struct saa7164_encoder_fh *fh = to_saa7164_encoder_fh(file);
@@ -480,8 +488,8 @@ static int saa7164_s_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-static int vidioc_querycap(struct file *file, void  *priv,
-	struct v4l2_capability *cap)
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state, struct v4l2_capability *cap)
 {
 	struct saa7164_encoder_fh *fh = to_saa7164_encoder_fh(file);
 	struct saa7164_port *port = fh->port;
@@ -496,8 +504,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
-	struct v4l2_fmtdesc *f)
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state, struct v4l2_fmtdesc *f)
 {
 	if (f->index != 0)
 		return -EINVAL;
@@ -507,7 +515,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct saa7164_encoder_fh *fh = to_saa7164_encoder_fh(file);

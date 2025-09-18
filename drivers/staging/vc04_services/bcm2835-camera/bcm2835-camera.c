@@ -689,7 +689,8 @@ static int set_overlay_params(struct bcm2835_mmal_dev *dev,
 }
 
 /* overlay ioctl */
-static int vidioc_enum_fmt_vid_overlay(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_overlay(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_fmtdesc *f)
 {
 	struct mmal_fmt *fmt;
@@ -704,7 +705,8 @@ static int vidioc_enum_fmt_vid_overlay(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_overlay(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_overlay(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
@@ -714,7 +716,8 @@ static int vidioc_g_fmt_vid_overlay(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_overlay(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_overlay(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_format *f)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
@@ -745,12 +748,13 @@ static int vidioc_try_fmt_vid_overlay(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_overlay(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_overlay(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
 
-	vidioc_try_fmt_vid_overlay(file, priv, f);
+	vidioc_try_fmt_vid_overlay(file, state, f);
 
 	dev->overlay = f->fmt.win;
 	if (dev->component[COMP_PREVIEW]->enabled) {
@@ -761,7 +765,8 @@ static int vidioc_s_fmt_vid_overlay(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_overlay(struct file *file, void *f, unsigned int on)
+static int vidioc_overlay(struct file *file, struct video_device_state *state,
+			  unsigned int on)
 {
 	int ret;
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
@@ -816,7 +821,8 @@ static int vidioc_overlay(struct file *file, void *f, unsigned int on)
 	return vchiq_mmal_port_enable(dev->instance, src, NULL);
 }
 
-static int vidioc_g_fbuf(struct file *file, void *fh,
+static int vidioc_g_fbuf(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_framebuffer *a)
 {
 	/* The video overlay must stay within the framebuffer and can't be
@@ -841,7 +847,8 @@ static int vidioc_g_fbuf(struct file *file, void *fh,
 }
 
 /* input ioctls */
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_input *inp)
 {
 	/* only a single camera input */
@@ -853,13 +860,15 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	if (i)
 		return -EINVAL;
@@ -868,7 +877,8 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 }
 
 /* capture ioctls */
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
@@ -884,7 +894,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	struct mmal_fmt *fmt;
@@ -899,7 +910,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
@@ -924,7 +936,8 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
@@ -1276,7 +1289,8 @@ static int mmal_setup_components(struct bcm2835_mmal_dev *dev,
 	return ret;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	int ret;
@@ -1284,7 +1298,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	struct mmal_fmt *mfmt;
 
 	/* try the format to set valid parameters */
-	ret = vidioc_try_fmt_vid_cap(file, priv, f);
+	ret = vidioc_try_fmt_vid_cap(file, state, f);
 	if (ret) {
 		v4l2_err(&dev->v4l2_dev,
 			 "vid_cap - vidioc_try_fmt_vid_cap failed\n");
@@ -1320,7 +1334,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	return ret;
 }
 
-static int vidioc_enum_framesizes(struct file *file, void *fh,
+static int vidioc_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
@@ -1345,7 +1360,8 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,
 }
 
 /* timeperframe is arbitrary and continuous */
-static int vidioc_enum_frameintervals(struct file *file, void *priv,
+static int vidioc_enum_frameintervals(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_frmivalenum *fival)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
@@ -1375,7 +1391,8 @@ static int vidioc_enum_frameintervals(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_parm(struct file *file, void *priv,
+static int vidioc_g_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *parm)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);
@@ -1389,7 +1406,8 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_parm(struct file *file, void *priv,
+static int vidioc_s_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *parm)
 {
 	struct bcm2835_mmal_dev *dev = video_drvdata(file);

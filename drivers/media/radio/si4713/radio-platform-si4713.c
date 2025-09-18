@@ -55,7 +55,8 @@ static const struct v4l2_file_operations radio_si4713_fops = {
 /* Video4Linux Interface */
 
 /* radio_si4713_querycap - query device capabilities */
-static int radio_si4713_querycap(struct file *file, void *priv,
+static int radio_si4713_querycap(struct file *file,
+				 struct video_device_state *state,
 					struct v4l2_capability *capability)
 {
 	strscpy(capability->driver, "radio-si4713", sizeof(capability->driver));
@@ -75,35 +76,40 @@ static inline struct v4l2_device *get_v4l2_dev(struct file *file)
 	return &((struct radio_si4713_device *)video_drvdata(file))->v4l2_dev;
 }
 
-static int radio_si4713_g_modulator(struct file *file, void *priv,
+static int radio_si4713_g_modulator(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_modulator *vm)
 {
 	return v4l2_device_call_until_err(get_v4l2_dev(file), 0, tuner,
 					  g_modulator, vm);
 }
 
-static int radio_si4713_s_modulator(struct file *file, void *priv,
+static int radio_si4713_s_modulator(struct file *file,
+				    struct video_device_state *state,
 				    const struct v4l2_modulator *vm)
 {
 	return v4l2_device_call_until_err(get_v4l2_dev(file), 0, tuner,
 					  s_modulator, vm);
 }
 
-static int radio_si4713_g_frequency(struct file *file, void *priv,
+static int radio_si4713_g_frequency(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_frequency *vf)
 {
 	return v4l2_device_call_until_err(get_v4l2_dev(file), 0, tuner,
 					  g_frequency, vf);
 }
 
-static int radio_si4713_s_frequency(struct file *file, void *priv,
+static int radio_si4713_s_frequency(struct file *file,
+				    struct video_device_state *state,
 				    const struct v4l2_frequency *vf)
 {
 	return v4l2_device_call_until_err(get_v4l2_dev(file), 0, tuner,
 					  s_frequency, vf);
 }
 
-static long radio_si4713_default(struct file *file, void *priv,
+static long radio_si4713_default(struct file *file,
+				 struct video_device_state *state,
 				 bool valid_prio, unsigned int cmd, void *arg)
 {
 	return v4l2_device_call_until_err(get_v4l2_dev(file), 0, core,

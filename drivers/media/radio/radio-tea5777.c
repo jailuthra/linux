@@ -251,7 +251,8 @@ static int radio_tea5777_update_read_reg(struct radio_tea5777 *tea, int wait)
  * Linux Video interface
  */
 
-static int vidioc_querycap(struct file *file, void  *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_capability *v)
 {
 	struct radio_tea5777 *tea = video_drvdata(file);
@@ -263,7 +264,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_enum_freq_bands(struct file *file, void *priv,
+static int vidioc_enum_freq_bands(struct file *file,
+				  struct video_device_state *state,
 					 struct v4l2_frequency_band *band)
 {
 	struct radio_tea5777 *tea = video_drvdata(file);
@@ -276,7 +278,8 @@ static int vidioc_enum_freq_bands(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 					struct v4l2_tuner *v)
 {
 	struct radio_tea5777 *tea = video_drvdata(file);
@@ -318,7 +321,8 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 					const struct v4l2_tuner *v)
 {
 	struct radio_tea5777 *tea = video_drvdata(file);
@@ -337,7 +341,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 					struct v4l2_frequency *f)
 {
 	struct radio_tea5777 *tea = video_drvdata(file);
@@ -349,7 +354,8 @@ static int vidioc_g_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 					const struct v4l2_frequency *f)
 {
 	struct radio_tea5777 *tea = video_drvdata(file);
@@ -366,7 +372,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 	return radio_tea5777_set_freq(tea);
 }
 
-static int vidioc_s_hw_freq_seek(struct file *file, void *fh,
+static int vidioc_s_hw_freq_seek(struct file *file,
+				 struct video_device_state *state,
 					const struct v4l2_hw_freq_seek *a)
 {
 	struct radio_tea5777 *tea = video_drvdata(file);

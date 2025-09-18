@@ -124,7 +124,8 @@ const struct vb2_ops vivid_meta_cap_qops = {
 	.buf_request_complete	= meta_cap_buf_request_complete,
 };
 
-int vidioc_enum_fmt_meta_cap(struct file *file, void  *priv,
+int vidioc_enum_fmt_meta_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_fmtdesc *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -140,7 +141,8 @@ int vidioc_enum_fmt_meta_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-int vidioc_g_fmt_meta_cap(struct file *file, void *priv,
+int vidioc_g_fmt_meta_cap(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);

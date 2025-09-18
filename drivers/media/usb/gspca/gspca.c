@@ -967,7 +967,8 @@ static int gspca_get_mode(struct gspca_dev *gspca_dev,
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int vidioc_g_chip_info(struct file *file, void *priv,
+static int vidioc_g_chip_info(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_dbg_chip_info *chip)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -978,7 +979,8 @@ static int vidioc_g_chip_info(struct file *file, void *priv,
 	return chip->match.addr ? -EINVAL : 0;
 }
 
-static int vidioc_g_register(struct file *file, void *priv,
+static int vidioc_g_register(struct file *file,
+			     struct video_device_state *state,
 		struct v4l2_dbg_register *reg)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -987,7 +989,8 @@ static int vidioc_g_register(struct file *file, void *priv,
 	return gspca_dev->sd_desc->get_register(gspca_dev, reg);
 }
 
-static int vidioc_s_register(struct file *file, void *priv,
+static int vidioc_s_register(struct file *file,
+			     struct video_device_state *state,
 		const struct v4l2_dbg_register *reg)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -997,7 +1000,8 @@ static int vidioc_s_register(struct file *file, void *priv,
 }
 #endif
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				struct v4l2_fmtdesc *fmtdesc)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -1029,7 +1033,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *fmt)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -1075,7 +1080,8 @@ static int try_fmt_vid_cap(struct gspca_dev *gspca_dev,
 	return mode;			/* used when s_fmt */
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *fmt)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -1088,7 +1094,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *fmt)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -1113,7 +1120,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_framesizes(struct file *file, void *priv,
+static int vidioc_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -1142,7 +1150,8 @@ static int vidioc_enum_framesizes(struct file *file, void *priv,
 	return -EINVAL;
 }
 
-static int vidioc_enum_frameintervals(struct file *filp, void *priv,
+static int vidioc_enum_frameintervals(struct file *filp,
+				      struct video_device_state *state,
 				      struct v4l2_frmivalenum *fival)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(filp);
@@ -1186,7 +1195,8 @@ static void gspca_release(struct v4l2_device *v4l2_device)
 	kfree(gspca_dev);
 }
 
-static int vidioc_querycap(struct file *file, void  *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -1207,7 +1217,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 				struct v4l2_input *input)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -1221,20 +1232,23 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	if (i > 0)
 		return -EINVAL;
 	return 0;
 }
 
-static int vidioc_g_jpegcomp(struct file *file, void *priv,
+static int vidioc_g_jpegcomp(struct file *file,
+			     struct video_device_state *state,
 			struct v4l2_jpegcompression *jpegcomp)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -1243,7 +1257,8 @@ static int vidioc_g_jpegcomp(struct file *file, void *priv,
 	return gspca_dev->sd_desc->get_jcomp(gspca_dev, jpegcomp);
 }
 
-static int vidioc_s_jpegcomp(struct file *file, void *priv,
+static int vidioc_s_jpegcomp(struct file *file,
+			     struct video_device_state *state,
 			const struct v4l2_jpegcompression *jpegcomp)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(file);
@@ -1252,7 +1267,8 @@ static int vidioc_s_jpegcomp(struct file *file, void *priv,
 	return gspca_dev->sd_desc->set_jcomp(gspca_dev, jpegcomp);
 }
 
-static int vidioc_g_parm(struct file *filp, void *priv,
+static int vidioc_g_parm(struct file *filp,
+			 struct video_device_state *state,
 			struct v4l2_streamparm *parm)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(filp);
@@ -1268,7 +1284,8 @@ static int vidioc_g_parm(struct file *filp, void *priv,
 	return gspca_dev->usb_err;
 }
 
-static int vidioc_s_parm(struct file *filp, void *priv,
+static int vidioc_s_parm(struct file *filp,
+			 struct video_device_state *state,
 			struct v4l2_streamparm *parm)
 {
 	struct gspca_dev *gspca_dev = video_drvdata(filp);

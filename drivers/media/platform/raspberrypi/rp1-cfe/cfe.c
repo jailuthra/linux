@@ -1324,7 +1324,8 @@ static const struct vb2_ops cfe_video_qops = {
  * v4l2 ioctl ops
  */
 
-static int cfe_querycap(struct file *file, void *priv,
+static int cfe_querycap(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, CFE_MODULE_NAME, sizeof(cap->driver));
@@ -1336,7 +1337,8 @@ static int cfe_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cfe_enum_fmt_vid_cap(struct file *file, void *priv,
+static int cfe_enum_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	struct cfe_node *node = video_drvdata(file);
@@ -1371,7 +1373,8 @@ static int cfe_enum_fmt_vid_cap(struct file *file, void *priv,
 	return -EINVAL;
 }
 
-static int cfe_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int cfe_g_fmt(struct file *file, struct video_device_state *state,
+		     struct v4l2_format *f)
 {
 	struct cfe_node *node = video_drvdata(file);
 
@@ -1417,7 +1420,8 @@ static int cfe_validate_fmt_vid_cap(struct cfe_node *node,
 	return 0;
 }
 
-static int cfe_s_fmt_vid_cap(struct file *file, void *priv,
+static int cfe_s_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct cfe_node *node = video_drvdata(file);
@@ -1441,7 +1445,8 @@ static int cfe_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cfe_try_fmt_vid_cap(struct file *file, void *priv,
+static int cfe_try_fmt_vid_cap(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct cfe_node *node = video_drvdata(file);
@@ -1452,7 +1457,8 @@ static int cfe_try_fmt_vid_cap(struct file *file, void *priv,
 	return cfe_validate_fmt_vid_cap(node, f);
 }
 
-static int cfe_enum_fmt_meta(struct file *file, void *priv,
+static int cfe_enum_fmt_meta(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_fmtdesc *f)
 {
 	struct cfe_node *node = video_drvdata(file);
@@ -1547,7 +1553,8 @@ static int cfe_validate_fmt_meta(struct cfe_node *node, struct v4l2_format *f)
 	}
 }
 
-static int cfe_g_fmt_meta(struct file *file, void *priv, struct v4l2_format *f)
+static int cfe_g_fmt_meta(struct file *file, struct video_device_state *state,
+			  struct v4l2_format *f)
 {
 	struct cfe_node *node = video_drvdata(file);
 	struct cfe_device *cfe = node->cfe;
@@ -1562,7 +1569,8 @@ static int cfe_g_fmt_meta(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int cfe_s_fmt_meta(struct file *file, void *priv, struct v4l2_format *f)
+static int cfe_s_fmt_meta(struct file *file, struct video_device_state *state,
+			  struct v4l2_format *f)
 {
 	struct cfe_node *node = video_drvdata(file);
 	struct cfe_device *cfe = node->cfe;
@@ -1589,7 +1597,8 @@ static int cfe_s_fmt_meta(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int cfe_try_fmt_meta(struct file *file, void *priv,
+static int cfe_try_fmt_meta(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct cfe_node *node = video_drvdata(file);
@@ -1599,7 +1608,8 @@ static int cfe_try_fmt_meta(struct file *file, void *priv,
 	return cfe_validate_fmt_meta(node, f);
 }
 
-static int cfe_enum_framesizes(struct file *file, void *priv,
+static int cfe_enum_framesizes(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_frmsizeenum *fsize)
 {
 	struct cfe_node *node = video_drvdata(file);
@@ -1631,7 +1641,8 @@ static int cfe_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int cfe_vb2_ioctl_reqbufs(struct file *file, void *priv,
+static int cfe_vb2_ioctl_reqbufs(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_requestbuffers *p)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -1651,10 +1662,11 @@ static int cfe_vb2_ioctl_reqbufs(struct file *file, void *priv,
 	if (ret)
 		return ret;
 
-	return vb2_ioctl_reqbufs(file, priv, p);
+	return vb2_ioctl_reqbufs(file, state, p);
 }
 
-static int cfe_vb2_ioctl_create_bufs(struct file *file, void *priv,
+static int cfe_vb2_ioctl_create_bufs(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_create_buffers *p)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -1674,7 +1686,7 @@ static int cfe_vb2_ioctl_create_bufs(struct file *file, void *priv,
 	if (ret)
 		return ret;
 
-	return vb2_ioctl_create_bufs(file, priv, p);
+	return vb2_ioctl_create_bufs(file, state, p);
 }
 
 static int cfe_subscribe_event(struct v4l2_fh *fh,

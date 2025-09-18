@@ -602,7 +602,8 @@ start_fail:
 	return ret;
 }
 
-static int usbtv_querycap(struct file *file, void *priv,
+static int usbtv_querycap(struct file *file,
+			  struct video_device_state *state,
 				struct v4l2_capability *cap)
 {
 	struct usbtv *dev = video_drvdata(file);
@@ -613,7 +614,8 @@ static int usbtv_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int usbtv_enum_input(struct file *file, void *priv,
+static int usbtv_enum_input(struct file *file,
+			    struct video_device_state *state,
 					struct v4l2_input *i)
 {
 	struct usbtv *dev = video_drvdata(file);
@@ -634,7 +636,8 @@ static int usbtv_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int usbtv_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int usbtv_enum_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 					struct v4l2_fmtdesc *f)
 {
 	if (f->index > 0)
@@ -644,7 +647,8 @@ static int usbtv_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int usbtv_fmt_vid_cap(struct file *file, void *priv,
+static int usbtv_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct usbtv *usbtv = video_drvdata(file);
@@ -660,14 +664,16 @@ static int usbtv_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int usbtv_g_std(struct file *file, void *priv, v4l2_std_id *norm)
+static int usbtv_g_std(struct file *file, struct video_device_state *state,
+		       v4l2_std_id *norm)
 {
 	struct usbtv *usbtv = video_drvdata(file);
 	*norm = usbtv->norm;
 	return 0;
 }
 
-static int usbtv_s_std(struct file *file, void *priv, v4l2_std_id norm)
+static int usbtv_s_std(struct file *file, struct video_device_state *state,
+		       v4l2_std_id norm)
 {
 	int ret = -EINVAL;
 	struct usbtv *usbtv = video_drvdata(file);
@@ -678,14 +684,16 @@ static int usbtv_s_std(struct file *file, void *priv, v4l2_std_id norm)
 	return ret;
 }
 
-static int usbtv_g_input(struct file *file, void *priv, unsigned int *i)
+static int usbtv_g_input(struct file *file, struct video_device_state *state,
+			 unsigned int *i)
 {
 	struct usbtv *usbtv = video_drvdata(file);
 	*i = usbtv->input;
 	return 0;
 }
 
-static int usbtv_s_input(struct file *file, void *priv, unsigned int i)
+static int usbtv_s_input(struct file *file, struct video_device_state *state,
+			 unsigned int i)
 {
 	struct usbtv *usbtv = video_drvdata(file);
 

@@ -252,7 +252,8 @@ static void usb_amradio_disconnect(struct usb_interface *intf)
 }
 
 /* vidioc_querycap - query device capabilities */
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_capability *v)
 {
 	struct amradio_device *radio = video_drvdata(file);
@@ -264,7 +265,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 }
 
 /* vidioc_g_tuner - get tuner attributes */
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 				struct v4l2_tuner *v)
 {
 	struct amradio_device *radio = video_drvdata(file);
@@ -292,7 +294,8 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 }
 
 /* vidioc_s_tuner - set tuner attributes */
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 				const struct v4l2_tuner *v)
 {
 	struct amradio_device *radio = video_drvdata(file);
@@ -310,7 +313,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 }
 
 /* vidioc_s_frequency - set tuner radio frequency */
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 				const struct v4l2_frequency *f)
 {
 	struct amradio_device *radio = video_drvdata(file);
@@ -321,7 +325,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 }
 
 /* vidioc_g_frequency - get tuner radio frequency */
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_frequency *f)
 {
 	struct amradio_device *radio = video_drvdata(file);
@@ -334,7 +339,8 @@ static int vidioc_g_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_hw_freq_seek(struct file *file, void *priv,
+static int vidioc_s_hw_freq_seek(struct file *file,
+				 struct video_device_state *state,
 		const struct v4l2_hw_freq_seek *seek)
 {
 	static u8 buf[8] = {

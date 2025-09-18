@@ -142,7 +142,8 @@ static int venc_v4l2_to_hfi(int id, int value)
 }
 
 static int
-venc_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+venc_querycap(struct file *file, struct video_device_state *state,
+	      struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "qcom-venus", sizeof(cap->driver));
 	strscpy(cap->card, "Qualcomm Venus video encoder", sizeof(cap->card));
@@ -151,7 +152,8 @@ venc_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
 	return 0;
 }
 
-static int venc_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int venc_enum_fmt(struct file *file, struct video_device_state *state,
+			 struct v4l2_fmtdesc *f)
 {
 	struct venus_inst *inst = to_inst(file);
 	const struct venus_format *fmt;
@@ -221,7 +223,8 @@ venc_try_fmt_common(struct venus_inst *inst, struct v4l2_format *f)
 	return fmt;
 }
 
-static int venc_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int venc_try_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct venus_inst *inst = to_inst(file);
 
@@ -230,7 +233,8 @@ static int venc_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int venc_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int venc_s_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct venus_inst *inst = to_inst(file);
 	struct v4l2_pix_format_mplane *pixmp = &f->fmt.pix_mp;
@@ -299,7 +303,8 @@ static int venc_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int venc_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int venc_g_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pixmp = &f->fmt.pix_mp;
 	struct venus_inst *inst = to_inst(file);
@@ -332,7 +337,8 @@ static int venc_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
 }
 
 static int
-venc_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
+venc_g_selection(struct file *file, struct video_device_state *state,
+		 struct v4l2_selection *s)
 {
 	struct venus_inst *inst = to_inst(file);
 
@@ -360,7 +366,8 @@ venc_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
 }
 
 static int
-venc_s_selection(struct file *file, void *fh, struct v4l2_selection *s)
+venc_s_selection(struct file *file, struct video_device_state *state,
+		 struct v4l2_selection *s)
 {
 	struct venus_inst *inst = to_inst(file);
 
@@ -388,7 +395,8 @@ venc_s_selection(struct file *file, void *fh, struct v4l2_selection *s)
 	return 0;
 }
 
-static int venc_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int venc_s_parm(struct file *file, struct video_device_state *state,
+		       struct v4l2_streamparm *a)
 {
 	struct venus_inst *inst = to_inst(file);
 	struct v4l2_outputparm *out = &a->parm.output;
@@ -421,7 +429,8 @@ static int venc_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
 	return 0;
 }
 
-static int venc_g_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int venc_g_parm(struct file *file, struct video_device_state *state,
+		       struct v4l2_streamparm *a)
 {
 	struct venus_inst *inst = to_inst(file);
 
@@ -435,7 +444,8 @@ static int venc_g_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
 	return 0;
 }
 
-static int venc_enum_framesizes(struct file *file, void *fh,
+static int venc_enum_framesizes(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_frmsizeenum *fsize)
 {
 	struct venus_inst *inst = to_inst(file);
@@ -465,7 +475,8 @@ static int venc_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int venc_enum_frameintervals(struct file *file, void *fh,
+static int venc_enum_frameintervals(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_frmivalenum *fival)
 {
 	struct venus_inst *inst = to_inst(file);
@@ -524,13 +535,14 @@ static int venc_subscribe_event(struct v4l2_fh *fh,
 }
 
 static int
-venc_encoder_cmd(struct file *file, void *fh, struct v4l2_encoder_cmd *cmd)
+venc_encoder_cmd(struct file *file, struct video_device_state *state,
+		 struct v4l2_encoder_cmd *cmd)
 {
 	struct venus_inst *inst = to_inst(file);
 	struct hfi_frame_data fdata = {0};
 	int ret = 0;
 
-	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, fh, cmd);
+	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, state, cmd);
 	if (ret)
 		return ret;
 

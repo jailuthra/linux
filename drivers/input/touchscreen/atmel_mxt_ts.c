@@ -2547,7 +2547,8 @@ static const struct vb2_queue mxt_queue = {
 	.min_queued_buffers = 1,
 };
 
-static int mxt_vidioc_querycap(struct file *file, void *priv,
+static int mxt_vidioc_querycap(struct file *file,
+			       struct video_device_state *state,
 				 struct v4l2_capability *cap)
 {
 	struct mxt_data *data = video_drvdata(file);
@@ -2559,7 +2560,8 @@ static int mxt_vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int mxt_vidioc_enum_input(struct file *file, void *priv,
+static int mxt_vidioc_enum_input(struct file *file,
+				 struct video_device_state *state,
 				   struct v4l2_input *i)
 {
 	if (i->index >= MXT_V4L_INPUT_MAX)
@@ -2604,12 +2606,16 @@ static int mxt_set_input(struct mxt_data *data, unsigned int i)
 	return 0;
 }
 
-static int mxt_vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int mxt_vidioc_s_input(struct file *file,
+			      struct video_device_state *state,
+			      unsigned int i)
 {
 	return mxt_set_input(video_drvdata(file), i);
 }
 
-static int mxt_vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int mxt_vidioc_g_input(struct file *file,
+			      struct video_device_state *state,
+			      unsigned int *i)
 {
 	struct mxt_data *data = video_drvdata(file);
 
@@ -2618,7 +2624,8 @@ static int mxt_vidioc_g_input(struct file *file, void *priv, unsigned int *i)
 	return 0;
 }
 
-static int mxt_vidioc_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int mxt_vidioc_fmt(struct file *file, struct video_device_state *state,
+			  struct v4l2_format *f)
 {
 	struct mxt_data *data = video_drvdata(file);
 
@@ -2628,7 +2635,8 @@ static int mxt_vidioc_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int mxt_vidioc_enum_fmt(struct file *file, void *priv,
+static int mxt_vidioc_enum_fmt(struct file *file,
+			       struct video_device_state *state,
 				 struct v4l2_fmtdesc *fmt)
 {
 	if (fmt->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2650,7 +2658,8 @@ static int mxt_vidioc_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int mxt_vidioc_g_parm(struct file *file, void *fh,
+static int mxt_vidioc_g_parm(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_streamparm *a)
 {
 	if (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
