@@ -613,6 +613,24 @@ __video_device_state_alloc(struct video_device *vdev,
 void __video_device_state_free(struct video_device_state *state);
 
 /**
+ * video_device_state_get_fmt - get current v4l2_format.
+ *
+ * @state: pointer to struct video_device_state
+ */
+struct v4l2_format *
+video_device_state_get_fmt(struct video_device_state *state);
+
+/**
+ * video_device_g_fmt - fill v4l2_format from the state.
+ *
+ * @file: pointer to struct file
+ * @state: pointer to struct video_device_state
+ * @format: pointer to struct v4l2_format
+ */
+int video_device_g_fmt(struct file *file, void *priv,
+		       struct v4l2_format *format);
+
+/**
  * v4l2_debugfs_root - returns the dentry of the top-level "v4l2" debugfs dir
  *
  * If this directory does not yet exist, then it will be created.

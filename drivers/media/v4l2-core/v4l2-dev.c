@@ -199,6 +199,29 @@ void __video_device_state_free(struct video_device_state *state)
 }
 EXPORT_SYMBOL_GPL(__video_device_state_free);
 
+struct v4l2_format *video_device_state_get_fmt(struct video_device_state *state)
+{
+	if (WARN_ON_ONCE(!state))
+		return NULL;
+
+	return &state->fmt;
+}
+EXPORT_SYMBOL_GPL(video_device_state_get_fmt);
+
+int video_device_g_fmt(struct file *file, void *priv, struct v4l2_format *fmt)
+{
+	struct video_device_state *state = priv;
+	struct v4l2_format *vfmt = video_device_state_get_fmt(state);
+
+	if (!vfmt)
+		return -EINVAL;
+
+	*fmt = *vfmt;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(video_device_g_fmt);
+
 static inline void video_get(struct video_device *vdev)
 {
 	get_device(&vdev->dev);
