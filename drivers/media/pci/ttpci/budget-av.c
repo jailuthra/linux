@@ -1398,7 +1398,9 @@ static struct v4l2_input knc1_inputs[KNC1_INPUTS] = {
 		V4L2_STD_PAL_BG | V4L2_STD_NTSC_M, 0, V4L2_IN_CAP_STD },
 };
 
-static int vidioc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_input *i)
 {
 	dprintk(1, "VIDIOC_ENUMINPUT %d\n", i->index);
 	if (i->index >= KNC1_INPUTS)
@@ -1407,7 +1409,8 @@ static int vidioc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *fh, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct budget_av *budget_av = dev->ext_priv;
@@ -1418,7 +1421,8 @@ static int vidioc_g_input(struct file *file, void *fh, unsigned int *i)
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *fh, unsigned int input)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int input)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct budget_av *budget_av = dev->ext_priv;

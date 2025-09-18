@@ -1114,7 +1114,8 @@ static void mxc_isi_video_ctrls_delete(struct mxc_isi_video *video)
  * V4L2 ioctls
  */
 
-static int mxc_isi_video_querycap(struct file *file, void *priv,
+static int mxc_isi_video_querycap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, MXC_ISI_DRIVER_NAME, sizeof(cap->driver));
@@ -1123,7 +1124,8 @@ static int mxc_isi_video_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int mxc_isi_video_enum_fmt(struct file *file, void *priv,
+static int mxc_isi_video_enum_fmt(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_fmtdesc *f)
 {
 	const struct mxc_isi_format_info *fmt;
@@ -1163,7 +1165,8 @@ static int mxc_isi_video_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int mxc_isi_video_g_fmt(struct file *file, void *fh,
+static int mxc_isi_video_g_fmt(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct mxc_isi_video *video = video_drvdata(file);
@@ -1173,7 +1176,8 @@ static int mxc_isi_video_g_fmt(struct file *file, void *fh,
 	return 0;
 }
 
-static int mxc_isi_video_try_fmt(struct file *file, void *fh,
+static int mxc_isi_video_try_fmt(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct mxc_isi_video *video = video_drvdata(file);
@@ -1182,7 +1186,8 @@ static int mxc_isi_video_try_fmt(struct file *file, void *fh,
 	return 0;
 }
 
-static int mxc_isi_video_s_fmt(struct file *file, void *priv,
+static int mxc_isi_video_s_fmt(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct mxc_isi_video *video = video_drvdata(file);
@@ -1197,7 +1202,8 @@ static int mxc_isi_video_s_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int mxc_isi_video_enum_framesizes(struct file *file, void *priv,
+static int mxc_isi_video_enum_framesizes(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_frmsizeenum *fsize)
 {
 	struct mxc_isi_video *video = video_drvdata(file);

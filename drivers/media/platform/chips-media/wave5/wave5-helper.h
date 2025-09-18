@@ -21,7 +21,8 @@ int wave5_vpu_release_device(struct file *filp,
 int wave5_vpu_queue_init(void *priv, struct vb2_queue *src_vq, struct vb2_queue *dst_vq,
 			 const struct vb2_ops *ops);
 int wave5_vpu_subscribe_event(struct v4l2_fh *fh, const struct v4l2_event_subscription *sub);
-int wave5_vpu_g_fmt_out(struct file *file, void *fh, struct v4l2_format *f);
+int wave5_vpu_g_fmt_out(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f);
 const struct vpu_format *wave5_find_vpu_fmt(unsigned int v4l2_pix_fmt,
 					    const struct vpu_format fmt_list[MAX_FMTS]);
 const struct vpu_format *wave5_find_vpu_fmt_by_idx(unsigned int idx,

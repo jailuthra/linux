@@ -212,7 +212,8 @@ uvc_send_response(struct uvc_device *uvc, struct uvc_request_data *data)
  */
 
 static int
-uvc_v4l2_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+uvc_v4l2_querycap(struct file *file, struct video_device_state *state,
+		  struct v4l2_capability *cap)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -226,7 +227,8 @@ uvc_v4l2_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
 }
 
 static int
-uvc_v4l2_get_format(struct file *file, void *fh, struct v4l2_format *fmt)
+uvc_v4l2_get_format(struct file *file, struct video_device_state *state,
+		    struct v4l2_format *fmt)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -245,7 +247,8 @@ uvc_v4l2_get_format(struct file *file, void *fh, struct v4l2_format *fmt)
 }
 
 static int
-uvc_v4l2_try_format(struct file *file, void *fh, struct v4l2_format *fmt)
+uvc_v4l2_try_format(struct file *file, struct video_device_state *state,
+		    struct v4l2_format *fmt)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -303,14 +306,15 @@ uvc_v4l2_try_format(struct file *file, void *fh, struct v4l2_format *fmt)
 }
 
 static int
-uvc_v4l2_set_format(struct file *file, void *fh, struct v4l2_format *fmt)
+uvc_v4l2_set_format(struct file *file, struct video_device_state *state,
+		    struct v4l2_format *fmt)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
 	struct uvc_video *video = &uvc->video;
 	int ret;
 
-	ret = uvc_v4l2_try_format(file, fh, fmt);
+	ret = uvc_v4l2_try_format(file, state, fmt);
 	if (ret)
 		return ret;
 
@@ -323,7 +327,8 @@ uvc_v4l2_set_format(struct file *file, void *fh, struct v4l2_format *fmt)
 	return ret;
 }
 
-static int uvc_v4l2_g_parm(struct file *file, void *fh,
+static int uvc_v4l2_g_parm(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_streamparm *parm)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -350,7 +355,8 @@ static int uvc_v4l2_g_parm(struct file *file, void *fh,
 	return 0;
 }
 
-static int uvc_v4l2_s_parm(struct file *file, void *fh,
+static int uvc_v4l2_s_parm(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_streamparm *parm)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -374,7 +380,8 @@ static int uvc_v4l2_s_parm(struct file *file, void *fh,
 }
 
 static int
-uvc_v4l2_enum_frameintervals(struct file *file, void *fh,
+uvc_v4l2_enum_frameintervals(struct file *file,
+			     struct video_device_state *state,
 		struct v4l2_frmivalenum *fival)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -413,7 +420,8 @@ uvc_v4l2_enum_frameintervals(struct file *file, void *fh,
 }
 
 static int
-uvc_v4l2_enum_framesizes(struct file *file, void *fh,
+uvc_v4l2_enum_framesizes(struct file *file,
+			 struct video_device_state *state,
 		struct v4l2_frmsizeenum *fsize)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -440,7 +448,8 @@ uvc_v4l2_enum_framesizes(struct file *file, void *fh,
 }
 
 static int
-uvc_v4l2_enum_format(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+uvc_v4l2_enum_format(struct file *file, struct video_device_state *state,
+		     struct v4l2_fmtdesc *f)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -464,7 +473,8 @@ uvc_v4l2_enum_format(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 }
 
 static int
-uvc_v4l2_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffers *b)
+uvc_v4l2_reqbufs(struct file *file, struct video_device_state *state,
+		 struct v4l2_requestbuffers *b)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -477,7 +487,8 @@ uvc_v4l2_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffers *b)
 }
 
 static int
-uvc_v4l2_querybuf(struct file *file, void *fh, struct v4l2_buffer *b)
+uvc_v4l2_querybuf(struct file *file, struct video_device_state *state,
+		  struct v4l2_buffer *b)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -487,7 +498,8 @@ uvc_v4l2_querybuf(struct file *file, void *fh, struct v4l2_buffer *b)
 }
 
 static int
-uvc_v4l2_qbuf(struct file *file, void *fh, struct v4l2_buffer *b)
+uvc_v4l2_qbuf(struct file *file, struct video_device_state *state,
+	      struct v4l2_buffer *b)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -505,7 +517,8 @@ uvc_v4l2_qbuf(struct file *file, void *fh, struct v4l2_buffer *b)
 }
 
 static int
-uvc_v4l2_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b)
+uvc_v4l2_dqbuf(struct file *file, struct video_device_state *state,
+	       struct v4l2_buffer *b)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -515,7 +528,8 @@ uvc_v4l2_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b)
 }
 
 static int
-uvc_v4l2_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
+uvc_v4l2_streamon(struct file *file, struct video_device_state *state,
+		  enum v4l2_buf_type type)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -541,7 +555,8 @@ uvc_v4l2_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
 }
 
 static int
-uvc_v4l2_streamoff(struct file *file, void *fh, enum v4l2_buf_type type)
+uvc_v4l2_streamoff(struct file *file, struct video_device_state *state,
+		   enum v4l2_buf_type type)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct uvc_device *uvc = video_get_drvdata(vdev);
@@ -620,7 +635,8 @@ uvc_v4l2_unsubscribe_event(struct v4l2_fh *fh,
 }
 
 static long
-uvc_v4l2_ioctl_default(struct file *file, void *fh, bool valid_prio,
+uvc_v4l2_ioctl_default(struct file *file, struct video_device_state *state,
+		       bool valid_prio,
 		       unsigned int cmd, void *arg)
 {
 	struct video_device *vdev = video_devdata(file);

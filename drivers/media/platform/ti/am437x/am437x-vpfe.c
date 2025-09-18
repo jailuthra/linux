@@ -1268,7 +1268,8 @@ static inline void vpfe_attach_irq(struct vpfe_device *vpfe)
 	vpfe_reg_write(&vpfe->ccdc, intr, VPFE_IRQ_EN_SET);
 }
 
-static int vpfe_querycap(struct file *file, void  *priv,
+static int vpfe_querycap(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, VPFE_MODULE_NAME, sizeof(cap->driver));
@@ -1350,7 +1351,8 @@ static int vpfe_calc_format_size(struct vpfe_device *vpfe,
 	return 0;
 }
 
-static int vpfe_g_fmt(struct file *file, void *priv,
+static int vpfe_g_fmt(struct file *file,
+		      struct video_device_state *state,
 		      struct v4l2_format *fmt)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
@@ -1360,7 +1362,8 @@ static int vpfe_g_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int vpfe_enum_fmt(struct file *file, void  *priv,
+static int vpfe_enum_fmt(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_fmtdesc *f)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
@@ -1384,7 +1387,8 @@ static int vpfe_enum_fmt(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vpfe_try_fmt(struct file *file, void *priv,
+static int vpfe_try_fmt(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
@@ -1444,7 +1448,8 @@ static int vpfe_try_fmt(struct file *file, void *priv,
 	return vpfe_calc_format_size(vpfe, fmt, f);
 }
 
-static int vpfe_s_fmt(struct file *file, void *priv,
+static int vpfe_s_fmt(struct file *file,
+		      struct video_device_state *state,
 		      struct v4l2_format *fmt)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
@@ -1458,7 +1463,7 @@ static int vpfe_s_fmt(struct file *file, void *priv,
 		return -EBUSY;
 	}
 
-	ret = vpfe_try_fmt(file, priv, fmt);
+	ret = vpfe_try_fmt(file, state, fmt);
 	if (ret < 0)
 		return ret;
 
@@ -1493,7 +1498,8 @@ static int vpfe_s_fmt(struct file *file, void *priv,
 	return vpfe_config_ccdc_image_format(vpfe);
 }
 
-static int vpfe_enum_size(struct file *file, void  *priv,
+static int vpfe_enum_size(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_frmsizeenum *fsize)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
@@ -1589,7 +1595,8 @@ static int vpfe_get_app_input_index(struct vpfe_device *vpfe,
 	return -EINVAL;
 }
 
-static int vpfe_enum_input(struct file *file, void *priv,
+static int vpfe_enum_input(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_input *inp)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
@@ -1608,7 +1615,8 @@ static int vpfe_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int vpfe_g_input(struct file *file, void *priv, unsigned int *index)
+static int vpfe_g_input(struct file *file, struct video_device_state *state,
+			unsigned int *index)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
 
@@ -1675,14 +1683,16 @@ get_out:
 	return ret;
 }
 
-static int vpfe_s_input(struct file *file, void *priv, unsigned int index)
+static int vpfe_s_input(struct file *file, struct video_device_state *state,
+			unsigned int index)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
 
 	return vpfe_set_input(vpfe, index);
 }
 
-static int vpfe_querystd(struct file *file, void *priv, v4l2_std_id *std_id)
+static int vpfe_querystd(struct file *file, struct video_device_state *state,
+			 v4l2_std_id *std_id)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
 	struct vpfe_subdev_info *sdinfo;
@@ -1696,7 +1706,8 @@ static int vpfe_querystd(struct file *file, void *priv, v4l2_std_id *std_id)
 					 video, querystd, std_id);
 }
 
-static int vpfe_s_std(struct file *file, void *priv, v4l2_std_id std_id)
+static int vpfe_s_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id std_id)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
 	struct vpfe_subdev_info *sdinfo;
@@ -1728,7 +1739,8 @@ static int vpfe_s_std(struct file *file, void *priv, v4l2_std_id std_id)
 	return ret;
 }
 
-static int vpfe_g_std(struct file *file, void *priv, v4l2_std_id *std_id)
+static int vpfe_g_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id *std_id)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
 	struct vpfe_subdev_info *sdinfo;
@@ -1946,8 +1958,9 @@ static void vpfe_stop_streaming(struct vb2_queue *vq)
 	vpfe_return_all_buffers(vpfe, VB2_BUF_STATE_ERROR);
 }
 
-static int vpfe_g_pixelaspect(struct file *file, void *priv,
-			      int type, struct v4l2_fract *f)
+static int vpfe_g_pixelaspect(struct file *file,
+			      struct video_device_state *state, int type,
+			      struct v4l2_fract *f)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
 
@@ -1961,7 +1974,8 @@ static int vpfe_g_pixelaspect(struct file *file, void *priv,
 }
 
 static int
-vpfe_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
+vpfe_g_selection(struct file *file, struct video_device_state *state,
+		 struct v4l2_selection *s)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
 
@@ -1990,7 +2004,8 @@ vpfe_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
 }
 
 static int
-vpfe_s_selection(struct file *file, void *fh, struct v4l2_selection *s)
+vpfe_s_selection(struct file *file, struct video_device_state *state,
+		 struct v4l2_selection *s)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);
 	struct v4l2_rect cr = vpfe->crop;
@@ -2036,7 +2051,8 @@ vpfe_s_selection(struct file *file, void *fh, struct v4l2_selection *s)
 	return 0;
 }
 
-static long vpfe_ioctl_default(struct file *file, void *priv,
+static long vpfe_ioctl_default(struct file *file,
+			       struct video_device_state *state,
 			       bool valid_prio, unsigned int cmd, void *param)
 {
 	struct vpfe_device *vpfe = video_drvdata(file);

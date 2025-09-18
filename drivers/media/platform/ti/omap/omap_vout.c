@@ -568,8 +568,8 @@ vout_isr_err:
 /*
  * V4L2 ioctls
  */
-static int vidioc_querycap(struct file *file, void *fh,
-		struct v4l2_capability *cap)
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state, struct v4l2_capability *cap)
 {
 	struct omap_vout_device *vout = video_drvdata(file);
 
@@ -580,7 +580,8 @@ static int vidioc_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_out(struct file *file, void *fh,
+static int vidioc_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 			struct v4l2_fmtdesc *fmt)
 {
 	int index = fmt->index;
@@ -594,7 +595,8 @@ static int vidioc_enum_fmt_vid_out(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_out(struct file *file, void *fh,
+static int vidioc_g_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	struct omap_vout_device *vout = video_drvdata(file);
@@ -604,7 +606,8 @@ static int vidioc_g_fmt_vid_out(struct file *file, void *fh,
 
 }
 
-static int vidioc_try_fmt_vid_out(struct file *file, void *fh,
+static int vidioc_try_fmt_vid_out(struct file *file,
+				  struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	struct omap_overlay *ovl;
@@ -630,7 +633,8 @@ static int vidioc_try_fmt_vid_out(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
+static int vidioc_s_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	int ret, bpp;
@@ -696,7 +700,8 @@ s_fmt_vid_out_exit:
 	return ret;
 }
 
-static int vidioc_try_fmt_vid_overlay(struct file *file, void *fh,
+static int vidioc_try_fmt_vid_overlay(struct file *file,
+				      struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	int ret = 0;
@@ -716,7 +721,8 @@ static int vidioc_try_fmt_vid_overlay(struct file *file, void *fh,
 	return ret;
 }
 
-static int vidioc_s_fmt_vid_overlay(struct file *file, void *fh,
+static int vidioc_s_fmt_vid_overlay(struct file *file,
+				    struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	int ret = 0;
@@ -763,7 +769,8 @@ static int vidioc_s_fmt_vid_overlay(struct file *file, void *fh,
 	return ret;
 }
 
-static int vidioc_g_fmt_vid_overlay(struct file *file, void *fh,
+static int vidioc_g_fmt_vid_overlay(struct file *file,
+				    struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	struct omap_overlay *ovl;
@@ -787,7 +794,9 @@ static int vidioc_g_fmt_vid_overlay(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_g_selection(struct file *file, void *fh, struct v4l2_selection *sel)
+static int vidioc_g_selection(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_selection *sel)
 {
 	struct omap_vout_device *vout = video_drvdata(file);
 	struct v4l2_pix_format *pix = &vout->pix;
@@ -813,7 +822,9 @@ static int vidioc_g_selection(struct file *file, void *fh, struct v4l2_selection
 	return 0;
 }
 
-static int vidioc_s_selection(struct file *file, void *fh, struct v4l2_selection *sel)
+static int vidioc_s_selection(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_selection *sel)
 {
 	int ret = -EINVAL;
 	struct omap_vout_device *vout = video_drvdata(file);
@@ -1115,7 +1126,8 @@ static void omap_vout_vb2_stop_streaming(struct vb2_queue *vq)
 	}
 }
 
-static int vidioc_s_fbuf(struct file *file, void *fh,
+static int vidioc_s_fbuf(struct file *file,
+			 struct video_device_state *state,
 				const struct v4l2_framebuffer *a)
 {
 	int enable = 0;
@@ -1187,8 +1199,8 @@ static int vidioc_s_fbuf(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_g_fbuf(struct file *file, void *fh,
-		struct v4l2_framebuffer *a)
+static int vidioc_g_fbuf(struct file *file,
+			 struct video_device_state *state, struct v4l2_framebuffer *a)
 {
 	struct omap_overlay *ovl;
 	struct omapvideo_info *ovid;
@@ -1236,7 +1248,8 @@ static int vidioc_g_fbuf(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_enum_output(struct file *file, void *priv,
+static int vidioc_enum_output(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_output *out)
 {
 	if (out->index)
@@ -1246,13 +1259,15 @@ static int vidioc_enum_output(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_output(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_output(struct file *file,
+			   struct video_device_state *state, unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int vidioc_s_output(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_output(struct file *file,
+			   struct video_device_state *state, unsigned int i)
 {
 	return i ? -EINVAL : 0;
 }

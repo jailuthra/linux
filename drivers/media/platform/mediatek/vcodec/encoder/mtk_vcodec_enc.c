@@ -155,7 +155,8 @@ mtk_venc_find_format(u32 fourcc, const struct mtk_vcodec_enc_pdata *pdata)
 	return NULL;
 }
 
-static int vidioc_enum_framesizes(struct file *file, void *fh,
+static int vidioc_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	const struct mtk_video_fmt *fmt;
@@ -179,7 +180,8 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	const struct mtk_vcodec_enc_pdata *pdata =
@@ -189,7 +191,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
 			       pdata->num_capture_formats);
 }
 
-static int vidioc_enum_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	const struct mtk_vcodec_enc_pdata *pdata =
@@ -217,7 +220,8 @@ static int mtk_vcodec_enc_get_chip_name(struct mtk_vcodec_enc_ctx *ctx)
 		return 8173;
 }
 
-static int vidioc_venc_querycap(struct file *file, void *priv,
+static int vidioc_venc_querycap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_capability *cap)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -230,7 +234,8 @@ static int vidioc_venc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_venc_s_parm(struct file *file, void *priv,
+static int vidioc_venc_s_parm(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_streamparm *a)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -253,7 +258,8 @@ static int vidioc_venc_s_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_venc_g_parm(struct file *file, void *priv,
+static int vidioc_venc_g_parm(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_streamparm *a)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -410,7 +416,8 @@ static void mtk_venc_set_param(struct mtk_vcodec_enc_ctx *ctx,
 			  param->gop_size, param->intra_period);
 }
 
-static int vidioc_venc_s_fmt_cap(struct file *file, void *priv,
+static int vidioc_venc_s_fmt_cap(struct file *file,
+				 struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -465,7 +472,8 @@ static int vidioc_venc_s_fmt_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_venc_s_fmt_out(struct file *file, void *priv,
+static int vidioc_venc_s_fmt_out(struct file *file,
+				 struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -519,7 +527,8 @@ static int vidioc_venc_s_fmt_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_venc_g_fmt(struct file *file, void *priv,
+static int vidioc_venc_g_fmt(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix = &f->fmt.pix_mp;
@@ -552,7 +561,8 @@ static int vidioc_venc_g_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap_mplane(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap_mplane(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_format *f)
 {
 	const struct mtk_video_fmt *fmt;
@@ -574,7 +584,8 @@ static int vidioc_try_fmt_vid_cap_mplane(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_out_mplane(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_out_mplane(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_format *f)
 {
 	const struct mtk_video_fmt *fmt;
@@ -596,7 +607,8 @@ static int vidioc_try_fmt_vid_out_mplane(struct file *file, void *priv,
 	return vidioc_try_fmt_out(ctx, f, fmt);
 }
 
-static int vidioc_venc_g_selection(struct file *file, void *priv,
+static int vidioc_venc_g_selection(struct file *file,
+				   struct video_device_state *state,
 				     struct v4l2_selection *s)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -626,7 +638,8 @@ static int vidioc_venc_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_venc_s_selection(struct file *file, void *priv,
+static int vidioc_venc_s_selection(struct file *file,
+				   struct video_device_state *state,
 				     struct v4l2_selection *s)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -651,7 +664,8 @@ static int vidioc_venc_s_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_venc_qbuf(struct file *file, void *priv,
+static int vidioc_venc_qbuf(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_buffer *buf)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -665,7 +679,8 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	return v4l2_m2m_qbuf(file, ctx->m2m_ctx, buf);
 }
 
-static int vidioc_venc_dqbuf(struct file *file, void *priv,
+static int vidioc_venc_dqbuf(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_buffer *buf)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -703,7 +718,8 @@ static int vidioc_venc_dqbuf(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_encoder_cmd(struct file *file, void *priv,
+static int vidioc_encoder_cmd(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_encoder_cmd *cmd)
 {
 	struct mtk_vcodec_enc_ctx *ctx = file_to_enc_ctx(file);
@@ -716,7 +732,7 @@ static int vidioc_encoder_cmd(struct file *file, void *priv,
 		return -EIO;
 	}
 
-	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, priv, cmd);
+	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, state, cmd);
 	if (ret)
 		return ret;
 

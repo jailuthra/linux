@@ -30,7 +30,8 @@
  * ------------------------------------------------------------------
  */
 
-static int cal_querycap(struct file *file, void *priv,
+static int cal_querycap(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, CAL_MODULE_NAME, sizeof(cap->driver));
@@ -39,7 +40,8 @@ static int cal_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cal_g_fmt_vid_cap(struct file *file, void *priv,
+static int cal_g_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
@@ -84,7 +86,8 @@ static const struct cal_format_info *find_format_by_code(struct cal_ctx *ctx,
 	return NULL;
 }
 
-static int cal_legacy_enum_fmt_vid_cap(struct file *file, void *priv,
+static int cal_legacy_enum_fmt_vid_cap(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_fmtdesc *f)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
@@ -174,7 +177,8 @@ static void cal_calc_format_size(struct cal_ctx *ctx,
 		f->fmt.pix.bytesperline, f->fmt.pix.sizeimage);
 }
 
-static int cal_legacy_try_fmt_vid_cap(struct file *file, void *priv,
+static int cal_legacy_try_fmt_vid_cap(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_format *f)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
@@ -237,7 +241,8 @@ static int cal_legacy_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cal_legacy_s_fmt_vid_cap(struct file *file, void *priv,
+static int cal_legacy_s_fmt_vid_cap(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
@@ -255,7 +260,7 @@ static int cal_legacy_s_fmt_vid_cap(struct file *file, void *priv,
 		return -EBUSY;
 	}
 
-	ret = cal_legacy_try_fmt_vid_cap(file, priv, f);
+	ret = cal_legacy_try_fmt_vid_cap(file, state, f);
 	if (ret < 0)
 		return ret;
 
@@ -289,7 +294,8 @@ static int cal_legacy_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cal_legacy_enum_framesizes(struct file *file, void *fh,
+static int cal_legacy_enum_framesizes(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_frmsizeenum *fsize)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
@@ -327,7 +333,8 @@ static int cal_legacy_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int cal_legacy_enum_input(struct file *file, void *priv,
+static int cal_legacy_enum_input(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_input *inp)
 {
 	if (inp->index > 0)
@@ -338,19 +345,24 @@ static int cal_legacy_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int cal_legacy_g_input(struct file *file, void *priv, unsigned int *i)
+static int cal_legacy_g_input(struct file *file,
+			      struct video_device_state *state,
+			      unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int cal_legacy_s_input(struct file *file, void *priv, unsigned int i)
+static int cal_legacy_s_input(struct file *file,
+			      struct video_device_state *state,
+			      unsigned int i)
 {
 	return i > 0 ? -EINVAL : 0;
 }
 
 /* timeperframe is arbitrary and continuous */
-static int cal_legacy_enum_frameintervals(struct file *file, void *priv,
+static int cal_legacy_enum_frameintervals(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_frmivalenum *fival)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
@@ -379,14 +391,18 @@ static int cal_legacy_enum_frameintervals(struct file *file, void *priv,
 	return 0;
 }
 
-static int cal_legacy_g_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int cal_legacy_g_parm(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_streamparm *a)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
 
 	return v4l2_g_parm_cap(video_devdata(file), ctx->phy->source, a);
 }
 
-static int cal_legacy_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int cal_legacy_s_parm(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_streamparm *a)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
 
@@ -425,7 +441,8 @@ static const struct v4l2_ioctl_ops cal_ioctl_legacy_ops = {
  * ------------------------------------------------------------------
  */
 
-static int cal_mc_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int cal_mc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	unsigned int i;
@@ -509,7 +526,8 @@ static void cal_mc_try_fmt(struct cal_ctx *ctx, struct v4l2_format *f,
 		format->bytesperline, format->sizeimage);
 }
 
-static int cal_mc_try_fmt_vid_cap(struct file *file, void *priv,
+static int cal_mc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
@@ -518,7 +536,8 @@ static int cal_mc_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cal_mc_s_fmt_vid_cap(struct file *file, void *priv,
+static int cal_mc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cal_ctx *ctx = video_drvdata(file);
@@ -537,7 +556,8 @@ static int cal_mc_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cal_mc_enum_framesizes(struct file *file, void *fh,
+static int cal_mc_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	struct cal_ctx *ctx = video_drvdata(file);

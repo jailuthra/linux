@@ -627,7 +627,7 @@ video_device_state_get_fmt(struct video_device_state *state);
  * @state: pointer to struct video_device_state
  * @format: pointer to struct v4l2_format
  */
-int video_device_g_fmt(struct file *file, void *priv,
+int video_device_g_fmt(struct file *file, struct video_device_state *state,
 		       struct v4l2_format *format);
 
 /**

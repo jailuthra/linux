@@ -142,44 +142,48 @@ static int saa7164_vbi_initialize(struct saa7164_port *port)
 }
 
 /* -- V4L2 --------------------------------------------------------- */
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id id)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id id)
 {
 	struct saa7164_vbi_fh *fh = to_saa7164_vbi_fh(file);
 
 	return saa7164_s_std(fh->port->enc_port, id);
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *id)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *id)
 {
 	struct saa7164_vbi_fh *fh = to_saa7164_vbi_fh(file);
 
 	return saa7164_g_std(fh->port->enc_port, id);
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct saa7164_vbi_fh *fh = to_saa7164_vbi_fh(file);
 
 	return saa7164_g_input(fh->port->enc_port, i);
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	struct saa7164_vbi_fh *fh = to_saa7164_vbi_fh(file);
 
 	return saa7164_s_input(fh->port->enc_port, i);
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
-	struct v4l2_frequency *f)
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state, struct v4l2_frequency *f)
 {
 	struct saa7164_vbi_fh *fh = to_saa7164_vbi_fh(file);
 
 	return saa7164_g_frequency(fh->port->enc_port, f);
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
-	const struct v4l2_frequency *f)
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state, const struct v4l2_frequency *f)
 {
 	struct saa7164_vbi_fh *fh = to_saa7164_vbi_fh(file);
 	int ret = saa7164_s_frequency(fh->port->enc_port, f);
@@ -189,8 +193,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 	return ret;
 }
 
-static int vidioc_querycap(struct file *file, void  *priv,
-	struct v4l2_capability *cap)
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state, struct v4l2_capability *cap)
 {
 	struct saa7164_vbi_fh *fh = to_saa7164_vbi_fh(file);
 	struct saa7164_port *port = fh->port;
@@ -390,7 +394,8 @@ out:
 	return ret;
 }
 
-static int saa7164_vbi_fmt(struct file *file, void *priv,
+static int saa7164_vbi_fmt(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_format *f)
 {
 	/* ntsc */

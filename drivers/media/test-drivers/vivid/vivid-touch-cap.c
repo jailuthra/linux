@@ -112,7 +112,8 @@ const struct vb2_ops vivid_touch_cap_qops = {
 	.buf_request_complete	= touch_cap_buf_request_complete,
 };
 
-int vivid_enum_fmt_tch(struct file *file, void  *priv, struct v4l2_fmtdesc *f)
+int vivid_enum_fmt_tch(struct file *file, struct video_device_state *state,
+		       struct v4l2_fmtdesc *f)
 {
 	if (f->index)
 		return -EINVAL;
@@ -121,7 +122,8 @@ int vivid_enum_fmt_tch(struct file *file, void  *priv, struct v4l2_fmtdesc *f)
 	return 0;
 }
 
-int vivid_g_fmt_tch(struct file *file, void *priv, struct v4l2_format *f)
+int vivid_g_fmt_tch(struct file *file, struct video_device_state *state,
+		    struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -131,7 +133,9 @@ int vivid_g_fmt_tch(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-int vivid_g_fmt_tch_mplane(struct file *file, void *priv, struct v4l2_format *f)
+int vivid_g_fmt_tch_mplane(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	struct v4l2_format sp_fmt;
@@ -144,7 +148,8 @@ int vivid_g_fmt_tch_mplane(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-int vivid_g_parm_tch(struct file *file, void *priv,
+int vivid_g_parm_tch(struct file *file,
+		     struct video_device_state *state,
 		     struct v4l2_streamparm *parm)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -160,7 +165,8 @@ int vivid_g_parm_tch(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_enum_input_tch(struct file *file, void *priv, struct v4l2_input *inp)
+int vivid_enum_input_tch(struct file *file, struct video_device_state *state,
+			 struct v4l2_input *inp)
 {
 	if (inp->index)
 		return -EINVAL;
@@ -171,7 +177,8 @@ int vivid_enum_input_tch(struct file *file, void *priv, struct v4l2_input *inp)
 	return 0;
 }
 
-int vivid_g_input_tch(struct file *file, void *priv, unsigned int *i)
+int vivid_g_input_tch(struct file *file, struct video_device_state *state,
+		      unsigned int *i)
 {
 	*i = 0;
 	return 0;
@@ -194,7 +201,8 @@ int vivid_set_touch(struct vivid_dev *dev, unsigned int i)
 	return 0;
 }
 
-int vivid_s_input_tch(struct file *file, void *priv, unsigned int i)
+int vivid_s_input_tch(struct file *file, struct video_device_state *state,
+		      unsigned int i)
 {
 	return vivid_set_touch(video_drvdata(file), i);
 }

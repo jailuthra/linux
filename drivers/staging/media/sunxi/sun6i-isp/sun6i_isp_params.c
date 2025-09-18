@@ -383,7 +383,8 @@ static const struct vb2_ops sun6i_isp_params_queue_ops = {
 
 /* Video Device */
 
-static int sun6i_isp_params_querycap(struct file *file, void *priv,
+static int sun6i_isp_params_querycap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_capability *capability)
 {
 	struct sun6i_isp_device *isp_dev = video_drvdata(file);
@@ -397,7 +398,8 @@ static int sun6i_isp_params_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int sun6i_isp_params_enum_fmt(struct file *file, void *priv,
+static int sun6i_isp_params_enum_fmt(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_fmtdesc *fmtdesc)
 {
 	struct sun6i_isp_device *isp_dev = video_drvdata(file);
@@ -412,7 +414,8 @@ static int sun6i_isp_params_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int sun6i_isp_params_g_fmt(struct file *file, void *priv,
+static int sun6i_isp_params_g_fmt(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *format)
 {
 	struct sun6i_isp_device *isp_dev = video_drvdata(file);

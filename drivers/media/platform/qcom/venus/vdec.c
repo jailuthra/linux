@@ -238,7 +238,8 @@ vdec_try_fmt_common(struct venus_inst *inst, struct v4l2_format *f)
 	return fmt;
 }
 
-static int vdec_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int vdec_try_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct venus_inst *inst = to_inst(file);
 
@@ -281,7 +282,8 @@ done:
 	return 0;
 }
 
-static int vdec_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int vdec_g_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct venus_inst *inst = to_inst(file);
 	const struct venus_format *fmt = NULL;
@@ -318,7 +320,8 @@ static int vdec_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int vdec_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int vdec_s_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct venus_inst *inst = to_inst(file);
 	struct v4l2_pix_format_mplane *pixmp = &f->fmt.pix_mp;
@@ -392,7 +395,8 @@ static int vdec_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
 }
 
 static int
-vdec_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
+vdec_g_selection(struct file *file, struct video_device_state *state,
+		 struct v4l2_selection *s)
 {
 	struct venus_inst *inst = to_inst(file);
 
@@ -433,7 +437,8 @@ vdec_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
 }
 
 static int
-vdec_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+vdec_querycap(struct file *file, struct video_device_state *state,
+	      struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "qcom-venus", sizeof(cap->driver));
 	strscpy(cap->card, "Qualcomm Venus video decoder", sizeof(cap->card));
@@ -442,7 +447,8 @@ vdec_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
 	return 0;
 }
 
-static int vdec_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int vdec_enum_fmt(struct file *file, struct video_device_state *state,
+			 struct v4l2_fmtdesc *f)
 {
 	struct venus_inst *inst = to_inst(file);
 	const struct venus_format *fmt;
@@ -459,7 +465,8 @@ static int vdec_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 	return 0;
 }
 
-static int vdec_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int vdec_s_parm(struct file *file, struct video_device_state *state,
+		       struct v4l2_streamparm *a)
 {
 	struct venus_inst *inst = to_inst(file);
 	struct v4l2_captureparm *cap = &a->parm.capture;
@@ -491,7 +498,8 @@ static int vdec_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
 	return 0;
 }
 
-static int vdec_enum_framesizes(struct file *file, void *fh,
+static int vdec_enum_framesizes(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_frmsizeenum *fsize)
 {
 	struct venus_inst *inst = to_inst(file);
@@ -544,14 +552,15 @@ static int vdec_subscribe_event(struct v4l2_fh *fh,
 }
 
 static int
-vdec_decoder_cmd(struct file *file, void *fh, struct v4l2_decoder_cmd *cmd)
+vdec_decoder_cmd(struct file *file, struct video_device_state *state,
+		 struct v4l2_decoder_cmd *cmd)
 {
 	struct venus_inst *inst = to_inst(file);
 	struct vb2_queue *dst_vq;
 	struct hfi_frame_data fdata = {0};
 	int ret;
 
-	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, fh, cmd);
+	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, state, cmd);
 	if (ret)
 		return ret;
 

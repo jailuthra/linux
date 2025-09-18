@@ -648,7 +648,8 @@ static void device_work(struct work_struct *w)
 /*
  * video ioctls
  */
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, MEM2MEM_NAME, sizeof(cap->driver));
@@ -689,19 +690,22 @@ static int enum_fmt(struct v4l2_fmtdesc *f, u32 type)
 	return -EINVAL;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return enum_fmt(f, MEM2MEM_CAPTURE);
 }
 
-static int vidioc_enum_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return enum_fmt(f, MEM2MEM_OUTPUT);
 }
 
-static int vidioc_enum_framesizes(struct file *file, void *priv,
+static int vidioc_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	if (fsize->index != 0)
@@ -778,7 +782,8 @@ static int vidioc_g_fmt_mplane(struct vim2m_ctx *ctx, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct vim2m_dev *dev = video_drvdata(file);
@@ -789,7 +794,8 @@ static int vidioc_g_fmt_vid_out(struct file *file, void *priv,
 	return vidioc_g_fmt(file2ctx(file), f);
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct vim2m_dev *dev = video_drvdata(file);
@@ -800,7 +806,8 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return vidioc_g_fmt(file2ctx(file), f);
 }
 
-static int vidioc_g_fmt_vid_out_mplane(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_out_mplane(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct vim2m_dev *dev = video_drvdata(file);
@@ -811,7 +818,8 @@ static int vidioc_g_fmt_vid_out_mplane(struct file *file, void *priv,
 	return vidioc_g_fmt_mplane(file2ctx(file), f);
 }
 
-static int vidioc_g_fmt_vid_cap_mplane(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap_mplane(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct vim2m_dev *dev = video_drvdata(file);
@@ -848,7 +856,8 @@ static int vidioc_try_fmt(struct v4l2_format *f, bool is_mplane)
 	return ret;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct vim2m_fmt *fmt;
@@ -877,7 +886,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return vidioc_try_fmt(f, false);
 }
 
-static int vidioc_try_fmt_vid_cap_mplane(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap_mplane(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_format *f)
 {
 	struct vim2m_fmt *fmt;
@@ -906,7 +916,8 @@ static int vidioc_try_fmt_vid_cap_mplane(struct file *file, void *priv,
 	return vidioc_try_fmt(f, true);
 }
 
-static int vidioc_try_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_out(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct vim2m_fmt *fmt;
@@ -933,7 +944,8 @@ static int vidioc_try_fmt_vid_out(struct file *file, void *priv,
 	return vidioc_try_fmt(f, false);
 }
 
-static int vidioc_try_fmt_vid_out_mplane(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_out_mplane(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_format *f)
 {
 	struct vim2m_fmt *fmt;
@@ -1007,7 +1019,8 @@ static int vidioc_s_fmt(struct vim2m_ctx *ctx, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	int ret;
@@ -1016,14 +1029,15 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	if (dev->multiplanar)
 		return -ENOTTY;
 
-	ret = vidioc_try_fmt_vid_cap(file, priv, f);
+	ret = vidioc_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
 	return vidioc_s_fmt(file2ctx(file), f);
 }
 
-static int vidioc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap_mplane(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	int ret;
@@ -1032,14 +1046,15 @@ static int vidioc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
 	if (!dev->multiplanar)
 		return -ENOTTY;
 
-	ret = vidioc_try_fmt_vid_cap_mplane(file, priv, f);
+	ret = vidioc_try_fmt_vid_cap_mplane(file, state, f);
 	if (ret)
 		return ret;
 
 	return vidioc_s_fmt(file2ctx(file), f);
 }
 
-static int vidioc_s_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct vim2m_ctx *ctx = file2ctx(file);
@@ -1049,7 +1064,7 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *priv,
 	if (dev->multiplanar)
 		return -ENOTTY;
 
-	ret = vidioc_try_fmt_vid_out(file, priv, f);
+	ret = vidioc_try_fmt_vid_out(file, state, f);
 	if (ret)
 		return ret;
 
@@ -1063,7 +1078,8 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *priv,
 	return ret;
 }
 
-static int vidioc_s_fmt_vid_out_mplane(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_out_mplane(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct vim2m_ctx *ctx = file2ctx(file);
@@ -1073,7 +1089,7 @@ static int vidioc_s_fmt_vid_out_mplane(struct file *file, void *priv,
 	if (!dev->multiplanar)
 		return -ENOTTY;
 
-	ret = vidioc_try_fmt_vid_out_mplane(file, priv, f);
+	ret = vidioc_try_fmt_vid_out_mplane(file, state, f);
 	if (ret)
 		return ret;
 

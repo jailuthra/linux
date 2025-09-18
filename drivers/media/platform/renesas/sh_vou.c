@@ -363,7 +363,8 @@ static const struct vb2_ops sh_vou_qops = {
 };
 
 /* Video IOCTLs */
-static int sh_vou_querycap(struct file *file, void  *priv,
+static int sh_vou_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
@@ -377,7 +378,8 @@ static int sh_vou_querycap(struct file *file, void  *priv,
 }
 
 /* Enumerate formats, that the device can accept from the user */
-static int sh_vou_enum_fmt_vid_out(struct file *file, void  *priv,
+static int sh_vou_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *fmt)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
@@ -392,7 +394,8 @@ static int sh_vou_enum_fmt_vid_out(struct file *file, void  *priv,
 	return 0;
 }
 
-static int sh_vou_g_fmt_vid_out(struct file *file, void *priv,
+static int sh_vou_g_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *fmt)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
@@ -646,7 +649,8 @@ static void vou_adjust_output(struct sh_vou_geometry *geo, v4l2_std_id std)
 		 vou_scale_v_num[idx_v], vou_scale_v_den[idx_v], best);
 }
 
-static int sh_vou_try_fmt_vid_out(struct file *file, void *priv,
+static int sh_vou_try_fmt_vid_out(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *fmt)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
@@ -759,18 +763,20 @@ static int sh_vou_set_fmt_vid_out(struct sh_vou_device *vou_dev,
 	return 0;
 }
 
-static int sh_vou_s_fmt_vid_out(struct file *file, void *priv,
+static int sh_vou_s_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *fmt)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
-	int ret = sh_vou_try_fmt_vid_out(file, priv, fmt);
+	int ret = sh_vou_try_fmt_vid_out(file, state, fmt);
 
 	if (ret)
 		return ret;
 	return sh_vou_set_fmt_vid_out(vou_dev, &fmt->fmt.pix);
 }
 
-static int sh_vou_enum_output(struct file *file, void *fh,
+static int sh_vou_enum_output(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_output *a)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
@@ -783,13 +789,15 @@ static int sh_vou_enum_output(struct file *file, void *fh,
 	return 0;
 }
 
-static int sh_vou_g_output(struct file *file, void *fh, unsigned int *i)
+static int sh_vou_g_output(struct file *file,
+			   struct video_device_state *state, unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int sh_vou_s_output(struct file *file, void *fh, unsigned int i)
+static int sh_vou_s_output(struct file *file,
+			   struct video_device_state *state, unsigned int i)
 {
 	return i ? -EINVAL : 0;
 }
@@ -810,7 +818,8 @@ static u32 sh_vou_ntsc_mode(enum sh_vou_bus_fmt bus_fmt)
 	}
 }
 
-static int sh_vou_s_std(struct file *file, void *priv, v4l2_std_id std_id)
+static int sh_vou_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id std_id)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
 	int ret;
@@ -852,7 +861,8 @@ static int sh_vou_s_std(struct file *file, void *priv, v4l2_std_id std_id)
 	return 0;
 }
 
-static int sh_vou_g_std(struct file *file, void *priv, v4l2_std_id *std)
+static int sh_vou_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *std)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
 
@@ -863,7 +873,8 @@ static int sh_vou_g_std(struct file *file, void *priv, v4l2_std_id *std)
 	return 0;
 }
 
-static int sh_vou_log_status(struct file *file, void *priv)
+static int sh_vou_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
 
@@ -890,7 +901,8 @@ static int sh_vou_log_status(struct file *file, void *priv)
 	return 0;
 }
 
-static int sh_vou_g_selection(struct file *file, void *fh,
+static int sh_vou_g_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *sel)
 {
 	struct sh_vou_device *vou_dev = video_drvdata(file);
@@ -918,7 +930,8 @@ static int sh_vou_g_selection(struct file *file, void *fh,
 }
 
 /* Assume a dull encoder, do all the work ourselves. */
-static int sh_vou_s_selection(struct file *file, void *fh,
+static int sh_vou_s_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *sel)
 {
 	struct v4l2_rect *rect = &sel->r;

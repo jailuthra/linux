@@ -313,7 +313,8 @@ static void rkvdec_reset_coded_fmt(struct rkvdec_ctx *ctx)
 		ctx->coded_fmt_desc->ops->adjust_fmt(ctx, f);
 }
 
-static int rkvdec_enum_framesizes(struct file *file, void *priv,
+static int rkvdec_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	const struct rkvdec_coded_fmt_desc *fmt;
@@ -336,7 +337,8 @@ static int rkvdec_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkvdec_querycap(struct file *file, void *priv,
+static int rkvdec_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct rkvdec_dev *rkvdec = video_drvdata(file);
@@ -350,7 +352,8 @@ static int rkvdec_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkvdec_try_capture_fmt(struct file *file, void *priv,
+static int rkvdec_try_capture_fmt(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
@@ -383,7 +386,8 @@ static int rkvdec_try_capture_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkvdec_try_output_fmt(struct file *file, void *priv,
+static int rkvdec_try_output_fmt(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
@@ -415,7 +419,8 @@ static int rkvdec_try_output_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkvdec_s_capture_fmt(struct file *file, void *priv,
+static int rkvdec_s_capture_fmt(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct rkvdec_ctx *ctx = file_to_rkvdec_ctx(file);
@@ -428,7 +433,7 @@ static int rkvdec_s_capture_fmt(struct file *file, void *priv,
 	if (vb2_is_busy(vq))
 		return -EBUSY;
 
-	ret = rkvdec_try_capture_fmt(file, priv, f);
+	ret = rkvdec_try_capture_fmt(file, state, f);
 	if (ret)
 		return ret;
 
@@ -436,7 +441,8 @@ static int rkvdec_s_capture_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkvdec_s_output_fmt(struct file *file, void *priv,
+static int rkvdec_s_output_fmt(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct rkvdec_ctx *ctx = file_to_rkvdec_ctx(file);
@@ -466,7 +472,7 @@ static int rkvdec_s_output_fmt(struct file *file, void *priv,
 	if (vb2_is_busy(peer_vq))
 		return -EBUSY;
 
-	ret = rkvdec_try_output_fmt(file, priv, f);
+	ret = rkvdec_try_output_fmt(file, state, f);
 	if (ret)
 		return ret;
 
@@ -501,7 +507,8 @@ static int rkvdec_s_output_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkvdec_g_output_fmt(struct file *file, void *priv,
+static int rkvdec_g_output_fmt(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct rkvdec_ctx *ctx = file_to_rkvdec_ctx(file);
@@ -510,7 +517,8 @@ static int rkvdec_g_output_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkvdec_g_capture_fmt(struct file *file, void *priv,
+static int rkvdec_g_capture_fmt(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct rkvdec_ctx *ctx = file_to_rkvdec_ctx(file);
@@ -519,7 +527,8 @@ static int rkvdec_g_capture_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkvdec_enum_output_fmt(struct file *file, void *priv,
+static int rkvdec_enum_output_fmt(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_fmtdesc *f)
 {
 	if (f->index >= ARRAY_SIZE(rkvdec_coded_fmts))
@@ -529,7 +538,8 @@ static int rkvdec_enum_output_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkvdec_enum_capture_fmt(struct file *file, void *priv,
+static int rkvdec_enum_capture_fmt(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	struct rkvdec_ctx *ctx = file_to_rkvdec_ctx(file);

@@ -383,7 +383,8 @@ static int delta_open_decoder(struct delta_ctx *ctx, u32 streamformat,
  * V4L2 ioctl operations
  */
 
-static int delta_querycap(struct file *file, void *priv,
+static int delta_querycap(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_capability *cap)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
@@ -397,7 +398,8 @@ static int delta_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int delta_enum_fmt_stream(struct file *file, void *priv,
+static int delta_enum_fmt_stream(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *f)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
@@ -411,7 +413,8 @@ static int delta_enum_fmt_stream(struct file *file, void *priv,
 	return 0;
 }
 
-static int delta_enum_fmt_frame(struct file *file, void *priv,
+static int delta_enum_fmt_frame(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
@@ -425,7 +428,8 @@ static int delta_enum_fmt_frame(struct file *file, void *priv,
 	return 0;
 }
 
-static int delta_g_fmt_stream(struct file *file, void *fh,
+static int delta_g_fmt_stream(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
@@ -454,7 +458,9 @@ static int delta_g_fmt_stream(struct file *file, void *fh,
 	return 0;
 }
 
-static int delta_g_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
+static int delta_g_fmt_frame(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_format *f)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
 	struct delta_dev *delta = ctx->dev;
@@ -492,7 +498,8 @@ static int delta_g_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int delta_try_fmt_stream(struct file *file, void *priv,
+static int delta_try_fmt_stream(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
@@ -546,7 +553,8 @@ static int delta_try_fmt_stream(struct file *file, void *priv,
 	return 0;
 }
 
-static int delta_try_fmt_frame(struct file *file, void *priv,
+static int delta_try_fmt_frame(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
@@ -606,7 +614,8 @@ static int delta_try_fmt_frame(struct file *file, void *priv,
 	return 0;
 }
 
-static int delta_s_fmt_stream(struct file *file, void *fh,
+static int delta_s_fmt_stream(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
@@ -615,7 +624,7 @@ static int delta_s_fmt_stream(struct file *file, void *fh,
 	struct v4l2_pix_format *pix = &f->fmt.pix;
 	int ret;
 
-	ret = delta_try_fmt_stream(file, fh, f);
+	ret = delta_try_fmt_stream(file, state, f);
 	if (ret) {
 		dev_dbg(delta->dev,
 			"%s V4L2 S_FMT (OUTPUT): unsupported format %4.4s\n",
@@ -643,7 +652,9 @@ static int delta_s_fmt_stream(struct file *file, void *fh,
 	return 0;
 }
 
-static int delta_s_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
+static int delta_s_fmt_frame(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_format *f)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
 	struct delta_dev *delta = ctx->dev;
@@ -668,7 +679,7 @@ static int delta_s_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
 		 * pixel format & negotiate resolution boundaries
 		 * and alignment...
 		 */
-		ret = delta_try_fmt_frame(file, fh, f);
+		ret = delta_try_fmt_frame(file, state, f);
 		if (ret) {
 			dev_dbg(delta->dev,
 				"%s V4L2 S_FMT (CAPTURE): unsupported format %4.4s\n",
@@ -722,7 +733,8 @@ static int delta_s_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int delta_g_selection(struct file *file, void *fh,
+static int delta_g_selection(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_selection *s)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
@@ -791,7 +803,8 @@ static void delta_complete_eos(struct delta_ctx *ctx,
 	dev_dbg(delta->dev, "%s EOS completed\n", ctx->name);
 }
 
-static int delta_try_decoder_cmd(struct file *file, void *fh,
+static int delta_try_decoder_cmd(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_decoder_cmd *cmd)
 {
 	if (cmd->cmd != V4L2_DEC_CMD_STOP)
@@ -867,13 +880,14 @@ delay_eos:
 	return 0;
 }
 
-static int delta_decoder_cmd(struct file *file, void *fh,
+static int delta_decoder_cmd(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_decoder_cmd *cmd)
 {
 	struct delta_ctx *ctx = file_to_ctx(file);
 	int ret = 0;
 
-	ret = delta_try_decoder_cmd(file, fh, cmd);
+	ret = delta_try_decoder_cmd(file, state, cmd);
 	if (ret)
 		return ret;
 

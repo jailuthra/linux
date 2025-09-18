@@ -383,7 +383,8 @@ static const struct vb2_queue rmi_f54_queue = {
 	.timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC,
 };
 
-static int rmi_f54_vidioc_querycap(struct file *file, void *priv,
+static int rmi_f54_vidioc_querycap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_capability *cap)
 {
 	struct f54_data *f54 = video_drvdata(file);
@@ -396,7 +397,8 @@ static int rmi_f54_vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rmi_f54_vidioc_enum_input(struct file *file, void *priv,
+static int rmi_f54_vidioc_enum_input(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_input *i)
 {
 	struct f54_data *f54 = video_drvdata(file);
@@ -442,12 +444,15 @@ static int rmi_f54_set_input(struct f54_data *f54, unsigned int i)
 	return 0;
 }
 
-static int rmi_f54_vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int rmi_f54_vidioc_s_input(struct file *file,
+				  struct video_device_state *state,
+				  unsigned int i)
 {
 	return rmi_f54_set_input(video_drvdata(file), i);
 }
 
-static int rmi_f54_vidioc_g_input(struct file *file, void *priv,
+static int rmi_f54_vidioc_g_input(struct file *file,
+				  struct video_device_state *state,
 				  unsigned int *i)
 {
 	struct f54_data *f54 = video_drvdata(file);
@@ -457,7 +462,8 @@ static int rmi_f54_vidioc_g_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int rmi_f54_vidioc_fmt(struct file *file, void *priv,
+static int rmi_f54_vidioc_fmt(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct f54_data *f54 = video_drvdata(file);
@@ -467,7 +473,8 @@ static int rmi_f54_vidioc_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int rmi_f54_vidioc_enum_fmt(struct file *file, void *priv,
+static int rmi_f54_vidioc_enum_fmt(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *fmt)
 {
 	struct f54_data *f54 = video_drvdata(file);
@@ -483,7 +490,8 @@ static int rmi_f54_vidioc_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int rmi_f54_vidioc_g_parm(struct file *file, void *fh,
+static int rmi_f54_vidioc_g_parm(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_streamparm *a)
 {
 	if (a->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)

@@ -109,7 +109,8 @@ static struct v4l2_format pvr_format [] = {
 /*
  * This is part of Video 4 Linux API. These procedures handle ioctl() calls.
  */
-static int pvr2_querycap(struct file *file, void *priv, struct v4l2_capability *cap)
+static int pvr2_querycap(struct file *file, struct video_device_state *state,
+			 struct v4l2_capability *cap)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -124,7 +125,8 @@ static int pvr2_querycap(struct file *file, void *priv, struct v4l2_capability *
 	return 0;
 }
 
-static int pvr2_g_std(struct file *file, void *priv, v4l2_std_id *std)
+static int pvr2_g_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id *std)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -137,7 +139,8 @@ static int pvr2_g_std(struct file *file, void *priv, v4l2_std_id *std)
 	return ret;
 }
 
-static int pvr2_s_std(struct file *file, void *priv, v4l2_std_id std)
+static int pvr2_s_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id std)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -149,7 +152,8 @@ static int pvr2_s_std(struct file *file, void *priv, v4l2_std_id std)
 	return ret;
 }
 
-static int pvr2_querystd(struct file *file, void *priv, v4l2_std_id *std)
+static int pvr2_querystd(struct file *file, struct video_device_state *state,
+			 v4l2_std_id *std)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -162,7 +166,9 @@ static int pvr2_querystd(struct file *file, void *priv, v4l2_std_id *std)
 	return ret;
 }
 
-static int pvr2_enum_input(struct file *file, void *priv, struct v4l2_input *vi)
+static int pvr2_enum_input(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_input *vi)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -210,7 +216,8 @@ static int pvr2_enum_input(struct file *file, void *priv, struct v4l2_input *vi)
 	return 0;
 }
 
-static int pvr2_g_input(struct file *file, void *priv, unsigned int *i)
+static int pvr2_g_input(struct file *file, struct video_device_state *state,
+			unsigned int *i)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -232,7 +239,8 @@ static int pvr2_g_input(struct file *file, void *priv, unsigned int *i)
 	return ret;
 }
 
-static int pvr2_s_input(struct file *file, void *priv, unsigned int inp)
+static int pvr2_s_input(struct file *file, struct video_device_state *state,
+			unsigned int inp)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -247,7 +255,8 @@ static int pvr2_s_input(struct file *file, void *priv, unsigned int inp)
 	return ret;
 }
 
-static int pvr2_enumaudio(struct file *file, void *priv, struct v4l2_audio *vin)
+static int pvr2_enumaudio(struct file *file, struct video_device_state *state,
+			  struct v4l2_audio *vin)
 {
 	/* pkt: FIXME: We are returning one "fake" input here
 	   which could very well be called "whatever_we_like".
@@ -271,7 +280,8 @@ static int pvr2_enumaudio(struct file *file, void *priv, struct v4l2_audio *vin)
 	return 0;
 }
 
-static int pvr2_g_audio(struct file *file, void *priv, struct v4l2_audio *vin)
+static int pvr2_g_audio(struct file *file, struct video_device_state *state,
+			struct v4l2_audio *vin)
 {
 	/* pkt: FIXME: see above comment (VIDIOC_ENUMAUDIO) */
 	vin->index = 0;
@@ -280,14 +290,16 @@ static int pvr2_g_audio(struct file *file, void *priv, struct v4l2_audio *vin)
 	return 0;
 }
 
-static int pvr2_s_audio(struct file *file, void *priv, const struct v4l2_audio *vout)
+static int pvr2_s_audio(struct file *file, struct video_device_state *state,
+			const struct v4l2_audio *vout)
 {
 	if (vout->index)
 		return -EINVAL;
 	return 0;
 }
 
-static int pvr2_g_tuner(struct file *file, void *priv, struct v4l2_tuner *vt)
+static int pvr2_g_tuner(struct file *file, struct video_device_state *state,
+			struct v4l2_tuner *vt)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -299,7 +311,8 @@ static int pvr2_g_tuner(struct file *file, void *priv, struct v4l2_tuner *vt)
 	return pvr2_hdw_get_tuner_status(hdw, vt);
 }
 
-static int pvr2_s_tuner(struct file *file, void *priv, const struct v4l2_tuner *vt)
+static int pvr2_s_tuner(struct file *file, struct video_device_state *state,
+			const struct v4l2_tuner *vt)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -315,7 +328,9 @@ static int pvr2_s_tuner(struct file *file, void *priv, const struct v4l2_tuner *
 	return ret;
 }
 
-static int pvr2_s_frequency(struct file *file, void *priv, const struct v4l2_frequency *vf)
+static int pvr2_s_frequency(struct file *file,
+			    struct video_device_state *state,
+			    const struct v4l2_frequency *vf)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -350,7 +365,9 @@ static int pvr2_s_frequency(struct file *file, void *priv, const struct v4l2_fre
 	return ret;
 }
 
-static int pvr2_g_frequency(struct file *file, void *priv, struct v4l2_frequency *vf)
+static int pvr2_g_frequency(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_frequency *vf)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -382,7 +399,9 @@ static int pvr2_g_frequency(struct file *file, void *priv, struct v4l2_frequency
 	return 0;
 }
 
-static int pvr2_enum_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fmtdesc *fd)
+static int pvr2_enum_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
+				 struct v4l2_fmtdesc *fd)
 {
 	/* Only one format is supported: MPEG. */
 	if (fd->index)
@@ -392,7 +411,9 @@ static int pvr2_enum_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fmtd
 	return 0;
 }
 
-static int pvr2_g_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format *vf)
+static int pvr2_g_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_format *vf)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -412,7 +433,9 @@ static int pvr2_g_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format 
 	return 0;
 }
 
-static int pvr2_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format *vf)
+static int pvr2_try_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_format *vf)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -450,12 +473,14 @@ static int pvr2_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
 	return 0;
 }
 
-static int pvr2_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format *vf)
+static int pvr2_s_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_format *vf)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
 	struct pvr2_ctrl *hcp, *vcp;
-	int ret = pvr2_try_fmt_vid_cap(file, fh, vf);
+	int ret = pvr2_try_fmt_vid_cap(file, state, vf);
 
 	if (ret)
 		return ret;
@@ -467,7 +492,8 @@ static int pvr2_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format 
 	return 0;
 }
 
-static int pvr2_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
+static int pvr2_streamon(struct file *file, struct video_device_state *state,
+			 enum v4l2_buf_type i)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -486,7 +512,8 @@ static int pvr2_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	return pvr2_hdw_set_streaming(hdw, !0);
 }
 
-static int pvr2_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
+static int pvr2_streamoff(struct file *file, struct video_device_state *state,
+			  enum v4l2_buf_type i)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -500,7 +527,8 @@ static int pvr2_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	return pvr2_hdw_set_streaming(hdw, 0);
 }
 
-static int pvr2_query_ext_ctrl(struct file *file, void *priv,
+static int pvr2_query_ext_ctrl(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_query_ext_ctrl *vc)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
@@ -562,7 +590,8 @@ static int pvr2_query_ext_ctrl(struct file *file, void *priv,
 	return 0;
 }
 
-static int pvr2_querymenu(struct file *file, void *priv, struct v4l2_querymenu *vm)
+static int pvr2_querymenu(struct file *file, struct video_device_state *state,
+			  struct v4l2_querymenu *vm)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -577,7 +606,8 @@ static int pvr2_querymenu(struct file *file, void *priv, struct v4l2_querymenu *
 	return ret;
 }
 
-static int pvr2_g_ext_ctrls(struct file *file, void *priv,
+static int pvr2_g_ext_ctrls(struct file *file,
+			    struct video_device_state *state,
 					struct v4l2_ext_controls *ctls)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
@@ -612,7 +642,8 @@ static int pvr2_g_ext_ctrls(struct file *file, void *priv,
 	return 0;
 }
 
-static int pvr2_s_ext_ctrls(struct file *file, void *priv,
+static int pvr2_s_ext_ctrls(struct file *file,
+			    struct video_device_state *state,
 		struct v4l2_ext_controls *ctls)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
@@ -637,7 +668,8 @@ commit:
 	return ret;
 }
 
-static int pvr2_try_ext_ctrls(struct file *file, void *priv,
+static int pvr2_try_ext_ctrls(struct file *file,
+			      struct video_device_state *state,
 		struct v4l2_ext_controls *ctls)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
@@ -659,8 +691,9 @@ static int pvr2_try_ext_ctrls(struct file *file, void *priv,
 	return 0;
 }
 
-static int pvr2_g_pixelaspect(struct file *file, void *priv,
-			      int type, struct v4l2_fract *f)
+static int pvr2_g_pixelaspect(struct file *file,
+			      struct video_device_state *state, int type,
+			      struct v4l2_fract *f)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
@@ -675,7 +708,8 @@ static int pvr2_g_pixelaspect(struct file *file, void *priv,
 	return ret;
 }
 
-static int pvr2_g_selection(struct file *file, void *priv,
+static int pvr2_g_selection(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_selection *sel)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
@@ -726,7 +760,8 @@ static int pvr2_g_selection(struct file *file, void *priv,
 	return ret;
 }
 
-static int pvr2_s_selection(struct file *file, void *priv,
+static int pvr2_s_selection(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_selection *sel)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
@@ -759,7 +794,8 @@ commit:
 	return ret;
 }
 
-static int pvr2_log_status(struct file *file, void *priv)
+static int pvr2_log_status(struct file *file,
+			   struct video_device_state *state)
 {
 	struct pvr2_v4l2_fh *fh = to_pvr2_v4l2_fh(file);
 	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;

@@ -301,7 +301,8 @@ static const struct vb2_ops cx25821_video_qops = {
 
 /* VIDEO IOCTLS */
 
-static int cx25821_vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int cx25821_vidioc_enum_fmt_vid_cap(struct file *file,
+					   struct video_device_state *state,
 			    struct v4l2_fmtdesc *f)
 {
 	if (unlikely(f->index >= ARRAY_SIZE(formats)))
@@ -312,7 +313,8 @@ static int cx25821_vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cx25821_vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int cx25821_vidioc_g_fmt_vid_cap(struct file *file,
+					struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct cx25821_channel *chan = video_drvdata(file);
@@ -328,7 +330,8 @@ static int cx25821_vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cx25821_vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int cx25821_vidioc_try_fmt_vid_cap(struct file *file,
+					  struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct cx25821_channel *chan = video_drvdata(file);
@@ -366,7 +369,8 @@ static int cx25821_vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx25821_channel *chan = video_drvdata(file);
@@ -374,7 +378,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	int pix_format = PIXEL_FRMT_422;
 	int err;
 
-	err = cx25821_vidioc_try_fmt_vid_cap(file, priv, f);
+	err = cx25821_vidioc_try_fmt_vid_cap(file, state, f);
 
 	if (0 != err)
 		return err;
@@ -402,7 +406,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_log_status(struct file *file, void *priv)
+static int vidioc_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct cx25821_channel *chan = video_drvdata(file);
 	struct cx25821_dev *dev = chan->dev;
@@ -416,7 +421,8 @@ static int vidioc_log_status(struct file *file, void *priv)
 }
 
 
-static int cx25821_vidioc_querycap(struct file *file, void *priv,
+static int cx25821_vidioc_querycap(struct file *file,
+				   struct video_device_state *state,
 			    struct v4l2_capability *cap)
 {
 	struct cx25821_channel *chan = video_drvdata(file);
@@ -431,7 +437,9 @@ static int cx25821_vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cx25821_vidioc_g_std(struct file *file, void *priv, v4l2_std_id *tvnorms)
+static int cx25821_vidioc_g_std(struct file *file,
+				struct video_device_state *state,
+				v4l2_std_id *tvnorms)
 {
 	struct cx25821_channel *chan = video_drvdata(file);
 
@@ -439,7 +447,8 @@ static int cx25821_vidioc_g_std(struct file *file, void *priv, v4l2_std_id *tvno
 	return 0;
 }
 
-static int cx25821_vidioc_s_std(struct file *file, void *priv,
+static int cx25821_vidioc_s_std(struct file *file,
+				struct video_device_state *state,
 				v4l2_std_id tvnorms)
 {
 	struct cx25821_channel *chan = video_drvdata(file);
@@ -457,7 +466,8 @@ static int cx25821_vidioc_s_std(struct file *file, void *priv,
 	return 0;
 }
 
-static int cx25821_vidioc_enum_input(struct file *file, void *priv,
+static int cx25821_vidioc_enum_input(struct file *file,
+				     struct video_device_state *state,
 			      struct v4l2_input *i)
 {
 	if (i->index)
@@ -469,13 +479,17 @@ static int cx25821_vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int cx25821_vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int cx25821_vidioc_g_input(struct file *file,
+				  struct video_device_state *state,
+				  unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int cx25821_vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int cx25821_vidioc_s_input(struct file *file,
+				  struct video_device_state *state,
+				  unsigned int i)
 {
 	return i ? -EINVAL : 0;
 }
@@ -505,7 +519,8 @@ static int cx25821_s_ctrl(struct v4l2_ctrl *ctrl)
 	return 0;
 }
 
-static int cx25821_vidioc_enum_output(struct file *file, void *priv,
+static int cx25821_vidioc_enum_output(struct file *file,
+				      struct video_device_state *state,
 			      struct v4l2_output *o)
 {
 	if (o->index)
@@ -517,18 +532,23 @@ static int cx25821_vidioc_enum_output(struct file *file, void *priv,
 	return 0;
 }
 
-static int cx25821_vidioc_g_output(struct file *file, void *priv, unsigned int *o)
+static int cx25821_vidioc_g_output(struct file *file,
+				   struct video_device_state *state,
+				   unsigned int *o)
 {
 	*o = 0;
 	return 0;
 }
 
-static int cx25821_vidioc_s_output(struct file *file, void *priv, unsigned int o)
+static int cx25821_vidioc_s_output(struct file *file,
+				   struct video_device_state *state,
+				   unsigned int o)
 {
 	return o ? -EINVAL : 0;
 }
 
-static int cx25821_vidioc_try_fmt_vid_out(struct file *file, void *priv,
+static int cx25821_vidioc_try_fmt_vid_out(struct file *file,
+					  struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct cx25821_channel *chan = video_drvdata(file);
@@ -547,13 +567,14 @@ static int cx25821_vidioc_try_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx25821_channel *chan = video_drvdata(file);
 	int err;
 
-	err = cx25821_vidioc_try_fmt_vid_out(file, priv, f);
+	err = cx25821_vidioc_try_fmt_vid_out(file, state, f);
 
 	if (0 != err)
 		return err;

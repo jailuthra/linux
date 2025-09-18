@@ -653,7 +653,8 @@ static u8 jpu_parse_hdr(void *buffer, unsigned long size, unsigned int *width,
 	return 0;
 }
 
-static int jpu_querycap(struct file *file, void *priv,
+static int jpu_querycap(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_capability *cap)
 {
 	struct jpu_ctx *ctx = file_to_ctx(file);
@@ -711,7 +712,8 @@ static int jpu_enum_fmt(struct v4l2_fmtdesc *f, u32 type)
 	return 0;
 }
 
-static int jpu_enum_fmt_cap(struct file *file, void *priv,
+static int jpu_enum_fmt_cap(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_fmtdesc *f)
 {
 	struct jpu_ctx *ctx = file_to_ctx(file);
@@ -720,7 +722,8 @@ static int jpu_enum_fmt_cap(struct file *file, void *priv,
 			    JPU_DEC_CAPTURE);
 }
 
-static int jpu_enum_fmt_out(struct file *file, void *priv,
+static int jpu_enum_fmt_out(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_fmtdesc *f)
 {
 	struct jpu_ctx *ctx = file_to_ctx(file);
@@ -821,7 +824,8 @@ static int __jpu_try_fmt(struct jpu_ctx *ctx, struct jpu_fmt **fmtinfo,
 	return 0;
 }
 
-static int jpu_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int jpu_try_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f)
 {
 	struct jpu_ctx *ctx = file_to_ctx(file);
 
@@ -831,7 +835,8 @@ static int jpu_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return __jpu_try_fmt(ctx, NULL, &f->fmt.pix_mp, f->type);
 }
 
-static int jpu_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int jpu_s_fmt(struct file *file, struct video_device_state *state,
+		     struct v4l2_format *f)
 {
 	struct vb2_queue *vq;
 	struct jpu_ctx *ctx = file_to_ctx(file);
@@ -861,7 +866,8 @@ static int jpu_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int jpu_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int jpu_g_fmt(struct file *file, struct video_device_state *state,
+		     struct v4l2_format *f)
 {
 	struct jpu_ctx *ctx = file_to_ctx(file);
 	struct jpu_q_data *q_data;
@@ -895,7 +901,8 @@ static const struct v4l2_ctrl_ops jpu_ctrl_ops = {
 	.s_ctrl		= jpu_s_ctrl,
 };
 
-static int jpu_streamon(struct file *file, void *priv, enum v4l2_buf_type type)
+static int jpu_streamon(struct file *file, struct video_device_state *state,
+			enum v4l2_buf_type type)
 {
 	struct jpu_q_data *src_q_data, *dst_q_data, *orig, adj, *ref;
 	struct jpu_ctx *ctx = file_to_ctx(file);

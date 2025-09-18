@@ -1342,7 +1342,8 @@ static const struct s5p_mfc_codec_ops encoder_codec_ops = {
 };
 
 /* Query capabilities of the device */
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct s5p_mfc_dev *dev = video_drvdata(file);
@@ -1375,19 +1376,22 @@ static int vidioc_enum_fmt(struct file *file, struct v4l2_fmtdesc *f,
 	return -EINVAL;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return vidioc_enum_fmt(file, f, false);
 }
 
-static int vidioc_enum_fmt_vid_out(struct file *file, void *priv,
+static int vidioc_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return vidioc_enum_fmt(file, f, true);
 }
 
-static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_g_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix_fmt_mp = &f->fmt.pix_mp;
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
@@ -1428,7 +1432,8 @@ static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_try_fmt(struct file *file, struct video_device_state *state,
+			  struct v4l2_format *f)
 {
 	struct s5p_mfc_dev *dev = video_drvdata(file);
 	const struct s5p_mfc_fmt *fmt;
@@ -1470,14 +1475,15 @@ static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_s_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
 	struct s5p_mfc_dev *dev = video_drvdata(file);
 	struct v4l2_pix_format_mplane *pix_fmt_mp = &f->fmt.pix_mp;
 	int ret = 0;
 
-	ret = vidioc_try_fmt(file, priv, f);
+	ret = vidioc_try_fmt(file, state, f);
 	if (ret)
 		return ret;
 	if (ctx->vq_src.streaming || ctx->vq_dst.streaming) {
@@ -1527,7 +1533,8 @@ out:
 	return ret;
 }
 
-static int vidioc_reqbufs(struct file *file, void *priv,
+static int vidioc_reqbufs(struct file *file,
+			  struct video_device_state *state,
 					  struct v4l2_requestbuffers *reqbufs)
 {
 	struct s5p_mfc_dev *dev = video_drvdata(file);
@@ -1598,7 +1605,8 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 	return ret;
 }
 
-static int vidioc_querybuf(struct file *file, void *priv,
+static int vidioc_querybuf(struct file *file,
+			   struct video_device_state *state,
 						   struct v4l2_buffer *buf)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
@@ -1634,7 +1642,8 @@ static int vidioc_querybuf(struct file *file, void *priv,
 }
 
 /* Queue a buffer */
-static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
+static int vidioc_qbuf(struct file *file, struct video_device_state *state,
+		       struct v4l2_buffer *buf)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
 
@@ -1655,7 +1664,8 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 }
 
 /* Dequeue a buffer */
-static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
+static int vidioc_dqbuf(struct file *file, struct video_device_state *state,
+			struct v4l2_buffer *buf)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
 	const struct v4l2_event ev = {
@@ -1682,8 +1692,8 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 }
 
 /* Export DMA buffer */
-static int vidioc_expbuf(struct file *file, void *priv,
-	struct v4l2_exportbuffer *eb)
+static int vidioc_expbuf(struct file *file,
+			 struct video_device_state *state, struct v4l2_exportbuffer *eb)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
 
@@ -1695,7 +1705,8 @@ static int vidioc_expbuf(struct file *file, void *priv,
 }
 
 /* Stream on */
-static int vidioc_streamon(struct file *file, void *priv,
+static int vidioc_streamon(struct file *file,
+			   struct video_device_state *state,
 			   enum v4l2_buf_type type)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
@@ -1708,7 +1719,8 @@ static int vidioc_streamon(struct file *file, void *priv,
 }
 
 /* Stream off, which equals to a pause */
-static int vidioc_streamoff(struct file *file, void *priv,
+static int vidioc_streamoff(struct file *file,
+			    struct video_device_state *state,
 			    enum v4l2_buf_type type)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
@@ -2281,7 +2293,8 @@ static const struct v4l2_ctrl_ops s5p_mfc_enc_ctrl_ops = {
 	.g_volatile_ctrl = s5p_mfc_enc_g_v_ctrl,
 };
 
-static int vidioc_s_parm(struct file *file, void *priv,
+static int vidioc_s_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *a)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
@@ -2298,7 +2311,8 @@ static int vidioc_s_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_parm(struct file *file, void *priv,
+static int vidioc_g_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *a)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);
@@ -2315,7 +2329,8 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_encoder_cmd(struct file *file, void *priv,
+static int vidioc_encoder_cmd(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_encoder_cmd *cmd)
 {
 	struct s5p_mfc_ctx *ctx = file_to_ctx(file);

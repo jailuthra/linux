@@ -1724,7 +1724,8 @@ static int pxa_camera_check_frame(u32 width, u32 height)
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int pxac_vidioc_g_register(struct file *file, void *priv,
+static int pxac_vidioc_g_register(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_dbg_register *reg)
 {
 	struct pxa_camera_dev *pcdev = video_drvdata(file);
@@ -1737,7 +1738,8 @@ static int pxac_vidioc_g_register(struct file *file, void *priv,
 	return 0;
 }
 
-static int pxac_vidioc_s_register(struct file *file, void *priv,
+static int pxac_vidioc_s_register(struct file *file,
+				  struct video_device_state *state,
 				  const struct v4l2_dbg_register *reg)
 {
 	struct pxa_camera_dev *pcdev = video_drvdata(file);
@@ -1751,7 +1753,8 @@ static int pxac_vidioc_s_register(struct file *file, void *priv,
 }
 #endif
 
-static int pxac_vidioc_enum_fmt_vid_cap(struct file *filp, void  *priv,
+static int pxac_vidioc_enum_fmt_vid_cap(struct file *filp,
+					struct video_device_state *state,
 					struct v4l2_fmtdesc *f)
 {
 	struct pxa_camera_dev *pcdev = video_drvdata(filp);
@@ -1767,7 +1770,8 @@ static int pxac_vidioc_enum_fmt_vid_cap(struct file *filp, void  *priv,
 	return 0;
 }
 
-static int pxac_vidioc_g_fmt_vid_cap(struct file *filp, void *priv,
+static int pxac_vidioc_g_fmt_vid_cap(struct file *filp,
+				     struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct pxa_camera_dev *pcdev = video_drvdata(filp);
@@ -1785,7 +1789,8 @@ static int pxac_vidioc_g_fmt_vid_cap(struct file *filp, void *priv,
 	return 0;
 }
 
-static int pxac_vidioc_try_fmt_vid_cap(struct file *filp, void *priv,
+static int pxac_vidioc_try_fmt_vid_cap(struct file *filp,
+				       struct video_device_state *state,
 				      struct v4l2_format *f)
 {
 	struct pxa_camera_dev *pcdev = video_drvdata(filp);
@@ -1852,7 +1857,8 @@ static int pxac_vidioc_try_fmt_vid_cap(struct file *filp, void *priv,
 	return 0;
 }
 
-static int pxac_vidioc_s_fmt_vid_cap(struct file *filp, void *priv,
+static int pxac_vidioc_s_fmt_vid_cap(struct file *filp,
+				     struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct pxa_camera_dev *pcdev = video_drvdata(filp);
@@ -1875,7 +1881,7 @@ static int pxac_vidioc_s_fmt_vid_cap(struct file *filp, void *priv,
 	if (is_busy)
 		return -EBUSY;
 
-	ret = pxac_vidioc_try_fmt_vid_cap(filp, priv, f);
+	ret = pxac_vidioc_try_fmt_vid_cap(filp, state, f);
 	if (ret)
 		return ret;
 
@@ -1901,7 +1907,8 @@ static int pxac_vidioc_s_fmt_vid_cap(struct file *filp, void *priv,
 	return ret;
 }
 
-static int pxac_vidioc_querycap(struct file *file, void *priv,
+static int pxac_vidioc_querycap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_capability *cap)
 {
 	strscpy(cap->bus_info, "platform:pxa-camera", sizeof(cap->bus_info));
@@ -1910,7 +1917,8 @@ static int pxac_vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int pxac_vidioc_enum_input(struct file *file, void *priv,
+static int pxac_vidioc_enum_input(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_input *i)
 {
 	if (i->index > 0)
@@ -1922,14 +1930,18 @@ static int pxac_vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int pxac_vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int pxac_vidioc_g_input(struct file *file,
+			       struct video_device_state *state,
+			       unsigned int *i)
 {
 	*i = 0;
 
 	return 0;
 }
 
-static int pxac_vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int pxac_vidioc_s_input(struct file *file,
+			       struct video_device_state *state,
+			       unsigned int i)
 {
 	if (i > 0)
 		return -EINVAL;

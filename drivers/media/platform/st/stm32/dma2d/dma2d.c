@@ -333,7 +333,8 @@ static int dma2d_release(struct file *file)
 	return 0;
 }
 
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, DMA2D_NAME, sizeof(cap->driver));
@@ -343,7 +344,9 @@ static int vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt(struct file *file, void *priv, struct v4l2_fmtdesc *f)
+static int vidioc_enum_fmt(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_fmtdesc *f)
 {
 	if (f->index >= NUM_FORMATS)
 		return -EINVAL;
@@ -352,7 +355,8 @@ static int vidioc_enum_fmt(struct file *file, void *priv, struct v4l2_fmtdesc *f
 	return 0;
 }
 
-static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_g_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct dma2d_ctx *ctx = file2ctx(file);
 	struct vb2_queue *vq;
@@ -377,7 +381,8 @@ static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_try_fmt(struct file *file, struct video_device_state *state,
+			  struct v4l2_format *f)
 {
 	struct dma2d_ctx *ctx = file2ctx(file);
 	struct dma2d_fmt *fmt;
@@ -420,7 +425,8 @@ static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_s_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct dma2d_ctx *ctx = file2ctx(file);
 	struct vb2_queue *vq;
@@ -431,7 +437,7 @@ static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	/* Adjust all values accordingly to the hardware capabilities
 	 * and chosen format.
 	 */
-	ret = vidioc_try_fmt(file, priv, f);
+	ret = vidioc_try_fmt(file, state, f);
 	if (ret)
 		return ret;
 

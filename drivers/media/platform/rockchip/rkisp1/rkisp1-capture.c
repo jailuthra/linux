@@ -1326,7 +1326,8 @@ static void rkisp1_set_fmt(struct rkisp1_capture *cap,
 	cap->stride = pixm->plane_fmt[0].bytesperline / cap->pix.info->bpp[0];
 }
 
-static int rkisp1_try_fmt_vid_cap_mplane(struct file *file, void *fh,
+static int rkisp1_try_fmt_vid_cap_mplane(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_format *f)
 {
 	struct rkisp1_capture *cap = video_drvdata(file);
@@ -1336,7 +1337,8 @@ static int rkisp1_try_fmt_vid_cap_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int rkisp1_enum_fmt_vid_cap_mplane(struct file *file, void *priv,
+static int rkisp1_enum_fmt_vid_cap_mplane(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_fmtdesc *f)
 {
 	struct rkisp1_capture *cap = video_drvdata(file);
@@ -1370,7 +1372,8 @@ static int rkisp1_enum_fmt_vid_cap_mplane(struct file *file, void *priv,
 	return -EINVAL;
 }
 
-static int rkisp1_enum_framesizes(struct file *file, void *fh,
+static int rkisp1_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	static const unsigned int max_widths[] = {
@@ -1400,7 +1403,8 @@ static int rkisp1_enum_framesizes(struct file *file, void *fh,
 }
 
 static int rkisp1_s_fmt_vid_cap_mplane(struct file *file,
-				       void *priv, struct v4l2_format *f)
+				       struct video_device_state *state,
+				       struct v4l2_format *f)
 {
 	struct rkisp1_capture *cap = video_drvdata(file);
 	struct rkisp1_vdev_node *node =
@@ -1414,7 +1418,8 @@ static int rkisp1_s_fmt_vid_cap_mplane(struct file *file,
 	return 0;
 }
 
-static int rkisp1_g_fmt_vid_cap_mplane(struct file *file, void *fh,
+static int rkisp1_g_fmt_vid_cap_mplane(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct rkisp1_capture *cap = video_drvdata(file);
@@ -1425,7 +1430,8 @@ static int rkisp1_g_fmt_vid_cap_mplane(struct file *file, void *fh,
 }
 
 static int
-rkisp1_querycap(struct file *file, void *priv, struct v4l2_capability *cap)
+rkisp1_querycap(struct file *file, struct video_device_state *state,
+		struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, RKISP1_DRIVER_NAME, sizeof(cap->driver));
 	strscpy(cap->card, RKISP1_DRIVER_NAME, sizeof(cap->card));

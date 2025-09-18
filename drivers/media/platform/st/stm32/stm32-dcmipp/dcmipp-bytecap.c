@@ -172,7 +172,8 @@ static const struct v4l2_pix_format fmt_default = {
 	.xfer_func = DCMIPP_XFER_FUNC_DEFAULT,
 };
 
-static int dcmipp_bytecap_querycap(struct file *file, void *priv,
+static int dcmipp_bytecap_querycap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, DCMIPP_PDEV_NAME, sizeof(cap->driver));
@@ -181,7 +182,8 @@ static int dcmipp_bytecap_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int dcmipp_bytecap_g_fmt_vid_cap(struct file *file, void *priv,
+static int dcmipp_bytecap_g_fmt_vid_cap(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct dcmipp_bytecap_device *vcap = video_drvdata(file);
@@ -191,7 +193,8 @@ static int dcmipp_bytecap_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int dcmipp_bytecap_try_fmt_vid_cap(struct file *file, void *priv,
+static int dcmipp_bytecap_try_fmt_vid_cap(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_format *f)
 {
 	struct dcmipp_bytecap_device *vcap = video_drvdata(file);
@@ -231,7 +234,8 @@ static int dcmipp_bytecap_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int dcmipp_bytecap_s_fmt_vid_cap(struct file *file, void *priv,
+static int dcmipp_bytecap_s_fmt_vid_cap(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct dcmipp_bytecap_device *vcap = video_drvdata(file);
@@ -241,7 +245,7 @@ static int dcmipp_bytecap_s_fmt_vid_cap(struct file *file, void *priv,
 	if (vb2_is_busy(&vcap->queue))
 		return -EBUSY;
 
-	ret = dcmipp_bytecap_try_fmt_vid_cap(file, priv, f);
+	ret = dcmipp_bytecap_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -263,7 +267,8 @@ static int dcmipp_bytecap_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int dcmipp_bytecap_enum_fmt_vid_cap(struct file *file, void *priv,
+static int dcmipp_bytecap_enum_fmt_vid_cap(struct file *file,
+					   struct video_device_state *state,
 					   struct v4l2_fmtdesc *f)
 {
 	const struct dcmipp_bytecap_pix_map *vpix;
@@ -301,7 +306,8 @@ static int dcmipp_bytecap_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int dcmipp_bytecap_enum_framesizes(struct file *file, void *fh,
+static int dcmipp_bytecap_enum_framesizes(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_frmsizeenum *fsize)
 {
 	const struct dcmipp_bytecap_pix_map *vpix;

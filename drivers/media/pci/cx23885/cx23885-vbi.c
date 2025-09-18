@@ -32,9 +32,8 @@ MODULE_PARM_DESC(vbi_debug, "enable debug messages [vbi]");
 #define VBI_NTSC_LINE_COUNT 12
 #define VBI_PAL_LINE_COUNT 18
 
-
-int cx23885_vbi_fmt(struct file *file, void *priv,
-	struct v4l2_format *f)
+int cx23885_vbi_fmt(struct file *file, struct video_device_state *state,
+		    struct v4l2_format *f)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 

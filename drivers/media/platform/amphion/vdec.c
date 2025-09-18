@@ -417,7 +417,8 @@ static void vdec_set_last_buffer_dequeued(struct vpu_inst *inst)
 	}
 }
 
-static int vdec_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+static int vdec_querycap(struct file *file, struct video_device_state *state,
+			 struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "amphion-vpu", sizeof(cap->driver));
 	strscpy(cap->card, "amphion vpu decoder", sizeof(cap->card));
@@ -426,7 +427,8 @@ static int vdec_querycap(struct file *file, void *fh, struct v4l2_capability *ca
 	return 0;
 }
 
-static int vdec_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int vdec_enum_fmt(struct file *file, struct video_device_state *state,
+			 struct v4l2_fmtdesc *f)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct vdec_t *vdec = inst->priv;
@@ -455,7 +457,8 @@ exit:
 	return ret;
 }
 
-static int vdec_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int vdec_g_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct vdec_t *vdec = inst->priv;
@@ -486,7 +489,8 @@ static int vdec_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int vdec_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int vdec_try_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct vdec_t *vdec = inst->priv;
@@ -592,7 +596,8 @@ static int vdec_s_fmt_common(struct vpu_inst *inst, struct v4l2_format *f)
 	return 0;
 }
 
-static int vdec_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int vdec_s_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct vpu_inst *inst = to_inst(file);
 	struct v4l2_pix_format_mplane *pixmp = &f->fmt.pix_mp;
@@ -625,7 +630,9 @@ exit:
 	return ret;
 }
 
-static int vdec_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
+static int vdec_g_selection(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_selection *s)
 {
 	struct vpu_inst *inst = to_inst(file);
 
@@ -713,12 +720,14 @@ static int vdec_cmd_stop(struct vpu_inst *inst)
 	return 0;
 }
 
-static int vdec_decoder_cmd(struct file *file, void *fh, struct v4l2_decoder_cmd *cmd)
+static int vdec_decoder_cmd(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_decoder_cmd *cmd)
 {
 	struct vpu_inst *inst = to_inst(file);
 	int ret;
 
-	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, fh, cmd);
+	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, state, cmd);
 	if (ret)
 		return ret;
 
@@ -1885,7 +1894,6 @@ static struct vpu_inst_ops vdec_inst_ops = {
 
 static void vdec_init(struct file *file)
 {
-	struct vpu_inst *inst = to_inst(file);
 	struct v4l2_format f;
 
 	memset(&f, 0, sizeof(f));
@@ -1894,7 +1902,7 @@ static void vdec_init(struct file *file)
 	f.fmt.pix_mp.width = 1280;
 	f.fmt.pix_mp.height = 720;
 	f.fmt.pix_mp.field = V4L2_FIELD_NONE;
-	vdec_s_fmt(file, &inst->fh, &f);
+	vdec_s_fmt(file, NULL, &f);
 
 	memset(&f, 0, sizeof(f));
 	f.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -1902,7 +1910,7 @@ static void vdec_init(struct file *file)
 	f.fmt.pix_mp.width = 1280;
 	f.fmt.pix_mp.height = 720;
 	f.fmt.pix_mp.field = V4L2_FIELD_NONE;
-	vdec_s_fmt(file, &inst->fh, &f);
+	vdec_s_fmt(file, NULL, &f);
 }
 
 static int vdec_open(struct file *file)

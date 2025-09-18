@@ -308,7 +308,8 @@ int iris_close(struct file *filp)
 	return 0;
 }
 
-static int iris_enum_fmt(struct file *filp, void *fh, struct v4l2_fmtdesc *f)
+static int iris_enum_fmt(struct file *filp, struct video_device_state *state,
+			 struct v4l2_fmtdesc *f)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
 
@@ -320,7 +321,9 @@ static int iris_enum_fmt(struct file *filp, void *fh, struct v4l2_fmtdesc *f)
 		return -EINVAL;
 }
 
-static int iris_try_fmt_vid_mplane(struct file *filp, void *fh, struct v4l2_format *f)
+static int iris_try_fmt_vid_mplane(struct file *filp,
+				   struct video_device_state *state,
+				   struct v4l2_format *f)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
 	int ret = 0;
@@ -337,7 +340,9 @@ static int iris_try_fmt_vid_mplane(struct file *filp, void *fh, struct v4l2_form
 	return ret;
 }
 
-static int iris_s_fmt_vid_mplane(struct file *filp, void *fh, struct v4l2_format *f)
+static int iris_s_fmt_vid_mplane(struct file *filp,
+				 struct video_device_state *state,
+				 struct v4l2_format *f)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
 	int ret = 0;
@@ -354,7 +359,9 @@ static int iris_s_fmt_vid_mplane(struct file *filp, void *fh, struct v4l2_format
 	return ret;
 }
 
-static int iris_g_fmt_vid_mplane(struct file *filp, void *fh, struct v4l2_format *f)
+static int iris_g_fmt_vid_mplane(struct file *filp,
+				 struct video_device_state *state,
+				 struct v4l2_format *f)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
 	int ret = 0;
@@ -372,7 +379,8 @@ static int iris_g_fmt_vid_mplane(struct file *filp, void *fh, struct v4l2_format
 	return ret;
 }
 
-static int iris_enum_framesizes(struct file *filp, void *fh,
+static int iris_enum_framesizes(struct file *filp,
+				struct video_device_state *state,
 				struct v4l2_frmsizeenum *fsize)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
@@ -403,7 +411,8 @@ static int iris_enum_framesizes(struct file *filp, void *fh,
 	return ret;
 }
 
-static int iris_enum_frameintervals(struct file *filp, void *fh,
+static int iris_enum_frameintervals(struct file *filp,
+				    struct video_device_state *state,
 				    struct v4l2_frmivalenum *fival)
 
 {
@@ -448,7 +457,8 @@ static int iris_enum_frameintervals(struct file *filp, void *fh,
 	return 0;
 }
 
-static int iris_querycap(struct file *filp, void *fh, struct v4l2_capability *cap)
+static int iris_querycap(struct file *filp, struct video_device_state *state,
+			 struct v4l2_capability *cap)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
 
@@ -462,7 +472,9 @@ static int iris_querycap(struct file *filp, void *fh, struct v4l2_capability *ca
 	return 0;
 }
 
-static int iris_g_selection(struct file *filp, void *fh, struct v4l2_selection *s)
+static int iris_g_selection(struct file *filp,
+			    struct video_device_state *state,
+			    struct v4l2_selection *s)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
 
@@ -512,7 +524,9 @@ static int iris_g_selection(struct file *filp, void *fh, struct v4l2_selection *
 	return 0;
 }
 
-static int iris_s_selection(struct file *filp, void *fh, struct v4l2_selection *s)
+static int iris_s_selection(struct file *filp,
+			    struct video_device_state *state,
+			    struct v4l2_selection *s)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
 
@@ -536,7 +550,8 @@ static int iris_subscribe_event(struct v4l2_fh *fh, const struct v4l2_event_subs
 	return -EINVAL;
 }
 
-static int iris_s_parm(struct file *filp, void *fh, struct v4l2_streamparm *a)
+static int iris_s_parm(struct file *filp, struct video_device_state *state,
+		       struct v4l2_streamparm *a)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
 
@@ -550,7 +565,8 @@ static int iris_s_parm(struct file *filp, void *fh, struct v4l2_streamparm *a)
 		return -EINVAL;
 }
 
-static int iris_g_parm(struct file *filp, void *fh, struct v4l2_streamparm *a)
+static int iris_g_parm(struct file *filp, struct video_device_state *state,
+		       struct v4l2_streamparm *a)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
 
@@ -564,7 +580,8 @@ static int iris_g_parm(struct file *filp, void *fh, struct v4l2_streamparm *a)
 		return -EINVAL;
 }
 
-static int iris_dec_cmd(struct file *filp, void *fh,
+static int iris_dec_cmd(struct file *filp,
+			struct video_device_state *state,
 			struct v4l2_decoder_cmd *dec)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
@@ -572,7 +589,7 @@ static int iris_dec_cmd(struct file *filp, void *fh,
 
 	mutex_lock(&inst->lock);
 
-	ret = v4l2_m2m_ioctl_decoder_cmd(filp, fh, dec);
+	ret = v4l2_m2m_ioctl_decoder_cmd(filp, state, dec);
 	if (ret)
 		goto unlock;
 
@@ -597,7 +614,8 @@ unlock:
 	return ret;
 }
 
-static int iris_enc_cmd(struct file *filp, void *fh,
+static int iris_enc_cmd(struct file *filp,
+			struct video_device_state *state,
 			struct v4l2_encoder_cmd *enc)
 {
 	struct iris_inst *inst = iris_get_inst(filp);
@@ -605,7 +623,7 @@ static int iris_enc_cmd(struct file *filp, void *fh,
 
 	mutex_lock(&inst->lock);
 
-	ret = v4l2_m2m_ioctl_encoder_cmd(filp, fh, enc);
+	ret = v4l2_m2m_ioctl_encoder_cmd(filp, state, enc);
 	if (ret)
 		goto unlock;
 

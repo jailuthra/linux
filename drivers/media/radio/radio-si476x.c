@@ -321,7 +321,8 @@ v4l2_ctrl_handler_to_radio(struct v4l2_ctrl_handler *d)
 /*
  * si476x_vidioc_querycap - query device capabilities
  */
-static int si476x_radio_querycap(struct file *file, void *priv,
+static int si476x_radio_querycap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_capability *capability)
 {
 	struct si476x_radio *radio = video_drvdata(file);
@@ -332,7 +333,8 @@ static int si476x_radio_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int si476x_radio_enum_freq_bands(struct file *file, void *priv,
+static int si476x_radio_enum_freq_bands(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_frequency_band *band)
 {
 	int err;
@@ -369,7 +371,8 @@ static int si476x_radio_enum_freq_bands(struct file *file, void *priv,
 	return err;
 }
 
-static int si476x_radio_g_tuner(struct file *file, void *priv,
+static int si476x_radio_g_tuner(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_tuner *tuner)
 {
 	int err;
@@ -446,7 +449,8 @@ static int si476x_radio_g_tuner(struct file *file, void *priv,
 	return err;
 }
 
-static int si476x_radio_s_tuner(struct file *file, void *priv,
+static int si476x_radio_s_tuner(struct file *file,
+				struct video_device_state *state,
 				const struct v4l2_tuner *tuner)
 {
 	struct si476x_radio *radio = video_drvdata(file);
@@ -638,7 +642,8 @@ static int si476x_radio_change_func(struct si476x_radio *radio,
 	return si476x_radio_do_post_powerup_init(radio, func);
 }
 
-static int si476x_radio_g_frequency(struct file *file, void *priv,
+static int si476x_radio_g_frequency(struct file *file,
+				    struct video_device_state *state,
 			      struct v4l2_frequency *f)
 {
 	int err;
@@ -673,7 +678,8 @@ static int si476x_radio_g_frequency(struct file *file, void *priv,
 	return err;
 }
 
-static int si476x_radio_s_frequency(struct file *file, void *priv,
+static int si476x_radio_s_frequency(struct file *file,
+				    struct video_device_state *state,
 				    const struct v4l2_frequency *f)
 {
 	int err;
@@ -725,7 +731,8 @@ unlock:
 	return err;
 }
 
-static int si476x_radio_s_hw_freq_seek(struct file *file, void *priv,
+static int si476x_radio_s_hw_freq_seek(struct file *file,
+				       struct video_device_state *state,
 				       const struct v4l2_hw_freq_seek *seek)
 {
 	int err;
@@ -992,7 +999,8 @@ static int si476x_radio_s_ctrl(struct v4l2_ctrl *ctrl)
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int si476x_radio_g_register(struct file *file, void *fh,
+static int si476x_radio_g_register(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_dbg_register *reg)
 {
 	int err;
@@ -1008,7 +1016,9 @@ static int si476x_radio_g_register(struct file *file, void *fh,
 
 	return err;
 }
-static int si476x_radio_s_register(struct file *file, void *fh,
+
+static int si476x_radio_s_register(struct file *file,
+				   struct video_device_state *state,
 				   const struct v4l2_dbg_register *reg)
 {
 

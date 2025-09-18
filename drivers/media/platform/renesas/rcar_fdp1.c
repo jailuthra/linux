@@ -1358,7 +1358,8 @@ static void device_frame_end(struct fdp1_dev *fdp1,
 /*
  * video ioctls
  */
-static int fdp1_vidioc_querycap(struct file *file, void *priv,
+static int fdp1_vidioc_querycap(struct file *file,
+				struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, DRIVER_NAME, sizeof(cap->driver));
@@ -1392,19 +1393,22 @@ static int fdp1_enum_fmt(struct v4l2_fmtdesc *f, u32 type)
 	return 0;
 }
 
-static int fdp1_enum_fmt_vid_cap(struct file *file, void *priv,
+static int fdp1_enum_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *f)
 {
 	return fdp1_enum_fmt(f, FDP1_CAPTURE);
 }
 
-static int fdp1_enum_fmt_vid_out(struct file *file, void *priv,
+static int fdp1_enum_fmt_vid_out(struct file *file,
+				 struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return fdp1_enum_fmt(f, FDP1_OUTPUT);
 }
 
-static int fdp1_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int fdp1_g_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct fdp1_ctx *ctx = file_to_ctx(file);
 	struct fdp1_q_data *q_data;
@@ -1582,7 +1586,8 @@ static void fdp1_try_fmt_capture(struct fdp1_ctx *ctx,
 	fdp1_compute_stride(pix, fmt);
 }
 
-static int fdp1_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int fdp1_try_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct fdp1_ctx *ctx = file_to_ctx(file);
 
@@ -1653,7 +1658,8 @@ static void fdp1_set_format(struct fdp1_ctx *ctx,
 	}
 }
 
-static int fdp1_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int fdp1_s_fmt(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *f)
 {
 	struct fdp1_ctx *ctx = file_to_ctx(file);
 	struct v4l2_m2m_ctx *m2m_ctx = ctx->fh.m2m_ctx;

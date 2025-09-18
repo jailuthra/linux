@@ -346,7 +346,8 @@ static const struct vb2_ops msm_video_vb2_q_ops = {
  * V4L2 ioctls
  */
 
-static int video_querycap(struct file *file, void *fh,
+static int video_querycap(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "qcom-camss", sizeof(cap->driver));
@@ -355,7 +356,8 @@ static int video_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int video_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int video_enum_fmt(struct file *file, struct video_device_state *state,
+			  struct v4l2_fmtdesc *f)
 {
 	struct camss_video *video = video_drvdata(file);
 	int i, j, k;
@@ -412,7 +414,8 @@ static int video_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 	return 0;
 }
 
-static int video_enum_framesizes(struct file *file, void *fh,
+static int video_enum_framesizes(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_frmsizeenum *fsize)
 {
 	struct camss_video *video = video_drvdata(file);
@@ -442,7 +445,8 @@ static int video_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int video_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int video_g_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f)
 {
 	struct camss_video *video = video_drvdata(file);
 
@@ -531,14 +535,16 @@ static int __video_try_fmt(struct camss_video *video, struct v4l2_format *f)
 	return 0;
 }
 
-static int video_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int video_try_fmt(struct file *file, struct video_device_state *state,
+			 struct v4l2_format *f)
 {
 	struct camss_video *video = video_drvdata(file);
 
 	return __video_try_fmt(video, f);
 }
 
-static int video_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int video_s_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f)
 {
 	struct camss_video *video = video_drvdata(file);
 	int ret;
@@ -555,7 +561,8 @@ static int video_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int video_enum_input(struct file *file, void *fh,
+static int video_enum_input(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_input *input)
 {
 	if (input->index > 0)
@@ -567,14 +574,16 @@ static int video_enum_input(struct file *file, void *fh,
 	return 0;
 }
 
-static int video_g_input(struct file *file, void *fh, unsigned int *input)
+static int video_g_input(struct file *file, struct video_device_state *state,
+			 unsigned int *input)
 {
 	*input = 0;
 
 	return 0;
 }
 
-static int video_s_input(struct file *file, void *fh, unsigned int input)
+static int video_s_input(struct file *file, struct video_device_state *state,
+			 unsigned int input)
 {
 	return input == 0 ? 0 : -EINVAL;
 }

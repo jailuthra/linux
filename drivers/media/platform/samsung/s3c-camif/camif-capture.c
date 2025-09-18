@@ -630,7 +630,8 @@ static const struct v4l2_file_operations s3c_camif_fops = {
  * Video node IOCTLs
  */
 
-static int s3c_camif_vidioc_querycap(struct file *file, void *priv,
+static int s3c_camif_vidioc_querycap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_capability *cap)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -642,7 +643,8 @@ static int s3c_camif_vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int s3c_camif_vidioc_enum_input(struct file *file, void *priv,
+static int s3c_camif_vidioc_enum_input(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_input *input)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -656,20 +658,23 @@ static int s3c_camif_vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int s3c_camif_vidioc_s_input(struct file *file, void *priv,
+static int s3c_camif_vidioc_s_input(struct file *file,
+				    struct video_device_state *state,
 				    unsigned int i)
 {
 	return i == 0 ? 0 : -EINVAL;
 }
 
-static int s3c_camif_vidioc_g_input(struct file *file, void *priv,
+static int s3c_camif_vidioc_g_input(struct file *file,
+				    struct video_device_state *state,
 				    unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int s3c_camif_vidioc_enum_fmt(struct file *file, void *priv,
+static int s3c_camif_vidioc_enum_fmt(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_fmtdesc *f)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -683,7 +688,8 @@ static int s3c_camif_vidioc_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int s3c_camif_vidioc_g_fmt(struct file *file, void *priv,
+static int s3c_camif_vidioc_g_fmt(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -754,14 +760,16 @@ static int __camif_video_try_format(struct camif_vp *vp,
 	return 0;
 }
 
-static int s3c_camif_vidioc_try_fmt(struct file *file, void *priv,
+static int s3c_camif_vidioc_try_fmt(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct camif_vp *vp = video_drvdata(file);
 	return __camif_video_try_format(vp, &f->fmt.pix, NULL);
 }
 
-static int s3c_camif_vidioc_s_fmt(struct file *file, void *priv,
+static int s3c_camif_vidioc_s_fmt(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct v4l2_pix_format *pix = &f->fmt.pix;
@@ -828,7 +836,8 @@ static int camif_pipeline_validate(struct camif_dev *camif)
 	return 0;
 }
 
-static int s3c_camif_streamon(struct file *file, void *priv,
+static int s3c_camif_streamon(struct file *file,
+			      struct video_device_state *state,
 			      enum v4l2_buf_type type)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -860,7 +869,8 @@ static int s3c_camif_streamon(struct file *file, void *priv,
 	return vb2_streamon(&vp->vb_queue, type);
 }
 
-static int s3c_camif_streamoff(struct file *file, void *priv,
+static int s3c_camif_streamoff(struct file *file,
+			       struct video_device_state *state,
 			       enum v4l2_buf_type type)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -881,7 +891,8 @@ static int s3c_camif_streamoff(struct file *file, void *priv,
 	return ret;
 }
 
-static int s3c_camif_reqbufs(struct file *file, void *priv,
+static int s3c_camif_reqbufs(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_requestbuffers *rb)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -915,14 +926,16 @@ static int s3c_camif_reqbufs(struct file *file, void *priv,
 	return ret;
 }
 
-static int s3c_camif_querybuf(struct file *file, void *priv,
+static int s3c_camif_querybuf(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_buffer *buf)
 {
 	struct camif_vp *vp = video_drvdata(file);
 	return vb2_querybuf(&vp->vb_queue, buf);
 }
 
-static int s3c_camif_qbuf(struct file *file, void *priv,
+static int s3c_camif_qbuf(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_buffer *buf)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -935,7 +948,8 @@ static int s3c_camif_qbuf(struct file *file, void *priv,
 	return vb2_qbuf(&vp->vb_queue, vp->vdev.v4l2_dev->mdev, buf);
 }
 
-static int s3c_camif_dqbuf(struct file *file, void *priv,
+static int s3c_camif_dqbuf(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_buffer *buf)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -948,7 +962,8 @@ static int s3c_camif_dqbuf(struct file *file, void *priv,
 	return vb2_dqbuf(&vp->vb_queue, buf, file->f_flags & O_NONBLOCK);
 }
 
-static int s3c_camif_create_bufs(struct file *file, void *priv,
+static int s3c_camif_create_bufs(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_create_buffers *create)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -966,14 +981,16 @@ static int s3c_camif_create_bufs(struct file *file, void *priv,
 	return ret;
 }
 
-static int s3c_camif_prepare_buf(struct file *file, void *priv,
+static int s3c_camif_prepare_buf(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_buffer *b)
 {
 	struct camif_vp *vp = video_drvdata(file);
 	return vb2_prepare_buf(&vp->vb_queue, vp->vdev.v4l2_dev->mdev, b);
 }
 
-static int s3c_camif_g_selection(struct file *file, void *priv,
+static int s3c_camif_g_selection(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_selection *sel)
 {
 	struct camif_vp *vp = video_drvdata(file);
@@ -1010,7 +1027,8 @@ static void __camif_try_compose(struct camif_dev *camif, struct camif_vp *vp,
 	/* TODO: s3c64xx */
 }
 
-static int s3c_camif_s_selection(struct file *file, void *priv,
+static int s3c_camif_s_selection(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_selection *sel)
 {
 	struct camif_vp *vp = video_drvdata(file);

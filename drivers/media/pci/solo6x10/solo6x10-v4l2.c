@@ -367,7 +367,8 @@ static const struct vb2_ops solo_video_qops = {
 	.stop_streaming = solo_stop_streaming,
 };
 
-static int solo_querycap(struct file *file, void  *priv,
+static int solo_querycap(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, SOLO6X10_NAME, sizeof(cap->driver));
@@ -399,7 +400,8 @@ static int solo_enum_ext_input(struct solo_dev *solo_dev,
 	return 0;
 }
 
-static int solo_enum_input(struct file *file, void *priv,
+static int solo_enum_input(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_input *input)
 {
 	struct solo_dev *solo_dev = video_drvdata(file);
@@ -423,7 +425,8 @@ static int solo_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_set_input(struct file *file, void *priv, unsigned int index)
+static int solo_set_input(struct file *file, struct video_device_state *state,
+			  unsigned int index)
 {
 	struct solo_dev *solo_dev = video_drvdata(file);
 	int ret = solo_v4l2_set_ch(solo_dev, index);
@@ -436,7 +439,8 @@ static int solo_set_input(struct file *file, void *priv, unsigned int index)
 	return ret;
 }
 
-static int solo_get_input(struct file *file, void *priv, unsigned int *index)
+static int solo_get_input(struct file *file, struct video_device_state *state,
+			  unsigned int *index)
 {
 	struct solo_dev *solo_dev = video_drvdata(file);
 
@@ -445,7 +449,8 @@ static int solo_get_input(struct file *file, void *priv, unsigned int *index)
 	return 0;
 }
 
-static int solo_enum_fmt_cap(struct file *file, void *priv,
+static int solo_enum_fmt_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_fmtdesc *f)
 {
 	if (f->index)
@@ -455,7 +460,8 @@ static int solo_enum_fmt_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_try_fmt_cap(struct file *file, void *priv,
+static int solo_try_fmt_cap(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct solo_dev *solo_dev = video_drvdata(file);
@@ -474,7 +480,8 @@ static int solo_try_fmt_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_set_fmt_cap(struct file *file, void *priv,
+static int solo_set_fmt_cap(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct solo_dev *solo_dev = video_drvdata(file);
@@ -484,10 +491,11 @@ static int solo_set_fmt_cap(struct file *file, void *priv,
 
 	/* For right now, if it doesn't match our running config,
 	 * then fail */
-	return solo_try_fmt_cap(file, priv, f);
+	return solo_try_fmt_cap(file, state, f);
 }
 
-static int solo_get_fmt_cap(struct file *file, void *priv,
+static int solo_get_fmt_cap(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct solo_dev *solo_dev = video_drvdata(file);
@@ -504,7 +512,8 @@ static int solo_get_fmt_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int solo_g_std(struct file *file, void *priv, v4l2_std_id *i)
+static int solo_g_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id *i)
 {
 	struct solo_dev *solo_dev = video_drvdata(file);
 
@@ -536,7 +545,8 @@ int solo_set_video_type(struct solo_dev *solo_dev, bool is_50hz)
 	return solo_v4l2_set_ch(solo_dev, solo_dev->cur_disp_ch);
 }
 
-static int solo_s_std(struct file *file, void *priv, v4l2_std_id std)
+static int solo_s_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id std)
 {
 	struct solo_dev *solo_dev = video_drvdata(file);
 

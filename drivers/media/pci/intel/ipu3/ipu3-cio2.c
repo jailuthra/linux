@@ -1062,7 +1062,8 @@ static const struct vb2_ops cio2_vb2_ops = {
 
 /**************** V4L2 interface ****************/
 
-static int cio2_v4l2_querycap(struct file *file, void *fh,
+static int cio2_v4l2_querycap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, CIO2_NAME, sizeof(cap->driver));
@@ -1071,7 +1072,8 @@ static int cio2_v4l2_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int cio2_v4l2_enum_fmt(struct file *file, void *fh,
+static int cio2_v4l2_enum_fmt(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_fmtdesc *f)
 {
 	if (f->index >= ARRAY_SIZE(formats))
@@ -1083,7 +1085,9 @@ static int cio2_v4l2_enum_fmt(struct file *file, void *fh,
 }
 
 /* The format is validated in cio2_video_link_validate() */
-static int cio2_v4l2_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int cio2_v4l2_g_fmt(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_format *f)
 {
 	struct cio2_queue *q = file_to_cio2_queue(file);
 
@@ -1092,7 +1096,9 @@ static int cio2_v4l2_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int cio2_v4l2_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int cio2_v4l2_try_fmt(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_format *f)
 {
 	const struct ipu3_cio2_fmt *fmt;
 	struct v4l2_pix_format_mplane *mpix = &f->fmt.pix_mp;
@@ -1123,18 +1129,21 @@ static int cio2_v4l2_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int cio2_v4l2_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int cio2_v4l2_s_fmt(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_format *f)
 {
 	struct cio2_queue *q = file_to_cio2_queue(file);
 
-	cio2_v4l2_try_fmt(file, fh, f);
+	cio2_v4l2_try_fmt(file, state, f);
 	q->format = f->fmt.pix_mp;
 
 	return 0;
 }
 
 static int
-cio2_video_enum_input(struct file *file, void *fh, struct v4l2_input *input)
+cio2_video_enum_input(struct file *file, struct video_device_state *state,
+		      struct v4l2_input *input)
 {
 	if (input->index > 0)
 		return -EINVAL;
@@ -1146,7 +1155,8 @@ cio2_video_enum_input(struct file *file, void *fh, struct v4l2_input *input)
 }
 
 static int
-cio2_video_g_input(struct file *file, void *fh, unsigned int *input)
+cio2_video_g_input(struct file *file, struct video_device_state *state,
+		   unsigned int *input)
 {
 	*input = 0;
 
@@ -1154,7 +1164,8 @@ cio2_video_g_input(struct file *file, void *fh, unsigned int *input)
 }
 
 static int
-cio2_video_s_input(struct file *file, void *fh, unsigned int input)
+cio2_video_s_input(struct file *file, struct video_device_state *state,
+		   unsigned int input)
 {
 	return input == 0 ? 0 : -EINVAL;
 }

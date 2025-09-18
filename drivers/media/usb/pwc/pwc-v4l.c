@@ -446,7 +446,9 @@ static int pwc_vidioc_try_fmt(struct pwc_device *pdev, struct v4l2_format *f)
 
 /* ioctl(VIDIOC_SET_FMT) */
 
-static int pwc_s_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int pwc_s_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_format *f)
 {
 	struct pwc_device *pdev = video_drvdata(file);
 	int ret, pixelformat, compression = 0;
@@ -476,7 +478,8 @@ static int pwc_s_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format *f)
 	return ret;
 }
 
-static int pwc_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+static int pwc_querycap(struct file *file, struct video_device_state *state,
+			struct v4l2_capability *cap)
 {
 	struct pwc_device *pdev = video_drvdata(file);
 
@@ -486,7 +489,8 @@ static int pwc_querycap(struct file *file, void *fh, struct v4l2_capability *cap
 	return 0;
 }
 
-static int pwc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
+static int pwc_enum_input(struct file *file, struct video_device_state *state,
+			  struct v4l2_input *i)
 {
 	if (i->index)	/* Only one INPUT is supported */
 		return -EINVAL;
@@ -496,13 +500,15 @@ static int pwc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
 	return 0;
 }
 
-static int pwc_g_input(struct file *file, void *fh, unsigned int *i)
+static int pwc_g_input(struct file *file, struct video_device_state *state,
+		       unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int pwc_s_input(struct file *file, void *fh, unsigned int i)
+static int pwc_s_input(struct file *file, struct video_device_state *state,
+		       unsigned int i)
 {
 	return i ? -EINVAL : 0;
 }
@@ -864,7 +870,9 @@ static int pwc_s_ctrl(struct v4l2_ctrl *ctrl)
 	return ret;
 }
 
-static int pwc_enum_fmt_vid_cap(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int pwc_enum_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_fmtdesc *f)
 {
 	struct pwc_device *pdev = video_drvdata(file);
 
@@ -883,7 +891,9 @@ static int pwc_enum_fmt_vid_cap(struct file *file, void *fh, struct v4l2_fmtdesc
 	return 0;
 }
 
-static int pwc_g_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int pwc_g_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_format *f)
 {
 	struct pwc_device *pdev = video_drvdata(file);
 
@@ -896,14 +906,17 @@ static int pwc_g_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int pwc_try_fmt_vid_cap(struct file *file, void *fh, struct v4l2_format *f)
+static int pwc_try_fmt_vid_cap(struct file *file,
+			       struct video_device_state *state,
+			       struct v4l2_format *f)
 {
 	struct pwc_device *pdev = video_drvdata(file);
 
 	return pwc_vidioc_try_fmt(pdev, f);
 }
 
-static int pwc_enum_framesizes(struct file *file, void *fh,
+static int pwc_enum_framesizes(struct file *file,
+			       struct video_device_state *state,
 					 struct v4l2_frmsizeenum *fsize)
 {
 	struct pwc_device *pdev = video_drvdata(file);
@@ -928,8 +941,9 @@ static int pwc_enum_framesizes(struct file *file, void *fh,
 	return -EINVAL;
 }
 
-static int pwc_enum_frameintervals(struct file *file, void *fh,
-					   struct v4l2_frmivalenum *fival)
+static int pwc_enum_frameintervals(struct file *file,
+				   struct video_device_state *state,
+				   struct v4l2_frmivalenum *fival)
 {
 	struct pwc_device *pdev = video_drvdata(file);
 	int size = -1;
@@ -958,7 +972,8 @@ static int pwc_enum_frameintervals(struct file *file, void *fh,
 	return 0;
 }
 
-static int pwc_g_parm(struct file *file, void *fh,
+static int pwc_g_parm(struct file *file,
+		      struct video_device_state *state,
 		      struct v4l2_streamparm *parm)
 {
 	struct pwc_device *pdev = video_drvdata(file);
@@ -977,7 +992,8 @@ static int pwc_g_parm(struct file *file, void *fh,
 	return 0;
 }
 
-static int pwc_s_parm(struct file *file, void *fh,
+static int pwc_s_parm(struct file *file,
+		      struct video_device_state *state,
 		      struct v4l2_streamparm *parm)
 {
 	struct pwc_device *pdev = video_drvdata(file);
@@ -1003,7 +1019,7 @@ static int pwc_s_parm(struct file *file, void *fh,
 	ret = pwc_set_video_mode(pdev, pdev->width, pdev->height, pdev->pixfmt,
 				 fps, &compression, 0);
 
-	pwc_g_parm(file, fh, parm);
+	pwc_g_parm(file, state, parm);
 
 	return ret;
 }

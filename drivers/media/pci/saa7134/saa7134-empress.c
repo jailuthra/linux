@@ -84,7 +84,8 @@ static const struct vb2_ops saa7134_empress_qops = {
 
 /* ------------------------------------------------------------------ */
 
-static int empress_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int empress_enum_fmt_vid_cap(struct file *file,
+				    struct video_device_state *state,
 					struct v4l2_fmtdesc *f)
 {
 	if (f->index != 0)
@@ -94,7 +95,8 @@ static int empress_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int empress_g_fmt_vid_cap(struct file *file, void *priv,
+static int empress_g_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
@@ -113,7 +115,8 @@ static int empress_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int empress_s_fmt_vid_cap(struct file *file, void *priv,
+static int empress_s_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);
@@ -132,7 +135,8 @@ static int empress_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int empress_try_fmt_vid_cap(struct file *file, void *priv,
+static int empress_try_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct saa7134_dev *dev = video_drvdata(file);

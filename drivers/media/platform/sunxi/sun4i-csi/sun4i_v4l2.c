@@ -50,7 +50,8 @@ const struct sun4i_csi_format *sun4i_csi_find_format(const u32 *fourcc,
 	return NULL;
 }
 
-static int sun4i_csi_querycap(struct file *file, void *priv,
+static int sun4i_csi_querycap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, KBUILD_MODNAME, sizeof(cap->driver));
@@ -59,7 +60,8 @@ static int sun4i_csi_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int sun4i_csi_enum_input(struct file *file, void *priv,
+static int sun4i_csi_enum_input(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_input *inp)
 {
 	if (inp->index != 0)
@@ -71,7 +73,8 @@ static int sun4i_csi_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int sun4i_csi_g_input(struct file *file, void *fh,
+static int sun4i_csi_g_input(struct file *file,
+			     struct video_device_state *state,
 			     unsigned int *i)
 {
 	*i = 0;
@@ -79,8 +82,8 @@ static int sun4i_csi_g_input(struct file *file, void *fh,
 	return 0;
 }
 
-static int sun4i_csi_s_input(struct file *file, void *fh,
-			     unsigned int i)
+static int sun4i_csi_s_input(struct file *file,
+			     struct video_device_state *state, unsigned int i)
 {
 	if (i != 0)
 		return -EINVAL;
@@ -128,7 +131,8 @@ static void _sun4i_csi_try_fmt(struct sun4i_csi *csi,
 	}
 }
 
-static int sun4i_csi_try_fmt_vid_cap(struct file *file, void *priv,
+static int sun4i_csi_try_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct sun4i_csi *csi = video_drvdata(file);
@@ -138,7 +142,8 @@ static int sun4i_csi_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int sun4i_csi_s_fmt_vid_cap(struct file *file, void *priv,
+static int sun4i_csi_s_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct sun4i_csi *csi = video_drvdata(file);
@@ -149,7 +154,8 @@ static int sun4i_csi_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int sun4i_csi_g_fmt_vid_cap(struct file *file, void *priv,
+static int sun4i_csi_g_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct sun4i_csi *csi = video_drvdata(file);
@@ -159,7 +165,8 @@ static int sun4i_csi_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int sun4i_csi_enum_fmt_vid_cap(struct file *file, void *priv,
+static int sun4i_csi_enum_fmt_vid_cap(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_fmtdesc *f)
 {
 	if (f->index >= ARRAY_SIZE(sun4i_csi_formats))

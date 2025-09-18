@@ -569,7 +569,8 @@ static int tw68_s_ctrl(struct v4l2_ctrl *ctrl)
  * Note that this routine returns what is stored in the fh structure, and
  * does not interrogate any of the device registers.
  */
-static int tw68_g_fmt_vid_cap(struct file *file, void *priv,
+static int tw68_g_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct tw68_dev *dev = video_drvdata(file);
@@ -586,7 +587,8 @@ static int tw68_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw68_try_fmt_vid_cap(struct file *file, void *priv,
+static int tw68_try_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 						struct v4l2_format *f)
 {
 	struct tw68_dev *dev = video_drvdata(file);
@@ -641,13 +643,14 @@ static int tw68_try_fmt_vid_cap(struct file *file, void *priv,
  * some number of buffers on the "active" chain which will be filled before
  * the change takes place.
  */
-static int tw68_s_fmt_vid_cap(struct file *file, void *priv,
+static int tw68_s_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct tw68_dev *dev = video_drvdata(file);
 	int err;
 
-	err = tw68_try_fmt_vid_cap(file, priv, f);
+	err = tw68_try_fmt_vid_cap(file, state, f);
 	if (0 != err)
 		return err;
 
@@ -658,7 +661,8 @@ static int tw68_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw68_enum_input(struct file *file, void *priv,
+static int tw68_enum_input(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_input *i)
 {
 	struct tw68_dev *dev = video_drvdata(file);
@@ -691,7 +695,8 @@ static int tw68_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int tw68_g_input(struct file *file, void *priv, unsigned int *i)
+static int tw68_g_input(struct file *file, struct video_device_state *state,
+			unsigned int *i)
 {
 	struct tw68_dev *dev = video_drvdata(file);
 
@@ -699,7 +704,8 @@ static int tw68_g_input(struct file *file, void *priv, unsigned int *i)
 	return 0;
 }
 
-static int tw68_s_input(struct file *file, void *priv, unsigned int i)
+static int tw68_s_input(struct file *file, struct video_device_state *state,
+			unsigned int i)
 {
 	struct tw68_dev *dev = video_drvdata(file);
 
@@ -710,7 +716,8 @@ static int tw68_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-static int tw68_querycap(struct file *file, void  *priv,
+static int tw68_querycap(struct file *file,
+			 struct video_device_state *state,
 					struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "tw68", sizeof(cap->driver));
@@ -719,7 +726,8 @@ static int tw68_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int tw68_s_std(struct file *file, void *priv, v4l2_std_id id)
+static int tw68_s_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id id)
 {
 	struct tw68_dev *dev = video_drvdata(file);
 	unsigned int i;
@@ -747,7 +755,8 @@ static int tw68_s_std(struct file *file, void *priv, v4l2_std_id id)
 	return 0;
 }
 
-static int tw68_g_std(struct file *file, void *priv, v4l2_std_id *id)
+static int tw68_g_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id *id)
 {
 	struct tw68_dev *dev = video_drvdata(file);
 
@@ -755,7 +764,8 @@ static int tw68_g_std(struct file *file, void *priv, v4l2_std_id *id)
 	return 0;
 }
 
-static int tw68_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int tw68_enum_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 					struct v4l2_fmtdesc *f)
 {
 	if (f->index >= FORMATS)
@@ -810,16 +820,18 @@ static void tw68_dump_regs(struct tw68_dev *dev)
 	}
 }
 
-static int vidioc_log_status(struct file *file, void *priv)
+static int vidioc_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct tw68_dev *dev = video_drvdata(file);
 
 	tw68_dump_regs(dev);
-	return v4l2_ctrl_log_status(file, priv);
+	return v4l2_ctrl_log_status(file, state);
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int vidioc_g_register(struct file *file, void *priv,
+static int vidioc_g_register(struct file *file,
+			     struct video_device_state *state,
 			      struct v4l2_dbg_register *reg)
 {
 	struct tw68_dev *dev = video_drvdata(file);
@@ -831,7 +843,8 @@ static int vidioc_g_register(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_register(struct file *file, void *priv,
+static int vidioc_s_register(struct file *file,
+			     struct video_device_state *state,
 				const struct v4l2_dbg_register *reg)
 {
 	struct tw68_dev *dev = video_drvdata(file);

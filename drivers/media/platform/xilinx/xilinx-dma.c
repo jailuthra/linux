@@ -467,7 +467,8 @@ static const struct vb2_ops xvip_dma_queue_qops = {
  */
 
 static int
-xvip_dma_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+xvip_dma_querycap(struct file *file, struct video_device_state *state,
+		  struct v4l2_capability *cap)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct xvip_dma *dma = to_xvip_dma(vfh->vdev);
@@ -489,7 +490,8 @@ xvip_dma_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
  * clarified through the mailing list.
  */
 static int
-xvip_dma_enum_format(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+xvip_dma_enum_format(struct file *file, struct video_device_state *state,
+		     struct v4l2_fmtdesc *f)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct xvip_dma *dma = to_xvip_dma(vfh->vdev);
@@ -503,7 +505,8 @@ xvip_dma_enum_format(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 }
 
 static int
-xvip_dma_get_format(struct file *file, void *fh, struct v4l2_format *format)
+xvip_dma_get_format(struct file *file, struct video_device_state *state,
+		    struct v4l2_format *format)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct xvip_dma *dma = to_xvip_dma(vfh->vdev);
@@ -563,7 +566,8 @@ __xvip_dma_try_format(struct xvip_dma *dma, struct v4l2_pix_format *pix,
 }
 
 static int
-xvip_dma_try_format(struct file *file, void *fh, struct v4l2_format *format)
+xvip_dma_try_format(struct file *file, struct video_device_state *state,
+		    struct v4l2_format *format)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct xvip_dma *dma = to_xvip_dma(vfh->vdev);
@@ -573,7 +577,8 @@ xvip_dma_try_format(struct file *file, void *fh, struct v4l2_format *format)
 }
 
 static int
-xvip_dma_set_format(struct file *file, void *fh, struct v4l2_format *format)
+xvip_dma_set_format(struct file *file, struct video_device_state *state,
+		    struct v4l2_format *format)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct xvip_dma *dma = to_xvip_dma(vfh->vdev);

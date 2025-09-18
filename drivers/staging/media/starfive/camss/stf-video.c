@@ -332,7 +332,8 @@ static const struct vb2_ops stf_video_vb2_q_ops = {
  * V4L2 ioctls
  */
 
-static int video_querycap(struct file *file, void *fh,
+static int video_querycap(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "starfive-camss", sizeof(cap->driver));
@@ -341,7 +342,8 @@ static int video_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int video_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int video_enum_fmt(struct file *file, struct video_device_state *state,
+			  struct v4l2_fmtdesc *f)
 {
 	struct stfcamss_video *video = video_drvdata(file);
 	const struct stfcamss_format_info *fi;
@@ -367,7 +369,8 @@ static int video_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 	return 0;
 }
 
-static int video_enum_framesizes(struct file *file, void *fh,
+static int video_enum_framesizes(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_frmsizeenum *fsize)
 {
 	struct stfcamss_video *video = video_drvdata(file);
@@ -395,7 +398,8 @@ static int video_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int video_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int video_g_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f)
 {
 	struct stfcamss_video *video = video_drvdata(file);
 
@@ -404,7 +408,8 @@ static int video_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int video_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int video_s_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f)
 {
 	struct stfcamss_video *video = video_drvdata(file);
 	int ret;
@@ -421,7 +426,8 @@ static int video_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int video_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int video_try_fmt(struct file *file, struct video_device_state *state,
+			 struct v4l2_format *f)
 {
 	struct stfcamss_video *video = video_drvdata(file);
 

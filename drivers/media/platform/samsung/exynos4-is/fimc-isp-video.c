@@ -342,7 +342,8 @@ static const struct v4l2_file_operations isp_video_fops = {
 /*
  * Video node ioctl operations
  */
-static int isp_video_querycap(struct file *file, void *priv,
+static int isp_video_querycap(struct file *file,
+			      struct video_device_state *state,
 					struct v4l2_capability *cap)
 {
 	struct fimc_isp *isp = video_drvdata(file);
@@ -351,7 +352,8 @@ static int isp_video_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int isp_video_enum_fmt(struct file *file, void *priv,
+static int isp_video_enum_fmt(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_fmtdesc *f)
 {
 	const struct fimc_fmt *fmt;
@@ -368,7 +370,8 @@ static int isp_video_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int isp_video_g_fmt_mplane(struct file *file, void *fh,
+static int isp_video_g_fmt_mplane(struct file *file,
+				  struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct fimc_isp *isp = video_drvdata(file);
@@ -402,7 +405,8 @@ static void __isp_video_try_fmt(struct fimc_isp *isp,
 			      FIMC_ISP_SOURCE_HEIGHT_MAX, 0, 0);
 }
 
-static int isp_video_try_fmt_mplane(struct file *file, void *fh,
+static int isp_video_try_fmt_mplane(struct file *file,
+				    struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct fimc_isp *isp = video_drvdata(file);
@@ -411,7 +415,8 @@ static int isp_video_try_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int isp_video_s_fmt_mplane(struct file *file, void *priv,
+static int isp_video_s_fmt_mplane(struct file *file,
+				  struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct fimc_isp *isp = video_drvdata(file);
@@ -487,7 +492,8 @@ static int isp_video_pipeline_validate(struct fimc_isp *isp)
 	return 0;
 }
 
-static int isp_video_streamon(struct file *file, void *priv,
+static int isp_video_streamon(struct file *file,
+			      struct video_device_state *state,
 				      enum v4l2_buf_type type)
 {
 	struct fimc_isp *isp = video_drvdata(file);
@@ -502,7 +508,7 @@ static int isp_video_streamon(struct file *file, void *priv,
 	if (ret < 0)
 		goto p_stop;
 
-	ret = vb2_ioctl_streamon(file, priv, type);
+	ret = vb2_ioctl_streamon(file, state, type);
 	if (ret < 0)
 		goto p_stop;
 
@@ -513,14 +519,15 @@ p_stop:
 	return ret;
 }
 
-static int isp_video_streamoff(struct file *file, void *priv,
+static int isp_video_streamoff(struct file *file,
+			       struct video_device_state *state,
 					enum v4l2_buf_type type)
 {
 	struct fimc_isp *isp = video_drvdata(file);
 	struct fimc_is_video *video = &isp->video_capture;
 	int ret;
 
-	ret = vb2_ioctl_streamoff(file, priv, type);
+	ret = vb2_ioctl_streamoff(file, state, type);
 	if (ret < 0)
 		return ret;
 
@@ -529,19 +536,20 @@ static int isp_video_streamoff(struct file *file, void *priv,
 	return 0;
 }
 
-static int isp_video_reqbufs(struct file *file, void *priv,
+static int isp_video_reqbufs(struct file *file,
+			     struct video_device_state *state,
 				struct v4l2_requestbuffers *rb)
 {
 	struct fimc_isp *isp = video_drvdata(file);
 	int ret;
 
-	ret = vb2_ioctl_reqbufs(file, priv, rb);
+	ret = vb2_ioctl_reqbufs(file, state, rb);
 	if (ret < 0)
 		return ret;
 
 	if (rb->count && rb->count < FIMC_ISP_REQ_BUFS_MIN) {
 		rb->count = 0;
-		vb2_ioctl_reqbufs(file, priv, rb);
+		vb2_ioctl_reqbufs(file, state, rb);
 		ret = -ENOMEM;
 	}
 

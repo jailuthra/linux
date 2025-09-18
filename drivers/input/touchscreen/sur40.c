@@ -935,7 +935,8 @@ static void sur40_stop_streaming(struct vb2_queue *vq)
 }
 
 /* V4L ioctl */
-static int sur40_vidioc_querycap(struct file *file, void *priv,
+static int sur40_vidioc_querycap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_capability *cap)
 {
 	struct sur40_state *sur40 = video_drvdata(file);
@@ -946,7 +947,8 @@ static int sur40_vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int sur40_vidioc_enum_input(struct file *file, void *priv,
+static int sur40_vidioc_enum_input(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_input *i)
 {
 	if (i->index != 0)
@@ -958,18 +960,23 @@ static int sur40_vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int sur40_vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int sur40_vidioc_s_input(struct file *file,
+				struct video_device_state *state,
+				unsigned int i)
 {
 	return (i == 0) ? 0 : -EINVAL;
 }
 
-static int sur40_vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int sur40_vidioc_g_input(struct file *file,
+				struct video_device_state *state,
+				unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int sur40_vidioc_try_fmt(struct file *file, void *priv,
+static int sur40_vidioc_try_fmt(struct file *file,
+				struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	switch (f->fmt.pix.pixelformat) {
@@ -985,7 +992,8 @@ static int sur40_vidioc_try_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int sur40_vidioc_s_fmt(struct file *file, void *priv,
+static int sur40_vidioc_s_fmt(struct file *file,
+			      struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct sur40_state *sur40 = video_drvdata(file);
@@ -1004,7 +1012,8 @@ static int sur40_vidioc_s_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int sur40_vidioc_g_fmt(struct file *file, void *priv,
+static int sur40_vidioc_g_fmt(struct file *file,
+			      struct video_device_state *state,
 			    struct v4l2_format *f)
 {
 	struct sur40_state *sur40 = video_drvdata(file);
@@ -1038,7 +1047,8 @@ static int sur40_s_ctrl(struct v4l2_ctrl *ctrl)
 	return 0;
 }
 
-static int sur40_ioctl_parm(struct file *file, void *priv,
+static int sur40_ioctl_parm(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_streamparm *p)
 {
 	if (p->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -1051,7 +1061,8 @@ static int sur40_ioctl_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int sur40_vidioc_enum_fmt(struct file *file, void *priv,
+static int sur40_vidioc_enum_fmt(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *f)
 {
 	if (f->index >= ARRAY_SIZE(sur40_pix_format))
@@ -1062,7 +1073,8 @@ static int sur40_vidioc_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int sur40_vidioc_enum_framesizes(struct file *file, void *priv,
+static int sur40_vidioc_enum_framesizes(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_frmsizeenum *f)
 {
 	struct sur40_state *sur40 = video_drvdata(file);
@@ -1077,7 +1089,8 @@ static int sur40_vidioc_enum_framesizes(struct file *file, void *priv,
 	return 0;
 }
 
-static int sur40_vidioc_enum_frameintervals(struct file *file, void *priv,
+static int sur40_vidioc_enum_frameintervals(struct file *file,
+					    struct video_device_state *state,
 					    struct v4l2_frmivalenum *f)
 {
 	struct sur40_state *sur40 = video_drvdata(file);

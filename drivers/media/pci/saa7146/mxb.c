@@ -446,7 +446,9 @@ void mxb_irq_bh(struct saa7146_dev* dev, u32* irq_mask)
 }
 */
 
-static int vidioc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_input *i)
 {
 	DEB_EE("VIDIOC_ENUMINPUT %d\n", i->index);
 	if (i->index >= MXB_INPUTS)
@@ -455,7 +457,8 @@ static int vidioc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *fh, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct mxb *mxb = (struct mxb *)dev->ext_priv;
@@ -465,7 +468,8 @@ static int vidioc_g_input(struct file *file, void *fh, unsigned int *i)
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *fh, unsigned int input)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int input)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct mxb *mxb = (struct mxb *)dev->ext_priv;
@@ -530,7 +534,8 @@ static int vidioc_s_input(struct file *file, void *fh, unsigned int input)
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *fh, struct v4l2_tuner *t)
+static int vidioc_g_tuner(struct file *file, struct video_device_state *state,
+			  struct v4l2_tuner *t)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct mxb *mxb = (struct mxb *)dev->ext_priv;
@@ -552,7 +557,8 @@ static int vidioc_g_tuner(struct file *file, void *fh, struct v4l2_tuner *t)
 	return call_all(dev, tuner, g_tuner, t);
 }
 
-static int vidioc_s_tuner(struct file *file, void *fh, const struct v4l2_tuner *t)
+static int vidioc_s_tuner(struct file *file, struct video_device_state *state,
+			  const struct v4l2_tuner *t)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct mxb *mxb = (struct mxb *)dev->ext_priv;
@@ -567,14 +573,18 @@ static int vidioc_s_tuner(struct file *file, void *fh, const struct v4l2_tuner *
 	return call_all(dev, tuner, s_tuner, t);
 }
 
-static int vidioc_querystd(struct file *file, void *fh, v4l2_std_id *norm)
+static int vidioc_querystd(struct file *file,
+			   struct video_device_state *state,
+			   v4l2_std_id *norm)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 
 	return call_all(dev, video, querystd, norm);
 }
 
-static int vidioc_g_frequency(struct file *file, void *fh, struct v4l2_frequency *f)
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_frequency *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct mxb *mxb = (struct mxb *)dev->ext_priv;
@@ -587,7 +597,9 @@ static int vidioc_g_frequency(struct file *file, void *fh, struct v4l2_frequency
 	return 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *fh, const struct v4l2_frequency *f)
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
+			      const struct v4l2_frequency *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct mxb *mxb = (struct mxb *)dev->ext_priv;
@@ -610,7 +622,9 @@ static int vidioc_s_frequency(struct file *file, void *fh, const struct v4l2_fre
 	return 0;
 }
 
-static int vidioc_enumaudio(struct file *file, void *fh, struct v4l2_audio *a)
+static int vidioc_enumaudio(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_audio *a)
 {
 	if (a->index >= MXB_AUDIOS)
 		return -EINVAL;
@@ -618,7 +632,8 @@ static int vidioc_enumaudio(struct file *file, void *fh, struct v4l2_audio *a)
 	return 0;
 }
 
-static int vidioc_g_audio(struct file *file, void *fh, struct v4l2_audio *a)
+static int vidioc_g_audio(struct file *file, struct video_device_state *state,
+			  struct v4l2_audio *a)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct mxb *mxb = (struct mxb *)dev->ext_priv;
@@ -628,7 +643,8 @@ static int vidioc_g_audio(struct file *file, void *fh, struct v4l2_audio *a)
 	return 0;
 }
 
-static int vidioc_s_audio(struct file *file, void *fh, const struct v4l2_audio *a)
+static int vidioc_s_audio(struct file *file, struct video_device_state *state,
+			  const struct v4l2_audio *a)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct mxb *mxb = (struct mxb *)dev->ext_priv;
@@ -648,7 +664,9 @@ static int vidioc_s_audio(struct file *file, void *fh, const struct v4l2_audio *
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int vidioc_g_register(struct file *file, void *fh, struct v4l2_dbg_register *reg)
+static int vidioc_g_register(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_dbg_register *reg)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 
@@ -659,7 +677,9 @@ static int vidioc_g_register(struct file *file, void *fh, struct v4l2_dbg_regist
 	return 0;
 }
 
-static int vidioc_s_register(struct file *file, void *fh, const struct v4l2_dbg_register *reg)
+static int vidioc_s_register(struct file *file,
+			     struct video_device_state *state,
+			     const struct v4l2_dbg_register *reg)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 

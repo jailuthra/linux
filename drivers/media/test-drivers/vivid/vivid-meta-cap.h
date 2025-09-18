@@ -18,10 +18,12 @@ struct vivid_uvc_meta_buf {
 void vivid_meta_cap_fillbuff(struct vivid_dev *dev,
 			     struct vivid_buffer *buf, u64 soe);
 
-int vidioc_enum_fmt_meta_cap(struct file *file, void  *priv,
+int vidioc_enum_fmt_meta_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_fmtdesc *f);
 
-int vidioc_g_fmt_meta_cap(struct file *file, void *priv,
+int vidioc_g_fmt_meta_cap(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_format *f);
 
 extern const struct vb2_ops vivid_meta_cap_qops;

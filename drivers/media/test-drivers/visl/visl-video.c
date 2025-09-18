@@ -332,7 +332,8 @@ static struct visl_q_data *get_q_data(struct visl_ctx *ctx,
 	return NULL;
 }
 
-static int visl_querycap(struct file *file, void *priv,
+static int visl_querycap(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, VISL_NAME, sizeof(cap->driver));
@@ -343,7 +344,8 @@ static int visl_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int visl_enum_fmt_vid_cap(struct file *file, void *priv,
+static int visl_enum_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *f)
 {
 	struct visl_ctx *ctx = visl_file_to_ctx(file);
@@ -365,7 +367,8 @@ static int visl_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int visl_enum_fmt_vid_out(struct file *file, void *priv,
+static int visl_enum_fmt_vid_out(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *f)
 {
 	if (f->index >= ARRAY_SIZE(visl_coded_fmts))
@@ -375,7 +378,8 @@ static int visl_enum_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int visl_g_fmt_vid_cap(struct file *file, void *priv,
+static int visl_g_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct visl_ctx *ctx = visl_file_to_ctx(file);
@@ -384,7 +388,8 @@ static int visl_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int visl_g_fmt_vid_out(struct file *file, void *priv,
+static int visl_g_fmt_vid_out(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct visl_ctx *ctx = visl_file_to_ctx(file);
@@ -393,7 +398,8 @@ static int visl_g_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int visl_try_fmt_vid_cap(struct file *file, void *priv,
+static int visl_try_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
@@ -423,7 +429,8 @@ static int visl_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int visl_try_fmt_vid_out(struct file *file, void *priv,
+static int visl_try_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *pix_mp = &f->fmt.pix_mp;
@@ -449,7 +456,8 @@ static int visl_try_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int visl_s_fmt_vid_out(struct file *file, void *priv,
+static int visl_s_fmt_vid_out(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct visl_ctx *ctx = visl_file_to_ctx(file);
@@ -465,7 +473,7 @@ static int visl_s_fmt_vid_out(struct file *file, void *priv,
 	dprintk(ctx->dev, "Trying to set the OUTPUT format to:\n");
 	visl_print_fmt(ctx, f);
 
-	ret = visl_try_fmt_vid_out(file, priv, f);
+	ret = visl_try_fmt_vid_out(file, state, f);
 	if (ret)
 		return ret;
 
@@ -489,7 +497,8 @@ static int visl_s_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int visl_s_fmt_vid_cap(struct file *file, void *priv,
+static int visl_s_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct visl_ctx *ctx = visl_file_to_ctx(file);
@@ -498,7 +507,7 @@ static int visl_s_fmt_vid_cap(struct file *file, void *priv,
 	dprintk(ctx->dev, "Trying to set the CAPTURE format to:\n");
 	visl_print_fmt(ctx, f);
 
-	ret = visl_try_fmt_vid_cap(file, priv, f);
+	ret = visl_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -511,7 +520,8 @@ static int visl_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int visl_enum_framesizes(struct file *file, void *priv,
+static int visl_enum_framesizes(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_frmsizeenum *fsize)
 {
 	const struct visl_coded_format_desc *fmt;

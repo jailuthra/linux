@@ -473,7 +473,8 @@ static void mxc_isi_m2m_ctx_ctrls_delete(struct mxc_isi_m2m_ctx *ctx)
  * V4L2 ioctls
  */
 
-static int mxc_isi_m2m_querycap(struct file *file, void *fh,
+static int mxc_isi_m2m_querycap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, MXC_ISI_DRIVER_NAME, sizeof(cap->driver));
@@ -484,7 +485,8 @@ static int mxc_isi_m2m_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int mxc_isi_m2m_enum_fmt_vid(struct file *file, void *fh,
+static int mxc_isi_m2m_enum_fmt_vid(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_fmtdesc *f)
 {
 	const enum mxc_isi_video_type type =
@@ -517,7 +519,8 @@ __mxc_isi_m2m_try_fmt_vid(struct mxc_isi_m2m_ctx *ctx,
 	return mxc_isi_format_try(ctx->m2m->pipe, pix, type);
 }
 
-static int mxc_isi_m2m_try_fmt_vid(struct file *file, void *fh,
+static int mxc_isi_m2m_try_fmt_vid(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	const enum mxc_isi_video_type type =
@@ -530,7 +533,8 @@ static int mxc_isi_m2m_try_fmt_vid(struct file *file, void *fh,
 	return 0;
 }
 
-static int mxc_isi_m2m_g_fmt_vid(struct file *file, void *fh,
+static int mxc_isi_m2m_g_fmt_vid(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct mxc_isi_m2m_ctx *ctx = file_to_isi_m2m_ctx(file);
@@ -542,7 +546,8 @@ static int mxc_isi_m2m_g_fmt_vid(struct file *file, void *fh,
 	return 0;
 }
 
-static int mxc_isi_m2m_s_fmt_vid(struct file *file, void *fh,
+static int mxc_isi_m2m_s_fmt_vid(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	const enum mxc_isi_video_type type =

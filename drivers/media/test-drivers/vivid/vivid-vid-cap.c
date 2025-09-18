@@ -518,7 +518,8 @@ static unsigned vivid_quantization_cap(struct vivid_dev *dev)
 	return dev->quantization_out;
 }
 
-int vivid_g_fmt_vid_cap(struct file *file, void *priv,
+int vivid_g_fmt_vid_cap(struct file *file,
+			struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -547,7 +548,8 @@ int vivid_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_try_fmt_vid_cap(struct file *file, void *priv,
+int vivid_try_fmt_vid_cap(struct file *file,
+			  struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *mp = &f->fmt.pix_mp;
@@ -660,7 +662,8 @@ int vivid_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_s_fmt_vid_cap(struct file *file, void *priv,
+int vivid_s_fmt_vid_cap(struct file *file,
+			struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct v4l2_pix_format_mplane *mp = &f->fmt.pix_mp;
@@ -668,7 +671,7 @@ int vivid_s_fmt_vid_cap(struct file *file, void *priv,
 	struct v4l2_rect *crop = &dev->crop_cap;
 	struct v4l2_rect *compose = &dev->compose_cap;
 	struct vb2_queue *q = &dev->vb_vid_cap_q;
-	int ret = vivid_try_fmt_vid_cap(file, priv, f);
+	int ret = vivid_try_fmt_vid_cap(file, state, f);
 	unsigned factor = 1;
 	unsigned p;
 	unsigned i;
@@ -793,67 +796,74 @@ int vivid_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_g_fmt_vid_cap_mplane(struct file *file, void *priv,
+int vidioc_g_fmt_vid_cap_mplane(struct file *file,
+				struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (!dev->multiplanar)
 		return -ENOTTY;
-	return vivid_g_fmt_vid_cap(file, priv, f);
+	return vivid_g_fmt_vid_cap(file, state, f);
 }
 
-int vidioc_try_fmt_vid_cap_mplane(struct file *file, void *priv,
+int vidioc_try_fmt_vid_cap_mplane(struct file *file,
+				  struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (!dev->multiplanar)
 		return -ENOTTY;
-	return vivid_try_fmt_vid_cap(file, priv, f);
+	return vivid_try_fmt_vid_cap(file, state, f);
 }
 
-int vidioc_s_fmt_vid_cap_mplane(struct file *file, void *priv,
+int vidioc_s_fmt_vid_cap_mplane(struct file *file,
+				struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (!dev->multiplanar)
 		return -ENOTTY;
-	return vivid_s_fmt_vid_cap(file, priv, f);
+	return vivid_s_fmt_vid_cap(file, state, f);
 }
 
-int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+int vidioc_g_fmt_vid_cap(struct file *file,
+			 struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (dev->multiplanar)
 		return -ENOTTY;
-	return fmt_sp2mp_func(file, priv, f, vivid_g_fmt_vid_cap);
+	return fmt_sp2mp_func(file, state, f, vivid_g_fmt_vid_cap);
 }
 
-int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+int vidioc_try_fmt_vid_cap(struct file *file,
+			   struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (dev->multiplanar)
 		return -ENOTTY;
-	return fmt_sp2mp_func(file, priv, f, vivid_try_fmt_vid_cap);
+	return fmt_sp2mp_func(file, state, f, vivid_try_fmt_vid_cap);
 }
 
-int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+int vidioc_s_fmt_vid_cap(struct file *file,
+			 struct video_device_state *state,
 			struct v4l2_format *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
 	if (dev->multiplanar)
 		return -ENOTTY;
-	return fmt_sp2mp_func(file, priv, f, vivid_s_fmt_vid_cap);
+	return fmt_sp2mp_func(file, state, f, vivid_s_fmt_vid_cap);
 }
 
-int vivid_vid_cap_g_selection(struct file *file, void *priv,
+int vivid_vid_cap_g_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *sel)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -899,7 +909,9 @@ int vivid_vid_cap_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_vid_cap_s_selection(struct file *file, void *priv, struct v4l2_selection *s)
+int vivid_vid_cap_s_selection(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_selection *s)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	struct v4l2_rect *crop = &dev->crop_cap;
@@ -1031,8 +1043,9 @@ int vivid_vid_cap_s_selection(struct file *file, void *priv, struct v4l2_selecti
 	return 0;
 }
 
-int vivid_vid_cap_g_pixelaspect(struct file *file, void *priv,
-				int type, struct v4l2_fract *f)
+int vivid_vid_cap_g_pixelaspect(struct file *file,
+				struct video_device_state *state, int type,
+				struct v4l2_fract *f)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1059,7 +1072,8 @@ static const struct v4l2_audio vivid_audio_inputs[] = {
 	{ 1, "Line-In", V4L2_AUDCAP_STEREO },
 };
 
-int vidioc_enum_input(struct file *file, void *priv,
+int vidioc_enum_input(struct file *file,
+		      struct video_device_state *state,
 				struct v4l2_input *inp)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1128,7 +1142,8 @@ int vidioc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_g_input(struct file *file, void *priv, unsigned *i)
+int vidioc_g_input(struct file *file, struct video_device_state *state,
+		   unsigned int *i)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1136,7 +1151,8 @@ int vidioc_g_input(struct file *file, void *priv, unsigned *i)
 	return 0;
 }
 
-int vidioc_s_input(struct file *file, void *priv, unsigned i)
+int vidioc_s_input(struct file *file, struct video_device_state *state,
+		   unsigned int i)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	struct v4l2_bt_timings *bt = &dev->dv_timings_cap[dev->input].bt;
@@ -1222,7 +1238,8 @@ int vidioc_s_input(struct file *file, void *priv, unsigned i)
 	return 0;
 }
 
-int vidioc_enumaudio(struct file *file, void *priv, struct v4l2_audio *vin)
+int vidioc_enumaudio(struct file *file, struct video_device_state *state,
+		     struct v4l2_audio *vin)
 {
 	if (vin->index >= ARRAY_SIZE(vivid_audio_inputs))
 		return -EINVAL;
@@ -1230,7 +1247,8 @@ int vidioc_enumaudio(struct file *file, void *priv, struct v4l2_audio *vin)
 	return 0;
 }
 
-int vidioc_g_audio(struct file *file, void *priv, struct v4l2_audio *vin)
+int vidioc_g_audio(struct file *file, struct video_device_state *state,
+		   struct v4l2_audio *vin)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1240,7 +1258,8 @@ int vidioc_g_audio(struct file *file, void *priv, struct v4l2_audio *vin)
 	return 0;
 }
 
-int vidioc_s_audio(struct file *file, void *priv, const struct v4l2_audio *vin)
+int vidioc_s_audio(struct file *file, struct video_device_state *state,
+		   const struct v4l2_audio *vin)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1252,7 +1271,9 @@ int vidioc_s_audio(struct file *file, void *priv, const struct v4l2_audio *vin)
 	return 0;
 }
 
-int vivid_video_g_frequency(struct file *file, void *priv, struct v4l2_frequency *vf)
+int vivid_video_g_frequency(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_frequency *vf)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1262,7 +1283,9 @@ int vivid_video_g_frequency(struct file *file, void *priv, struct v4l2_frequency
 	return 0;
 }
 
-int vivid_video_s_frequency(struct file *file, void *priv, const struct v4l2_frequency *vf)
+int vivid_video_s_frequency(struct file *file,
+			    struct video_device_state *state,
+			    const struct v4l2_frequency *vf)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1274,7 +1297,8 @@ int vivid_video_s_frequency(struct file *file, void *priv, const struct v4l2_fre
 	return 0;
 }
 
-int vivid_video_s_tuner(struct file *file, void *priv, const struct v4l2_tuner *vt)
+int vivid_video_s_tuner(struct file *file, struct video_device_state *state,
+			const struct v4l2_tuner *vt)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1286,7 +1310,8 @@ int vivid_video_s_tuner(struct file *file, void *priv, const struct v4l2_tuner *
 	return 0;
 }
 
-int vivid_video_g_tuner(struct file *file, void *priv, struct v4l2_tuner *vt)
+int vivid_video_g_tuner(struct file *file, struct video_device_state *state,
+			struct v4l2_tuner *vt)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	enum tpg_quality qual;
@@ -1377,7 +1402,8 @@ const char * const vivid_ctrl_standard_strings[] = {
 	NULL,
 };
 
-int vidioc_querystd(struct file *file, void *priv, v4l2_std_id *id)
+int vidioc_querystd(struct file *file, struct video_device_state *state,
+		    v4l2_std_id *id)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 	unsigned int last = dev->query_std_last[dev->input];
@@ -1404,7 +1430,8 @@ int vidioc_querystd(struct file *file, void *priv, v4l2_std_id *id)
 	return 0;
 }
 
-int vivid_vid_cap_s_std(struct file *file, void *priv, v4l2_std_id id)
+int vivid_vid_cap_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id id)
 {
 	struct vivid_dev *dev = video_drvdata(file);
 
@@ -1490,7 +1517,8 @@ static bool valid_cvt_gtf_timings(struct v4l2_dv_timings *timings)
 	return false;
 }
 
-int vivid_vid_cap_s_dv_timings(struct file *file, void *priv,
+int vivid_vid_cap_s_dv_timings(struct file *file,
+			       struct video_device_state *state,
 				    struct v4l2_dv_timings *timings)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1513,7 +1541,8 @@ int vivid_vid_cap_s_dv_timings(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_query_dv_timings(struct file *file, void *priv,
+int vidioc_query_dv_timings(struct file *file,
+			    struct video_device_state *state,
 				    struct v4l2_dv_timings *timings)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1600,7 +1629,8 @@ void vivid_update_connected_outputs(struct vivid_dev *dev)
 	}
 }
 
-int vidioc_s_edid(struct file *file, void *priv,
+int vidioc_s_edid(struct file *file,
+		  struct video_device_state *state,
 			 struct v4l2_edid *edid)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1638,7 +1668,8 @@ int vidioc_s_edid(struct file *file, void *priv,
 	return 0;
 }
 
-int vidioc_enum_framesizes(struct file *file, void *priv,
+int vidioc_enum_framesizes(struct file *file,
+			   struct video_device_state *state,
 					 struct v4l2_frmsizeenum *fsize)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1667,7 +1698,8 @@ int vidioc_enum_framesizes(struct file *file, void *priv,
 }
 
 /* timeperframe is arbitrary and continuous */
-int vidioc_enum_frameintervals(struct file *file, void *priv,
+int vidioc_enum_frameintervals(struct file *file,
+			       struct video_device_state *state,
 					     struct v4l2_frmivalenum *fival)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1703,7 +1735,8 @@ int vidioc_enum_frameintervals(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_vid_cap_g_parm(struct file *file, void *priv,
+int vivid_vid_cap_g_parm(struct file *file,
+			 struct video_device_state *state,
 			  struct v4l2_streamparm *parm)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1719,7 +1752,8 @@ int vivid_vid_cap_g_parm(struct file *file, void *priv,
 	return 0;
 }
 
-int vivid_vid_cap_s_parm(struct file *file, void *priv,
+int vivid_vid_cap_s_parm(struct file *file,
+			 struct video_device_state *state,
 			  struct v4l2_streamparm *parm)
 {
 	struct vivid_dev *dev = video_drvdata(file);
@@ -1732,7 +1766,7 @@ int vivid_vid_cap_s_parm(struct file *file, void *priv,
 			   V4L2_BUF_TYPE_VIDEO_CAPTURE))
 		return -EINVAL;
 	if (!vivid_is_webcam(dev))
-		return vivid_vid_cap_g_parm(file, priv, parm);
+		return vivid_vid_cap_g_parm(file, state, parm);
 
 	tpf = parm->parm.capture.timeperframe;
 

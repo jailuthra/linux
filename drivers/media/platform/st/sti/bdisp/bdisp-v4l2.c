@@ -681,7 +681,8 @@ static const struct v4l2_file_operations bdisp_fops = {
 	.mmap           = v4l2_m2m_fop_mmap,
 };
 
-static int bdisp_querycap(struct file *file, void *fh,
+static int bdisp_querycap(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_capability *cap)
 {
 	struct bdisp_ctx *ctx = file_to_ctx(file);
@@ -694,7 +695,8 @@ static int bdisp_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int bdisp_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
+static int bdisp_enum_fmt(struct file *file, struct video_device_state *state,
+			  struct v4l2_fmtdesc *f)
 {
 	struct bdisp_ctx *ctx = file_to_ctx(file);
 	const struct bdisp_fmt *fmt;
@@ -714,7 +716,8 @@ static int bdisp_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 	return 0;
 }
 
-static int bdisp_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int bdisp_g_fmt(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f)
 {
 	struct bdisp_ctx *ctx = file_to_ctx(file);
 	struct v4l2_pix_format *pix;
@@ -738,7 +741,8 @@ static int bdisp_g_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int bdisp_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int bdisp_try_fmt(struct file *file, struct video_device_state *state,
+			 struct v4l2_format *f)
 {
 	struct bdisp_ctx *ctx = file_to_ctx(file);
 	struct v4l2_pix_format *pix = &f->fmt.pix;
@@ -788,7 +792,8 @@ static int bdisp_try_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int bdisp_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
+static int bdisp_s_fmt(struct file *file, struct video_device_state *vstate,
+		       struct v4l2_format *f)
 {
 	struct bdisp_ctx *ctx = file_to_ctx(file);
 	struct vb2_queue *vq;
@@ -797,7 +802,7 @@ static int bdisp_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	int ret;
 	u32 state;
 
-	ret = bdisp_try_fmt(file, fh, f);
+	ret = bdisp_try_fmt(file, vstate, f);
 	if (ret) {
 		dev_err(ctx->bdisp_dev->dev, "Cannot set format\n");
 		return ret;
@@ -840,7 +845,8 @@ static int bdisp_s_fmt(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int bdisp_g_selection(struct file *file, void *fh,
+static int bdisp_g_selection(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_selection *s)
 {
 	struct bdisp_ctx *ctx = file_to_ctx(file);
@@ -918,7 +924,8 @@ static int is_rect_enclosed(struct v4l2_rect *a, struct v4l2_rect *b)
 	return 1;
 }
 
-static int bdisp_s_selection(struct file *file, void *fh,
+static int bdisp_s_selection(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_selection *s)
 {
 	struct bdisp_ctx *ctx = file_to_ctx(file);
@@ -997,7 +1004,8 @@ static int bdisp_s_selection(struct file *file, void *fh,
 	return 0;
 }
 
-static int bdisp_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
+static int bdisp_streamon(struct file *file, struct video_device_state *state,
+			  enum v4l2_buf_type type)
 {
 	struct bdisp_ctx *ctx = file_to_ctx(file);
 

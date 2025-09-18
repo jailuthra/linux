@@ -459,7 +459,8 @@ static bool port_no_link(struct snps_hdmirx_dev *hdmirx_dev)
 	return !tx_5v_power_present(hdmirx_dev);
 }
 
-static int hdmirx_query_dv_timings(struct file *file, void *priv,
+static int hdmirx_query_dv_timings(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_dv_timings *timings)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);
@@ -646,7 +647,9 @@ static void hdmirx_plugout(struct snps_hdmirx_dev *hdmirx_dev)
 	hdmirx_dev->plugged = false;
 }
 
-static int hdmirx_set_edid(struct file *file, void *fh, struct v4l2_edid *edid)
+static int hdmirx_set_edid(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_edid *edid)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);
 	struct snps_hdmirx_dev *hdmirx_dev = stream->hdmirx_dev;
@@ -695,7 +698,9 @@ static int hdmirx_set_edid(struct file *file, void *fh, struct v4l2_edid *edid)
 	return 0;
 }
 
-static int hdmirx_get_edid(struct file *file, void *fh, struct v4l2_edid *edid)
+static int hdmirx_get_edid(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_edid *edid)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);
 	struct snps_hdmirx_dev *hdmirx_dev = stream->hdmirx_dev;
@@ -730,7 +735,8 @@ static int hdmirx_get_edid(struct file *file, void *fh, struct v4l2_edid *edid)
 	return 0;
 }
 
-static int hdmirx_g_parm(struct file *file, void *priv,
+static int hdmirx_g_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *parm)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);
@@ -744,14 +750,16 @@ static int hdmirx_g_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int hdmirx_dv_timings_cap(struct file *file, void *fh,
+static int hdmirx_dv_timings_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_dv_timings_cap *cap)
 {
 	*cap = hdmirx_timings_cap;
 	return 0;
 }
 
-static int hdmirx_enum_dv_timings(struct file *file, void *priv,
+static int hdmirx_enum_dv_timings(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_enum_dv_timings *timings)
 {
 	return v4l2_enum_dv_timings_cap(timings, &hdmirx_timings_cap, NULL, NULL);
@@ -1154,7 +1162,8 @@ static void hdmirx_submodule_init(struct snps_hdmirx_dev *hdmirx_dev)
 	hdmirx_controller_init(hdmirx_dev);
 }
 
-static int hdmirx_enum_input(struct file *file, void *priv,
+static int hdmirx_enum_input(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_input *input)
 {
 	if (input->index > 0)
@@ -1168,13 +1177,15 @@ static int hdmirx_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int hdmirx_get_input(struct file *file, void *priv, unsigned int *i)
+static int hdmirx_get_input(struct file *file,
+			    struct video_device_state *state, unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int hdmirx_set_input(struct file *file, void *priv, unsigned int i)
+static int hdmirx_set_input(struct file *file,
+			    struct video_device_state *state, unsigned int i)
 {
 	if (i)
 		return -EINVAL;
@@ -1278,7 +1289,8 @@ static void hdmirx_set_fmt(struct hdmirx_stream *stream,
 	}
 }
 
-static int hdmirx_enum_fmt_vid_cap_mplane(struct file *file, void *priv,
+static int hdmirx_enum_fmt_vid_cap_mplane(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_fmtdesc *f)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);
@@ -1293,7 +1305,8 @@ static int hdmirx_enum_fmt_vid_cap_mplane(struct file *file, void *priv,
 }
 
 static int hdmirx_s_fmt_vid_cap_mplane(struct file *file,
-				       void *priv, struct v4l2_format *f)
+				       struct video_device_state *state,
+				       struct v4l2_format *f)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);
 	struct snps_hdmirx_dev *hdmirx_dev = stream->hdmirx_dev;
@@ -1309,7 +1322,8 @@ static int hdmirx_s_fmt_vid_cap_mplane(struct file *file,
 	return 0;
 }
 
-static int hdmirx_g_fmt_vid_cap_mplane(struct file *file, void *fh,
+static int hdmirx_g_fmt_vid_cap_mplane(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);
@@ -1323,7 +1337,8 @@ static int hdmirx_g_fmt_vid_cap_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int hdmirx_g_dv_timings(struct file *file, void *priv,
+static int hdmirx_g_dv_timings(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_dv_timings *timings)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);
@@ -1339,7 +1354,8 @@ static int hdmirx_g_dv_timings(struct file *file, void *priv,
 	return 0;
 }
 
-static int hdmirx_s_dv_timings(struct file *file, void *priv,
+static int hdmirx_s_dv_timings(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_dv_timings *timings)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);
@@ -1381,7 +1397,8 @@ static int hdmirx_s_dv_timings(struct file *file, void *priv,
 	return 0;
 }
 
-static int hdmirx_querycap(struct file *file, void *priv,
+static int hdmirx_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct hdmirx_stream *stream = video_drvdata(file);

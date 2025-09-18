@@ -528,7 +528,8 @@ static const struct vb2_ops isi_video_qops = {
 	.stop_streaming		= stop_streaming,
 };
 
-static int isi_g_fmt_vid_cap(struct file *file, void *priv,
+static int isi_g_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 			      struct v4l2_format *fmt)
 {
 	struct atmel_isi *isi = video_drvdata(file);
@@ -651,7 +652,8 @@ static int isi_set_fmt(struct atmel_isi *isi, struct v4l2_format *f)
 	return 0;
 }
 
-static int isi_s_fmt_vid_cap(struct file *file, void *priv,
+static int isi_s_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct atmel_isi *isi = video_drvdata(file);
@@ -662,7 +664,8 @@ static int isi_s_fmt_vid_cap(struct file *file, void *priv,
 	return isi_set_fmt(isi, f);
 }
 
-static int isi_try_fmt_vid_cap(struct file *file, void *priv,
+static int isi_try_fmt_vid_cap(struct file *file,
+			       struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct atmel_isi *isi = video_drvdata(file);
@@ -670,7 +673,8 @@ static int isi_try_fmt_vid_cap(struct file *file, void *priv,
 	return isi_try_fmt(isi, f, NULL);
 }
 
-static int isi_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int isi_enum_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	struct atmel_isi *isi = video_drvdata(file);
@@ -682,7 +686,8 @@ static int isi_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int isi_querycap(struct file *file, void *priv,
+static int isi_querycap(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "atmel-isi", sizeof(cap->driver));
@@ -691,7 +696,8 @@ static int isi_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int isi_enum_input(struct file *file, void *priv,
+static int isi_enum_input(struct file *file,
+			  struct video_device_state *state,
 			   struct v4l2_input *i)
 {
 	if (i->index != 0)
@@ -702,34 +708,39 @@ static int isi_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int isi_g_input(struct file *file, void *priv, unsigned int *i)
+static int isi_g_input(struct file *file, struct video_device_state *state,
+		       unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int isi_s_input(struct file *file, void *priv, unsigned int i)
+static int isi_s_input(struct file *file, struct video_device_state *state,
+		       unsigned int i)
 {
 	if (i > 0)
 		return -EINVAL;
 	return 0;
 }
 
-static int isi_g_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int isi_g_parm(struct file *file, struct video_device_state *state,
+		      struct v4l2_streamparm *a)
 {
 	struct atmel_isi *isi = video_drvdata(file);
 
 	return v4l2_g_parm_cap(video_devdata(file), isi->entity.subdev, a);
 }
 
-static int isi_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int isi_s_parm(struct file *file, struct video_device_state *state,
+		      struct v4l2_streamparm *a)
 {
 	struct atmel_isi *isi = video_drvdata(file);
 
 	return v4l2_s_parm_cap(video_devdata(file), isi->entity.subdev, a);
 }
 
-static int isi_enum_framesizes(struct file *file, void *fh,
+static int isi_enum_framesizes(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_frmsizeenum *fsize)
 {
 	struct atmel_isi *isi = video_drvdata(file);
@@ -758,7 +769,8 @@ static int isi_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int isi_enum_frameintervals(struct file *file, void *fh,
+static int isi_enum_frameintervals(struct file *file,
+				   struct video_device_state *state,
 				    struct v4l2_frmivalenum *fival)
 {
 	struct atmel_isi *isi = video_drvdata(file);

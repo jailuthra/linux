@@ -223,7 +223,8 @@ static const struct vb2_ops fimc_qops = {
 /*
  * V4L2 ioctl handlers
  */
-static int fimc_m2m_querycap(struct file *file, void *fh,
+static int fimc_m2m_querycap(struct file *file,
+			     struct video_device_state *state,
 				     struct v4l2_capability *cap)
 {
 	struct fimc_dev *fimc = video_drvdata(file);
@@ -232,7 +233,8 @@ static int fimc_m2m_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int fimc_m2m_enum_fmt(struct file *file, void *priv,
+static int fimc_m2m_enum_fmt(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_fmtdesc *f)
 {
 	const struct fimc_fmt *fmt;
@@ -246,7 +248,8 @@ static int fimc_m2m_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int fimc_m2m_g_fmt_mplane(struct file *file, void *fh,
+static int fimc_m2m_g_fmt_mplane(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct fimc_ctx *ctx = file_to_ctx(file);
@@ -305,7 +308,8 @@ static int fimc_try_fmt_mplane(struct fimc_ctx *ctx, struct v4l2_format *f)
 	return 0;
 }
 
-static int fimc_m2m_try_fmt_mplane(struct file *file, void *fh,
+static int fimc_m2m_try_fmt_mplane(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	struct fimc_ctx *ctx = file_to_ctx(file);
@@ -334,7 +338,8 @@ static void __set_frame_format(struct fimc_frame *frame,
 	frame->fmt = fmt;
 }
 
-static int fimc_m2m_s_fmt_mplane(struct file *file, void *fh,
+static int fimc_m2m_s_fmt_mplane(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct fimc_ctx *ctx = file_to_ctx(file);
@@ -373,7 +378,8 @@ static int fimc_m2m_s_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-static int fimc_m2m_g_selection(struct file *file, void *fh,
+static int fimc_m2m_g_selection(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_selection *s)
 {
 	struct fimc_ctx *ctx = file_to_ctx(file);
@@ -481,7 +487,8 @@ static int fimc_m2m_try_selection(struct fimc_ctx *ctx,
 	return 0;
 }
 
-static int fimc_m2m_s_selection(struct file *file, void *fh,
+static int fimc_m2m_s_selection(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_selection *s)
 {
 	struct fimc_ctx *ctx = file_to_ctx(file);

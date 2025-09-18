@@ -787,7 +787,8 @@ static const struct vb2_ops blackbird_qops = {
 
 /* ------------------------------------------------------------------ */
 
-static int vidioc_querycap(struct file *file, void  *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
@@ -797,7 +798,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return cx88_querycap(file, core, cap);
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	if (f->index != 0)
@@ -807,7 +809,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
@@ -823,7 +826,8 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
@@ -863,7 +867,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
@@ -874,7 +879,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	if (core->v4ldev && (vb2_is_busy(&core->v4ldev->vb2_vidq) ||
 			     vb2_is_busy(&core->v4ldev->vb2_vbiq)))
 		return -EBUSY;
-	vidioc_try_fmt_vid_cap(file, priv, f);
+	vidioc_try_fmt_vid_cap(file, state, f);
 	core->width = f->fmt.pix.width;
 	core->height = f->fmt.pix.height;
 	core->field = f->fmt.pix.field;
@@ -885,7 +890,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 			      const struct v4l2_frequency *f)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
@@ -908,7 +914,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_log_status(struct file *file, void *priv)
+static int vidioc_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;
@@ -920,7 +927,8 @@ static int vidioc_log_status(struct file *file, void *priv)
 	return 0;
 }
 
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_input *i)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
@@ -929,7 +937,8 @@ static int vidioc_enum_input(struct file *file, void *priv,
 	return cx88_enum_input(core, i);
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_frequency *f)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
@@ -946,7 +955,8 @@ static int vidioc_g_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;
@@ -955,7 +965,8 @@ static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;
@@ -970,7 +981,8 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_tuner *t)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
@@ -993,7 +1005,8 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 			  const struct v4l2_tuner *t)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
@@ -1008,7 +1021,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *tvnorm)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *tvnorm)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;
@@ -1017,7 +1031,8 @@ static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *tvnorm)
 	return 0;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id id)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id id)
 {
 	struct cx8802_dev *dev = video_drvdata(file);
 	struct cx88_core *core = dev->core;

@@ -232,7 +232,8 @@ static const struct vb2_ops queue_ops = {
 	.stop_streaming = stop_streaming,
 };
 
-static int vidioc_querycap(struct file *file, void *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, KBUILD_MODNAME, sizeof(cap->driver));
@@ -241,7 +242,8 @@ static int vidioc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt(struct file *file, void *priv,
+static int vidioc_enum_fmt(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_fmtdesc *f)
 {
 	struct mgb4_vin_dev *voutdev = video_drvdata(file);
@@ -258,7 +260,8 @@ static int vidioc_enum_fmt(struct file *file, void *priv,
 	}
 }
 
-static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_g_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct mgb4_vout_dev *voutdev = video_drvdata(file);
 	struct mgb4_regs *video = &voutdev->mgbdev->video;
@@ -290,7 +293,8 @@ static int vidioc_g_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_try_fmt(struct file *file, struct video_device_state *state,
+			  struct v4l2_format *f)
 {
 	struct mgb4_vout_dev *voutdev = video_drvdata(file);
 	struct mgb4_regs *video = &voutdev->mgbdev->video;
@@ -322,7 +326,8 @@ static int vidioc_try_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
+static int vidioc_s_fmt(struct file *file, struct video_device_state *state,
+			struct v4l2_format *f)
 {
 	struct mgb4_vout_dev *voutdev = video_drvdata(file);
 	struct mgb4_regs *video = &voutdev->mgbdev->video;
@@ -332,7 +337,7 @@ static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	if (vb2_is_busy(&voutdev->queue))
 		return -EBUSY;
 
-	ret = vidioc_try_fmt(file, priv, f);
+	ret = vidioc_try_fmt(file, state, f);
 	if (ret < 0)
 		return ret;
 
@@ -363,18 +368,21 @@ static int vidioc_s_fmt(struct file *file, void *priv, struct v4l2_format *f)
 	return 0;
 }
 
-static int vidioc_g_output(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_output(struct file *file,
+			   struct video_device_state *state, unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int vidioc_s_output(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_output(struct file *file,
+			   struct video_device_state *state, unsigned int i)
 {
 	return i ? -EINVAL : 0;
 }
 
-static int vidioc_enum_output(struct file *file, void *priv,
+static int vidioc_enum_output(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_output *out)
 {
 	if (out->index != 0)
@@ -387,7 +395,8 @@ static int vidioc_enum_output(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_enum_frameintervals(struct file *file, void *priv,
+static int vidioc_enum_frameintervals(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_frmivalenum *ival)
 {
 	struct mgb4_vout_dev *voutdev = video_drvdata(file);
@@ -415,7 +424,8 @@ static int vidioc_enum_frameintervals(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_parm(struct file *file, void *priv,
+static int vidioc_g_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *parm)
 {
 	struct mgb4_vout_dev *voutdev = video_drvdata(file);
@@ -443,7 +453,8 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_parm(struct file *file, void *priv,
+static int vidioc_s_parm(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_streamparm *parm)
 {
 	struct mgb4_vout_dev *voutdev = video_drvdata(file);
@@ -466,10 +477,11 @@ static int vidioc_s_parm(struct file *file, void *priv,
 		mgb4_write_reg(video, voutdev->config->regs.timer, timer);
 	}
 
-	return vidioc_g_parm(file, priv, parm);
+	return vidioc_g_parm(file, state, parm);
 }
 
-static int vidioc_g_dv_timings(struct file *file, void *fh,
+static int vidioc_g_dv_timings(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_dv_timings *timings)
 {
 	struct mgb4_vout_dev *voutdev = video_drvdata(file);
@@ -479,7 +491,8 @@ static int vidioc_g_dv_timings(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_s_dv_timings(struct file *file, void *fh,
+static int vidioc_s_dv_timings(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_dv_timings *timings)
 {
 	struct mgb4_vout_dev *voutdev = video_drvdata(file);
@@ -489,7 +502,8 @@ static int vidioc_s_dv_timings(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_enum_dv_timings(struct file *file, void *fh,
+static int vidioc_enum_dv_timings(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_enum_dv_timings *timings)
 {
 	struct mgb4_vout_dev *voutdev = video_drvdata(file);
@@ -502,7 +516,8 @@ static int vidioc_enum_dv_timings(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_dv_timings_cap(struct file *file, void *fh,
+static int vidioc_dv_timings_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_dv_timings_cap *cap)
 {
 	*cap = video_timings_cap;

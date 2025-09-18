@@ -52,7 +52,8 @@ struct vimc_capture_buffer {
 	struct list_head list;
 };
 
-static int vimc_capture_querycap(struct file *file, void *priv,
+static int vimc_capture_querycap(struct file *file,
+				 struct video_device_state *state,
 			     struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, VIMC_PDEV_NAME, sizeof(cap->driver));
@@ -70,7 +71,8 @@ static void vimc_capture_get_format(struct vimc_ent_device *ved,
 	*fmt = vcapture->format;
 }
 
-static int vimc_capture_g_fmt_vid_cap(struct file *file, void *priv,
+static int vimc_capture_g_fmt_vid_cap(struct file *file,
+				      struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct vimc_capture_device *vcapture = video_drvdata(file);
@@ -80,7 +82,8 @@ static int vimc_capture_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vimc_capture_try_fmt_vid_cap(struct file *file, void *priv,
+static int vimc_capture_try_fmt_vid_cap(struct file *file,
+					struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct v4l2_pix_format *format = &f->fmt.pix;
@@ -112,7 +115,8 @@ static int vimc_capture_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vimc_capture_s_fmt_vid_cap(struct file *file, void *priv,
+static int vimc_capture_s_fmt_vid_cap(struct file *file,
+				      struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct vimc_capture_device *vcapture = video_drvdata(file);
@@ -122,7 +126,7 @@ static int vimc_capture_s_fmt_vid_cap(struct file *file, void *priv,
 	if (vb2_is_busy(&vcapture->queue))
 		return -EBUSY;
 
-	ret = vimc_capture_try_fmt_vid_cap(file, priv, f);
+	ret = vimc_capture_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -145,7 +149,8 @@ static int vimc_capture_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vimc_capture_enum_fmt_vid_cap(struct file *file, void *priv,
+static int vimc_capture_enum_fmt_vid_cap(struct file *file,
+					 struct video_device_state *state,
 				     struct v4l2_fmtdesc *f)
 {
 	const struct vimc_pix_map *vpix;
@@ -167,7 +172,8 @@ static int vimc_capture_enum_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vimc_capture_enum_framesizes(struct file *file, void *priv,
+static int vimc_capture_enum_framesizes(struct file *file,
+					struct video_device_state *state,
 				    struct v4l2_frmsizeenum *fsize)
 {
 	const struct vimc_pix_map *vpix;

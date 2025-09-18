@@ -741,12 +741,13 @@ static int vpif_set_input(
 /**
  * vpif_querystd() - querystd handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @std_id: ptr to std id
  *
  * This function is called to detect standard at the selected input
  */
-static int vpif_querystd(struct file *file, void *priv, v4l2_std_id *std_id)
+static int vpif_querystd(struct file *file, struct video_device_state *state,
+			 v4l2_std_id *std_id)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct channel_obj *ch = video_get_drvdata(vdev);
@@ -770,10 +771,11 @@ static int vpif_querystd(struct file *file, void *priv, v4l2_std_id *std_id)
 /**
  * vpif_g_std() - get STD handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @std: ptr to std id
  */
-static int vpif_g_std(struct file *file, void *priv, v4l2_std_id *std)
+static int vpif_g_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id *std)
 {
 	struct vpif_capture_config *config = vpif_dev->platform_data;
 	struct video_device *vdev = video_devdata(file);
@@ -798,10 +800,11 @@ static int vpif_g_std(struct file *file, void *priv, v4l2_std_id *std)
 /**
  * vpif_s_std() - set STD handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @std_id: ptr to std id
  */
-static int vpif_s_std(struct file *file, void *priv, v4l2_std_id std_id)
+static int vpif_s_std(struct file *file, struct video_device_state *state,
+		      v4l2_std_id std_id)
 {
 	struct vpif_capture_config *config = vpif_dev->platform_data;
 	struct video_device *vdev = video_devdata(file);
@@ -846,11 +849,11 @@ static int vpif_s_std(struct file *file, void *priv, v4l2_std_id std_id)
 /**
  * vpif_enum_input() - ENUMINPUT handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @input: ptr to input structure
  */
-static int vpif_enum_input(struct file *file, void *priv,
-				struct v4l2_input *input)
+static int vpif_enum_input(struct file *file, struct video_device_state *state,
+			   struct v4l2_input *input)
 {
 
 	struct vpif_capture_config *config = vpif_dev->platform_data;
@@ -871,10 +874,11 @@ static int vpif_enum_input(struct file *file, void *priv,
 /**
  * vpif_g_input() - Get INPUT handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @index: ptr to input index
  */
-static int vpif_g_input(struct file *file, void *priv, unsigned int *index)
+static int vpif_g_input(struct file *file, struct video_device_state *state,
+			unsigned int *index)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct channel_obj *ch = video_get_drvdata(vdev);
@@ -886,10 +890,11 @@ static int vpif_g_input(struct file *file, void *priv, unsigned int *index)
 /**
  * vpif_s_input() - Set INPUT handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @index: input index
  */
-static int vpif_s_input(struct file *file, void *priv, unsigned int index)
+static int vpif_s_input(struct file *file, struct video_device_state *state,
+			unsigned int index)
 {
 	struct vpif_capture_config *config = vpif_dev->platform_data;
 	struct video_device *vdev = video_devdata(file);
@@ -911,11 +916,12 @@ static int vpif_s_input(struct file *file, void *priv, unsigned int index)
 /**
  * vpif_enum_fmt_vid_cap() - ENUM_FMT handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @fmt: ptr to V4L2 format descriptor
  */
-static int vpif_enum_fmt_vid_cap(struct file *file, void  *priv,
-					struct v4l2_fmtdesc *fmt)
+static int vpif_enum_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
+				 struct v4l2_fmtdesc *fmt)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct channel_obj *ch = video_get_drvdata(vdev);
@@ -936,10 +942,11 @@ static int vpif_enum_fmt_vid_cap(struct file *file, void  *priv,
 /**
  * vpif_try_fmt_vid_cap() - TRY_FMT handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @fmt: ptr to v4l2 format structure
  */
-static int vpif_try_fmt_vid_cap(struct file *file, void *priv,
+static int vpif_try_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *fmt)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -973,11 +980,12 @@ static int vpif_try_fmt_vid_cap(struct file *file, void *priv,
 /**
  * vpif_g_fmt_vid_cap() - Set INPUT handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @fmt: ptr to v4l2 format structure
  */
-static int vpif_g_fmt_vid_cap(struct file *file, void *priv,
-				struct v4l2_format *fmt)
+static int vpif_g_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_format *fmt)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct channel_obj *ch = video_get_drvdata(vdev);
@@ -1029,11 +1037,12 @@ static int vpif_g_fmt_vid_cap(struct file *file, void *priv,
 /**
  * vpif_s_fmt_vid_cap() - Set FMT handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @fmt: ptr to v4l2 format structure
  */
-static int vpif_s_fmt_vid_cap(struct file *file, void *priv,
-				struct v4l2_format *fmt)
+static int vpif_s_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_format *fmt)
 {
 	struct video_device *vdev = video_devdata(file);
 	struct channel_obj *ch = video_get_drvdata(vdev);
@@ -1045,7 +1054,7 @@ static int vpif_s_fmt_vid_cap(struct file *file, void *priv,
 	if (vb2_is_busy(&common->buffer_queue))
 		return -EBUSY;
 
-	ret = vpif_try_fmt_vid_cap(file, priv, fmt);
+	ret = vpif_try_fmt_vid_cap(file, state, fmt);
 	if (ret)
 		return ret;
 
@@ -1057,11 +1066,11 @@ static int vpif_s_fmt_vid_cap(struct file *file, void *priv,
 /**
  * vpif_querycap() - QUERYCAP handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @cap: ptr to v4l2_capability structure
  */
-static int vpif_querycap(struct file *file, void  *priv,
-				struct v4l2_capability *cap)
+static int vpif_querycap(struct file *file, struct video_device_state *state,
+			 struct v4l2_capability *cap)
 {
 	struct vpif_capture_config *config = vpif_dev->platform_data;
 
@@ -1074,11 +1083,12 @@ static int vpif_querycap(struct file *file, void  *priv,
 /**
  * vpif_enum_dv_timings() - ENUM_DV_TIMINGS handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @timings: input timings
  */
 static int
-vpif_enum_dv_timings(struct file *file, void *priv,
+vpif_enum_dv_timings(struct file *file,
+		     struct video_device_state *state,
 		     struct v4l2_enum_dv_timings *timings)
 {
 	struct vpif_capture_config *config = vpif_dev->platform_data;
@@ -1108,11 +1118,12 @@ vpif_enum_dv_timings(struct file *file, void *priv,
 /**
  * vpif_query_dv_timings() - QUERY_DV_TIMINGS handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @timings: input timings
  */
 static int
-vpif_query_dv_timings(struct file *file, void *priv,
+vpif_query_dv_timings(struct file *file,
+		      struct video_device_state *state,
 		      struct v4l2_dv_timings *timings)
 {
 	struct vpif_capture_config *config = vpif_dev->platform_data;
@@ -1140,11 +1151,12 @@ vpif_query_dv_timings(struct file *file, void *priv,
 /**
  * vpif_s_dv_timings() - S_DV_TIMINGS handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @timings: digital video timings
  */
-static int vpif_s_dv_timings(struct file *file, void *priv,
-		struct v4l2_dv_timings *timings)
+static int vpif_s_dv_timings(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_dv_timings *timings)
 {
 	struct vpif_capture_config *config = vpif_dev->platform_data;
 	struct video_device *vdev = video_devdata(file);
@@ -1239,11 +1251,12 @@ static int vpif_s_dv_timings(struct file *file, void *priv,
 /**
  * vpif_g_dv_timings() - G_DV_TIMINGS handler
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  * @timings: digital video timings
  */
-static int vpif_g_dv_timings(struct file *file, void *priv,
-		struct v4l2_dv_timings *timings)
+static int vpif_g_dv_timings(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_dv_timings *timings)
 {
 	struct vpif_capture_config *config = vpif_dev->platform_data;
 	struct video_device *vdev = video_devdata(file);
@@ -1268,11 +1281,12 @@ static int vpif_g_dv_timings(struct file *file, void *priv,
 /*
  * vpif_log_status() - Status information
  * @file: file ptr
- * @priv: file handle
+ * @state: video device state
  *
  * Returns zero.
  */
-static int vpif_log_status(struct file *filep, void *priv)
+static int vpif_log_status(struct file *filep,
+			   struct video_device_state *state)
 {
 	/* status for sub devices */
 	v4l2_device_call_all(&vpif_obj.v4l2_dev, 0, core, log_status);

@@ -1601,7 +1601,8 @@ end:
 	spin_unlock_irqrestore(&ctx->mxc_jpeg->hw_lock, flags);
 }
 
-static int mxc_jpeg_decoder_cmd(struct file *file, void *priv,
+static int mxc_jpeg_decoder_cmd(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_decoder_cmd *cmd)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1609,7 +1610,7 @@ static int mxc_jpeg_decoder_cmd(struct file *file, void *priv,
 	unsigned long flags;
 	int ret;
 
-	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, fh, cmd);
+	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, state, cmd);
 	if (ret < 0)
 		return ret;
 
@@ -1617,7 +1618,7 @@ static int mxc_jpeg_decoder_cmd(struct file *file, void *priv,
 		return 0;
 
 	spin_lock_irqsave(&ctx->mxc_jpeg->hw_lock, flags);
-	ret = v4l2_m2m_ioctl_decoder_cmd(file, priv, cmd);
+	ret = v4l2_m2m_ioctl_decoder_cmd(file, state, cmd);
 	spin_unlock_irqrestore(&ctx->mxc_jpeg->hw_lock, flags);
 	if (ret < 0)
 		return ret;
@@ -1634,7 +1635,8 @@ static int mxc_jpeg_decoder_cmd(struct file *file, void *priv,
 	return 0;
 }
 
-static int mxc_jpeg_encoder_cmd(struct file *file, void *priv,
+static int mxc_jpeg_encoder_cmd(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_encoder_cmd *cmd)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
@@ -1642,7 +1644,7 @@ static int mxc_jpeg_encoder_cmd(struct file *file, void *priv,
 	unsigned long flags;
 	int ret;
 
-	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, fh, cmd);
+	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, state, cmd);
 	if (ret < 0)
 		return ret;
 
@@ -1651,7 +1653,7 @@ static int mxc_jpeg_encoder_cmd(struct file *file, void *priv,
 		return 0;
 
 	spin_lock_irqsave(&ctx->mxc_jpeg->hw_lock, flags);
-	ret = v4l2_m2m_ioctl_encoder_cmd(file, fh, cmd);
+	ret = v4l2_m2m_ioctl_encoder_cmd(file, state, cmd);
 	spin_unlock_irqrestore(&ctx->mxc_jpeg->hw_lock, flags);
 	if (ret < 0)
 		return 0;
@@ -2241,7 +2243,8 @@ free:
 	return ret;
 }
 
-static int mxc_jpeg_querycap(struct file *file, void *priv,
+static int mxc_jpeg_querycap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, MXC_JPEG_NAME " codec", sizeof(cap->driver));
@@ -2252,7 +2255,8 @@ static int mxc_jpeg_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int mxc_jpeg_enum_fmt_vid_cap(struct file *file, void *priv,
+static int mxc_jpeg_enum_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_fmtdesc *f)
 {
 	struct mxc_jpeg_ctx *ctx = mxc_jpeg_file_to_ctx(file);
@@ -2292,7 +2296,8 @@ static int mxc_jpeg_enum_fmt_vid_cap(struct file *file, void *priv,
 	}
 }
 
-static int mxc_jpeg_enum_fmt_vid_out(struct file *file, void *priv,
+static int mxc_jpeg_enum_fmt_vid_out(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_fmtdesc *f)
 {
 	struct mxc_jpeg_ctx *ctx = mxc_jpeg_file_to_ctx(file);
@@ -2433,7 +2438,8 @@ static int mxc_jpeg_try_fmt(struct v4l2_format *f,
 	return 0;
 }
 
-static int mxc_jpeg_try_fmt_vid_cap(struct file *file, void *priv,
+static int mxc_jpeg_try_fmt_vid_cap(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct mxc_jpeg_ctx *ctx = mxc_jpeg_file_to_ctx(file);
@@ -2452,7 +2458,8 @@ static int mxc_jpeg_try_fmt_vid_cap(struct file *file, void *priv,
 	return mxc_jpeg_try_fmt(f, ctx, &tmp_q);
 }
 
-static int mxc_jpeg_try_fmt_vid_out(struct file *file, void *priv,
+static int mxc_jpeg_try_fmt_vid_out(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_format *f)
 {
 	struct mxc_jpeg_ctx *ctx = mxc_jpeg_file_to_ctx(file);
@@ -2504,13 +2511,15 @@ static int mxc_jpeg_s_fmt(struct mxc_jpeg_ctx *ctx,
 	return mxc_jpeg_try_fmt(f, ctx, mxc_jpeg_get_q_data(ctx, f->type));
 }
 
-static int mxc_jpeg_s_fmt_vid_cap(struct file *file, void *priv,
+static int mxc_jpeg_s_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	return mxc_jpeg_s_fmt(mxc_jpeg_file_to_ctx(file), f);
 }
 
-static int mxc_jpeg_s_fmt_vid_out(struct file *file, void *priv,
+static int mxc_jpeg_s_fmt_vid_out(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	int ret;
@@ -2543,10 +2552,11 @@ static int mxc_jpeg_s_fmt_vid_out(struct file *file, void *priv,
 	fc.fmt.pix_mp.width = f->fmt.pix_mp.width;
 	fc.fmt.pix_mp.height = f->fmt.pix_mp.height;
 
-	return mxc_jpeg_s_fmt_vid_cap(file, priv, &fc);
+	return mxc_jpeg_s_fmt_vid_cap(file, state, &fc);
 }
 
-static int mxc_jpeg_g_fmt_vid(struct file *file, void *priv,
+static int mxc_jpeg_g_fmt_vid(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct mxc_jpeg_ctx *ctx = mxc_jpeg_file_to_ctx(file);
@@ -2642,17 +2652,21 @@ static int mxc_jpeg_enc_g_selection(struct file *file, void *fh, struct v4l2_sel
 	return 0;
 }
 
-static int mxc_jpeg_g_selection(struct file *file, void *fh, struct v4l2_selection *s)
+static int mxc_jpeg_g_selection(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_selection *s)
 {
 	struct mxc_jpeg_ctx *ctx = mxc_jpeg_file_to_ctx(file);
 
 	if (ctx->mxc_jpeg->mode == MXC_JPEG_DECODE)
-		return mxc_jpeg_dec_g_selection(file, fh, s);
+		return mxc_jpeg_dec_g_selection(file, state, s);
 	else
-		return mxc_jpeg_enc_g_selection(file, fh, s);
+		return mxc_jpeg_enc_g_selection(file, state, s);
 }
 
-static int mxc_jpeg_s_selection(struct file *file, void *fh, struct v4l2_selection *s)
+static int mxc_jpeg_s_selection(struct file *file,
+				struct video_device_state *state,
+				struct v4l2_selection *s)
 {
 	struct mxc_jpeg_ctx *ctx = mxc_jpeg_file_to_ctx(file);
 	struct mxc_jpeg_q_data *q_data_out;

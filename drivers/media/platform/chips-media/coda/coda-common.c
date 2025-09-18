@@ -424,7 +424,8 @@ out:
 /*
  * V4L2 ioctl() operations.
  */
-static int coda_querycap(struct file *file, void *priv,
+static int coda_querycap(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_capability *cap)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -442,7 +443,8 @@ static const u32 coda_formats_420[CODA_MAX_FORMATS] = {
 		V4L2_PIX_FMT_YVU420,
 };
 
-static int coda_enum_fmt(struct file *file, void *priv,
+static int coda_enum_fmt(struct file *file,
+			 struct video_device_state *state,
 			 struct v4l2_fmtdesc *f)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -493,8 +495,8 @@ static int coda_enum_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int coda_g_fmt(struct file *file, void *priv,
-		      struct v4l2_format *f)
+static int coda_g_fmt(struct file *file,
+		      struct video_device_state *state, struct v4l2_format *f)
 {
 	struct coda_q_data *q_data;
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -655,7 +657,8 @@ static int coda_try_fmt(struct coda_ctx *ctx, const struct coda_codec *codec,
 	return 0;
 }
 
-static int coda_try_fmt_vid_cap(struct file *file, void *priv,
+static int coda_try_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -761,7 +764,8 @@ static void coda_set_default_colorspace(struct v4l2_pix_format *fmt)
 	fmt->quantization = V4L2_QUANTIZATION_DEFAULT;
 }
 
-static int coda_try_fmt_vid_out(struct file *file, void *priv,
+static int coda_try_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -855,7 +859,8 @@ static int coda_s_fmt(struct coda_ctx *ctx, struct v4l2_format *f,
 	return 0;
 }
 
-static int coda_s_fmt_vid_cap(struct file *file, void *priv,
+static int coda_s_fmt_vid_cap(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -874,7 +879,7 @@ static int coda_s_fmt_vid_cap(struct file *file, void *priv,
 		vscale = coda_jpeg_scale(q_data_src->height, f->fmt.pix.height);
 	}
 
-	ret = coda_try_fmt_vid_cap(file, priv, f);
+	ret = coda_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -907,7 +912,8 @@ static int coda_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int coda_s_fmt_vid_out(struct file *file, void *priv,
+static int coda_s_fmt_vid_out(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -916,7 +922,7 @@ static int coda_s_fmt_vid_out(struct file *file, void *priv,
 	struct vb2_queue *dst_vq;
 	int ret;
 
-	ret = coda_try_fmt_vid_out(file, priv, f);
+	ret = coda_try_fmt_vid_out(file, state, f);
 	if (ret)
 		return ret;
 
@@ -956,14 +962,15 @@ static int coda_s_fmt_vid_out(struct file *file, void *priv,
 
 	memset(&f_cap, 0, sizeof(f_cap));
 	f_cap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	coda_g_fmt(file, priv, &f_cap);
+	coda_g_fmt(file, state, &f_cap);
 	f_cap.fmt.pix.width = f->fmt.pix.width;
 	f_cap.fmt.pix.height = f->fmt.pix.height;
 
-	return coda_s_fmt_vid_cap(file, priv, &f_cap);
+	return coda_s_fmt_vid_cap(file, state, &f_cap);
 }
 
-static int coda_reqbufs(struct file *file, void *priv,
+static int coda_reqbufs(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_requestbuffers *rb)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -983,7 +990,8 @@ static int coda_reqbufs(struct file *file, void *priv,
 	return 0;
 }
 
-static int coda_qbuf(struct file *file, void *priv,
+static int coda_qbuf(struct file *file,
+		     struct video_device_state *state,
 		     struct v4l2_buffer *buf)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -995,7 +1003,8 @@ static int coda_qbuf(struct file *file, void *priv,
 	return v4l2_m2m_qbuf(file, ctx->fh.m2m_ctx, buf);
 }
 
-static int coda_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
+static int coda_dqbuf(struct file *file, struct video_device_state *state,
+		      struct v4l2_buffer *buf)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
 	int ret;
@@ -1022,7 +1031,8 @@ void coda_m2m_buf_done(struct coda_ctx *ctx, struct vb2_v4l2_buffer *buf,
 	v4l2_m2m_buf_done(buf, state);
 }
 
-static int coda_g_selection(struct file *file, void *fh,
+static int coda_g_selection(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_selection *s)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -1068,7 +1078,8 @@ static int coda_g_selection(struct file *file, void *fh,
 	return 0;
 }
 
-static int coda_s_selection(struct file *file, void *fh,
+static int coda_s_selection(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_selection *s)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -1105,7 +1116,7 @@ static int coda_s_selection(struct file *file, void *fh,
 		fallthrough;
 	case V4L2_SEL_TGT_NATIVE_SIZE:
 	case V4L2_SEL_TGT_COMPOSE:
-		return coda_g_selection(file, fh, s);
+		return coda_g_selection(file, state, s);
 	default:
 		/* v4l2-compliance expects this to fail for read-only targets */
 		return -EINVAL;
@@ -1123,14 +1134,15 @@ static void coda_wake_up_capture_queue(struct coda_ctx *ctx)
 	wake_up(&dst_vq->done_wq);
 }
 
-static int coda_encoder_cmd(struct file *file, void *fh,
+static int coda_encoder_cmd(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_encoder_cmd *ec)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
 	struct vb2_v4l2_buffer *buf;
 	int ret;
 
-	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, fh, ec);
+	ret = v4l2_m2m_ioctl_try_encoder_cmd(file, state, ec);
 	if (ret < 0)
 		return ret;
 
@@ -1204,7 +1216,8 @@ static bool coda_mark_last_dst_buf(struct coda_ctx *ctx)
 	return true;
 }
 
-static int coda_decoder_cmd(struct file *file, void *fh,
+static int coda_decoder_cmd(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_decoder_cmd *dc)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -1215,7 +1228,7 @@ static int coda_decoder_cmd(struct file *file, void *fh,
 	bool wakeup;
 	int ret;
 
-	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, fh, dc);
+	ret = v4l2_m2m_ioctl_try_decoder_cmd(file, state, dc);
 	if (ret < 0)
 		return ret;
 
@@ -1283,7 +1296,8 @@ static int coda_decoder_cmd(struct file *file, void *fh,
 	return 0;
 }
 
-static int coda_enum_framesizes(struct file *file, void *fh,
+static int coda_enum_framesizes(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_frmsizeenum *fsize)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -1316,7 +1330,8 @@ static int coda_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int coda_enum_frameintervals(struct file *file, void *fh,
+static int coda_enum_frameintervals(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_frmivalenum *f)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
@@ -1356,7 +1371,8 @@ static int coda_enum_frameintervals(struct file *file, void *fh,
 	return 0;
 }
 
-static int coda_g_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int coda_g_parm(struct file *file, struct video_device_state *state,
+		       struct v4l2_streamparm *a)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
 	struct v4l2_fract *tpf;
@@ -1439,7 +1455,8 @@ static uint32_t coda_timeperframe_to_frate(struct v4l2_fract *timeperframe)
 		timeperframe->denominator;
 }
 
-static int coda_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int coda_s_parm(struct file *file, struct video_device_state *state,
+		       struct v4l2_streamparm *a)
 {
 	struct coda_ctx *ctx = file_to_ctx(file);
 	struct v4l2_fract *tpf;

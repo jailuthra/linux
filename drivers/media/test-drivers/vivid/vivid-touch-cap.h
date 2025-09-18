@@ -26,14 +26,22 @@ enum vivid_tch_test {
 
 extern const struct vb2_ops vivid_touch_cap_qops;
 
-int vivid_enum_fmt_tch(struct file *file, void  *priv, struct v4l2_fmtdesc *f);
-int vivid_g_fmt_tch(struct file *file, void *priv, struct v4l2_format *f);
-int vivid_g_fmt_tch_mplane(struct file *file, void *priv, struct v4l2_format *f);
-int vivid_enum_input_tch(struct file *file, void *priv, struct v4l2_input *inp);
-int vivid_g_input_tch(struct file *file, void *priv, unsigned int *i);
-int vivid_s_input_tch(struct file *file, void *priv, unsigned int i);
+int vivid_enum_fmt_tch(struct file *file, struct video_device_state *state,
+		       struct v4l2_fmtdesc *f);
+int vivid_g_fmt_tch(struct file *file, struct video_device_state *state,
+		    struct v4l2_format *f);
+int vivid_g_fmt_tch_mplane(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_format *f);
+int vivid_enum_input_tch(struct file *file, struct video_device_state *state,
+			 struct v4l2_input *inp);
+int vivid_g_input_tch(struct file *file, struct video_device_state *state,
+		      unsigned int *i);
+int vivid_s_input_tch(struct file *file, struct video_device_state *state,
+		      unsigned int i);
 void vivid_fillbuff_tch(struct vivid_dev *dev, struct vivid_buffer *buf);
 int vivid_set_touch(struct vivid_dev *dev, unsigned int i);
-int vivid_g_parm_tch(struct file *file, void *priv,
+int vivid_g_parm_tch(struct file *file,
+		     struct video_device_state *state,
 		     struct v4l2_streamparm *parm);
 #endif

@@ -130,7 +130,8 @@ static inline struct mtk_jpeg_src_buf *mtk_jpeg_vb2_to_srcbuf(
 	return container_of(to_vb2_v4l2_buffer(vb), struct mtk_jpeg_src_buf, b);
 }
 
-static int mtk_jpeg_querycap(struct file *file, void *priv,
+static int mtk_jpeg_querycap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_capability *cap)
 {
 	struct mtk_jpeg_dev *jpeg = video_drvdata(file);
@@ -209,7 +210,8 @@ static int mtk_jpeg_enum_fmt(struct mtk_jpeg_fmt *mtk_jpeg_formats, int n,
 	return 0;
 }
 
-static int mtk_jpeg_enum_fmt_vid_cap(struct file *file, void *priv,
+static int mtk_jpeg_enum_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_fmtdesc *f)
 {
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_file_to_ctx(file);
@@ -220,7 +222,8 @@ static int mtk_jpeg_enum_fmt_vid_cap(struct file *file, void *priv,
 				 MTK_JPEG_FMT_FLAG_CAPTURE);
 }
 
-static int mtk_jpeg_enum_fmt_vid_out(struct file *file, void *priv,
+static int mtk_jpeg_enum_fmt_vid_out(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_fmtdesc *f)
 {
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_file_to_ctx(file);
@@ -299,7 +302,8 @@ static int mtk_jpeg_try_fmt_mplane(struct v4l2_pix_format_mplane *pix_mp,
 	return 0;
 }
 
-static int mtk_jpeg_g_fmt_vid_mplane(struct file *file, void *priv,
+static int mtk_jpeg_g_fmt_vid_mplane(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct vb2_queue *vq;
@@ -348,7 +352,8 @@ static int mtk_jpeg_g_fmt_vid_mplane(struct file *file, void *priv,
 	return 0;
 }
 
-static int mtk_jpeg_try_fmt_vid_cap_mplane(struct file *file, void *priv,
+static int mtk_jpeg_try_fmt_vid_cap_mplane(struct file *file,
+					   struct video_device_state *state,
 					   struct v4l2_format *f)
 {
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_file_to_ctx(file);
@@ -370,14 +375,15 @@ static int mtk_jpeg_try_fmt_vid_cap_mplane(struct file *file, void *priv,
 		 (fmt->fourcc >> 24 & 0xff));
 
 	if (ctx->state != MTK_JPEG_INIT) {
-		mtk_jpeg_g_fmt_vid_mplane(file, priv, f);
+		mtk_jpeg_g_fmt_vid_mplane(file, state, f);
 		return 0;
 	}
 
 	return mtk_jpeg_try_fmt_mplane(&f->fmt.pix_mp, fmt);
 }
 
-static int mtk_jpeg_try_fmt_vid_out_mplane(struct file *file, void *priv,
+static int mtk_jpeg_try_fmt_vid_out_mplane(struct file *file,
+					   struct video_device_state *state,
 					   struct v4l2_format *f)
 {
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_file_to_ctx(file);
@@ -399,7 +405,7 @@ static int mtk_jpeg_try_fmt_vid_out_mplane(struct file *file, void *priv,
 		 (fmt->fourcc >> 24 & 0xff));
 
 	if (ctx->state != MTK_JPEG_INIT) {
-		mtk_jpeg_g_fmt_vid_mplane(file, priv, f);
+		mtk_jpeg_g_fmt_vid_mplane(file, state, f);
 		return 0;
 	}
 
@@ -461,12 +467,13 @@ static int mtk_jpeg_s_fmt_mplane(struct mtk_jpeg_ctx *ctx,
 	return 0;
 }
 
-static int mtk_jpeg_s_fmt_vid_out_mplane(struct file *file, void *priv,
+static int mtk_jpeg_s_fmt_vid_out_mplane(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_format *f)
 {
 	int ret;
 
-	ret = mtk_jpeg_try_fmt_vid_out_mplane(file, priv, f);
+	ret = mtk_jpeg_try_fmt_vid_out_mplane(file, state, f);
 	if (ret)
 		return ret;
 
@@ -474,12 +481,13 @@ static int mtk_jpeg_s_fmt_vid_out_mplane(struct file *file, void *priv,
 				     MTK_JPEG_FMT_FLAG_OUTPUT);
 }
 
-static int mtk_jpeg_s_fmt_vid_cap_mplane(struct file *file, void *priv,
+static int mtk_jpeg_s_fmt_vid_cap_mplane(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_format *f)
 {
 	int ret;
 
-	ret = mtk_jpeg_try_fmt_vid_cap_mplane(file, priv, f);
+	ret = mtk_jpeg_try_fmt_vid_cap_mplane(file, state, f);
 	if (ret)
 		return ret;
 
@@ -509,7 +517,8 @@ static int mtk_jpeg_subscribe_event(struct v4l2_fh *fh,
 	return v4l2_ctrl_subscribe_event(fh, sub);
 }
 
-static int mtk_jpeg_enc_g_selection(struct file *file, void *priv,
+static int mtk_jpeg_enc_g_selection(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_selection *s)
 {
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_file_to_ctx(file);
@@ -534,7 +543,8 @@ static int mtk_jpeg_enc_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int mtk_jpeg_dec_g_selection(struct file *file, void *priv,
+static int mtk_jpeg_dec_g_selection(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_selection *s)
 {
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_file_to_ctx(file);
@@ -563,7 +573,8 @@ static int mtk_jpeg_dec_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int mtk_jpeg_enc_s_selection(struct file *file, void *priv,
+static int mtk_jpeg_enc_s_selection(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_selection *s)
 {
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_file_to_ctx(file);
@@ -586,7 +597,8 @@ static int mtk_jpeg_enc_s_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int mtk_jpeg_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
+static int mtk_jpeg_qbuf(struct file *file, struct video_device_state *state,
+			 struct v4l2_buffer *buf)
 {
 	struct v4l2_fh *fh = file_to_v4l2_fh(file);
 	struct mtk_jpeg_ctx *ctx = mtk_jpeg_file_to_ctx(file);

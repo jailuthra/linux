@@ -974,7 +974,8 @@ static const struct v4l2_file_operations pispbe_fops = {
 	.mmap           = vb2_fop_mmap
 };
 
-static int pispbe_node_querycap(struct file *file, void *priv,
+static int pispbe_node_querycap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_capability *cap)
 {
 	struct pispbe_node *node = video_drvdata(file);
@@ -990,7 +991,8 @@ static int pispbe_node_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int pispbe_node_g_fmt_vid_cap(struct file *file, void *priv,
+static int pispbe_node_g_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
@@ -1010,7 +1012,8 @@ static int pispbe_node_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int pispbe_node_g_fmt_vid_out(struct file *file, void *priv,
+static int pispbe_node_g_fmt_vid_out(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
@@ -1030,7 +1033,8 @@ static int pispbe_node_g_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int pispbe_node_g_fmt_meta_out(struct file *file, void *priv,
+static int pispbe_node_g_fmt_meta_out(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_format *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
@@ -1153,7 +1157,8 @@ static void pispbe_try_format(struct v4l2_format *f, struct pispbe_node *node)
 	}
 }
 
-static int pispbe_node_try_fmt_vid_cap(struct file *file, void *priv,
+static int pispbe_node_try_fmt_vid_cap(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
@@ -1171,7 +1176,8 @@ static int pispbe_node_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int pispbe_node_try_fmt_vid_out(struct file *file, void *priv,
+static int pispbe_node_try_fmt_vid_out(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
@@ -1189,7 +1195,8 @@ static int pispbe_node_try_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int pispbe_node_try_fmt_meta_out(struct file *file, void *priv,
+static int pispbe_node_try_fmt_meta_out(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
@@ -1208,14 +1215,15 @@ static int pispbe_node_try_fmt_meta_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int pispbe_node_s_fmt_vid_cap(struct file *file, void *priv,
+static int pispbe_node_s_fmt_vid_cap(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
 	struct pispbe_dev *pispbe = node->pispbe;
 	int ret;
 
-	ret = pispbe_node_try_fmt_vid_cap(file, priv, f);
+	ret = pispbe_node_try_fmt_vid_cap(file, state, f);
 	if (ret < 0)
 		return ret;
 
@@ -1231,14 +1239,15 @@ static int pispbe_node_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int pispbe_node_s_fmt_vid_out(struct file *file, void *priv,
+static int pispbe_node_s_fmt_vid_out(struct file *file,
+				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
 	struct pispbe_dev *pispbe = node->pispbe;
 	int ret;
 
-	ret = pispbe_node_try_fmt_vid_out(file, priv, f);
+	ret = pispbe_node_try_fmt_vid_out(file, state, f);
 	if (ret < 0)
 		return ret;
 
@@ -1254,14 +1263,15 @@ static int pispbe_node_s_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int pispbe_node_s_fmt_meta_out(struct file *file, void *priv,
+static int pispbe_node_s_fmt_meta_out(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_format *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
 	struct pispbe_dev *pispbe = node->pispbe;
 	int ret;
 
-	ret = pispbe_node_try_fmt_meta_out(file, priv, f);
+	ret = pispbe_node_try_fmt_meta_out(file, state, f);
 	if (ret < 0)
 		return ret;
 
@@ -1277,7 +1287,8 @@ static int pispbe_node_s_fmt_meta_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int pispbe_node_enum_fmt(struct file *file, void  *priv,
+static int pispbe_node_enum_fmt(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	struct pispbe_node *node = video_drvdata(file);
@@ -1303,7 +1314,8 @@ static int pispbe_node_enum_fmt(struct file *file, void  *priv,
 	return 0;
 }
 
-static int pispbe_enum_framesizes(struct file *file, void *priv,
+static int pispbe_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	struct pispbe_node *node = video_drvdata(file);

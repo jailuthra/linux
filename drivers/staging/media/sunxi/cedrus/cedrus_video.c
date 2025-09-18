@@ -175,7 +175,8 @@ void cedrus_prepare_format(struct v4l2_pix_format *pix_fmt)
 	pix_fmt->sizeimage = sizeimage;
 }
 
-static int cedrus_querycap(struct file *file, void *priv,
+static int cedrus_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, CEDRUS_NAME, sizeof(cap->driver));
@@ -218,19 +219,22 @@ static int cedrus_enum_fmt(struct file *file, struct v4l2_fmtdesc *f,
 	return -EINVAL;
 }
 
-static int cedrus_enum_fmt_vid_cap(struct file *file, void *priv,
+static int cedrus_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return cedrus_enum_fmt(file, f, CEDRUS_DECODE_DST);
 }
 
-static int cedrus_enum_fmt_vid_out(struct file *file, void *priv,
+static int cedrus_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return cedrus_enum_fmt(file, f, CEDRUS_DECODE_SRC);
 }
 
-static int cedrus_g_fmt_vid_cap(struct file *file, void *priv,
+static int cedrus_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cedrus_ctx *ctx = cedrus_file2ctx(file);
@@ -239,7 +243,8 @@ static int cedrus_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int cedrus_g_fmt_vid_out(struct file *file, void *priv,
+static int cedrus_g_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cedrus_ctx *ctx = cedrus_file2ctx(file);
@@ -270,7 +275,8 @@ static int cedrus_try_fmt_vid_cap_p(struct cedrus_ctx *ctx,
 	return 0;
 }
 
-static int cedrus_try_fmt_vid_cap(struct file *file, void *priv,
+static int cedrus_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	return cedrus_try_fmt_vid_cap_p(cedrus_file2ctx(file), &f->fmt.pix);
@@ -292,13 +298,15 @@ static int cedrus_try_fmt_vid_out_p(struct cedrus_ctx *ctx,
 	return 0;
 }
 
-static int cedrus_try_fmt_vid_out(struct file *file, void *priv,
+static int cedrus_try_fmt_vid_out(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	return cedrus_try_fmt_vid_out_p(cedrus_file2ctx(file), &f->fmt.pix);
 }
 
-static int cedrus_s_fmt_vid_cap(struct file *file, void *priv,
+static int cedrus_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cedrus_ctx *ctx = cedrus_file2ctx(file);
@@ -309,7 +317,7 @@ static int cedrus_s_fmt_vid_cap(struct file *file, void *priv,
 	if (vb2_is_busy(vq))
 		return -EBUSY;
 
-	ret = cedrus_try_fmt_vid_cap(file, priv, f);
+	ret = cedrus_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -381,7 +389,8 @@ void cedrus_reset_out_format(struct cedrus_ctx *ctx)
 	cedrus_s_fmt_vid_out_p(ctx, &ctx->src_fmt);
 }
 
-static int cedrus_s_fmt_vid_out(struct file *file, void *priv,
+static int cedrus_s_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cedrus_ctx *ctx = cedrus_file2ctx(file);

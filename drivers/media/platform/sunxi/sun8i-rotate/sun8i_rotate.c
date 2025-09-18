@@ -209,7 +209,8 @@ static void rotate_prepare_format(struct v4l2_pix_format *pix_fmt)
 	pix_fmt->sizeimage = sizeimage;
 }
 
-static int rotate_querycap(struct file *file, void *priv,
+static int rotate_querycap(struct file *file,
+			   struct video_device_state *state,
 			   struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, ROTATE_NAME, sizeof(cap->driver));
@@ -220,19 +221,22 @@ static int rotate_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rotate_enum_fmt_vid_cap(struct file *file, void *priv,
+static int rotate_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return rotate_enum_fmt(f, true);
 }
 
-static int rotate_enum_fmt_vid_out(struct file *file, void *priv,
+static int rotate_enum_fmt_vid_out(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_fmtdesc *f)
 {
 	return rotate_enum_fmt(f, false);
 }
 
-static int rotate_enum_framesizes(struct file *file, void *priv,
+static int rotate_enum_framesizes(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_frmsizeenum *fsize)
 {
 	const struct rotate_format *fmt;
@@ -285,7 +289,8 @@ static int rotate_set_cap_format(struct rotate_ctx *ctx,
 	return 0;
 }
 
-static int rotate_g_fmt_vid_cap(struct file *file, void *priv,
+static int rotate_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct rotate_ctx *ctx = rotate_file2ctx(file);
@@ -295,7 +300,8 @@ static int rotate_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rotate_g_fmt_vid_out(struct file *file, void *priv,
+static int rotate_g_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct rotate_ctx *ctx = rotate_file2ctx(file);
@@ -305,7 +311,8 @@ static int rotate_g_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int rotate_try_fmt_vid_cap(struct file *file, void *priv,
+static int rotate_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	struct rotate_ctx *ctx = rotate_file2ctx(file);
@@ -313,7 +320,8 @@ static int rotate_try_fmt_vid_cap(struct file *file, void *priv,
 	return rotate_set_cap_format(ctx, &f->fmt.pix, ctx->rotate);
 }
 
-static int rotate_try_fmt_vid_out(struct file *file, void *priv,
+static int rotate_try_fmt_vid_out(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_format *f)
 {
 	if (!rotate_find_format(f->fmt.pix.pixelformat))
@@ -336,14 +344,15 @@ static int rotate_try_fmt_vid_out(struct file *file, void *priv,
 	return 0;
 }
 
-static int rotate_s_fmt_vid_cap(struct file *file, void *priv,
+static int rotate_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct rotate_ctx *ctx = rotate_file2ctx(file);
 	struct vb2_queue *vq;
 	int ret;
 
-	ret = rotate_try_fmt_vid_cap(file, priv, f);
+	ret = rotate_try_fmt_vid_cap(file, state, f);
 	if (ret)
 		return ret;
 
@@ -356,14 +365,15 @@ static int rotate_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rotate_s_fmt_vid_out(struct file *file, void *priv,
+static int rotate_s_fmt_vid_out(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct rotate_ctx *ctx = rotate_file2ctx(file);
 	struct vb2_queue *vq;
 	int ret;
 
-	ret = rotate_try_fmt_vid_out(file, priv, f);
+	ret = rotate_try_fmt_vid_out(file, state, f);
 	if (ret)
 		return ret;
 

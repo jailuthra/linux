@@ -527,8 +527,8 @@ static const struct vb2_ops cx23885_video_qops = {
 /* ------------------------------------------------------------------ */
 /* VIDEO IOCTLS                                                       */
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
-	struct v4l2_format *f)
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state, struct v4l2_format *f)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 
@@ -545,8 +545,8 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
-	struct v4l2_format *f)
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state, struct v4l2_format *f)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 	struct cx23885_fmt *fmt;
@@ -593,8 +593,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
-	struct v4l2_format *f)
+static int vidioc_s_fmt_vid_cap(struct file *file,
+				struct video_device_state *state, struct v4l2_format *f)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 	struct v4l2_subdev_format format = {
@@ -603,7 +603,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	int err;
 
 	dprintk(2, "%s()\n", __func__);
-	err = vidioc_try_fmt_vid_cap(file, priv, f);
+	err = vidioc_try_fmt_vid_cap(file, state, f);
 
 	if (0 != err)
 		return err;
@@ -626,8 +626,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_querycap(struct file *file, void  *priv,
-	struct v4l2_capability *cap)
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state, struct v4l2_capability *cap)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 
@@ -654,8 +654,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
-	struct v4l2_fmtdesc *f)
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state, struct v4l2_fmtdesc *f)
 {
 	if (unlikely(f->index >= ARRAY_SIZE(formats)))
 		return -EINVAL;
@@ -665,8 +665,9 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_pixelaspect(struct file *file, void *priv,
-				int type, struct v4l2_fract *f)
+static int vidioc_g_pixelaspect(struct file *file,
+				struct video_device_state *state, int type,
+				struct v4l2_fract *f)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 	bool is_50hz = dev->tvnorm & V4L2_STD_625_50;
@@ -680,7 +681,8 @@ static int vidioc_g_pixelaspect(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_selection(struct file *file, void *fh,
+static int vidioc_g_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *sel)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
@@ -702,7 +704,8 @@ static int vidioc_g_selection(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *id)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *id)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 	dprintk(1, "%s()\n", __func__);
@@ -711,7 +714,8 @@ static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *id)
 	return 0;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id tvnorms)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id tvnorms)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 	dprintk(1, "%s()\n", __func__);
@@ -768,7 +772,8 @@ int cx23885_enum_input(struct cx23885_dev *dev, struct v4l2_input *i)
 	return 0;
 }
 
-static int vidioc_enum_input(struct file *file, void *priv,
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
 				struct v4l2_input *i)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
@@ -785,9 +790,10 @@ int cx23885_get_input(struct file *file, void *priv, unsigned int *i)
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *i)
 {
-	return cx23885_get_input(file, priv, i);
+	return cx23885_get_input(file, state, i);
 }
 
 int cx23885_set_input(struct file *file, void *priv, unsigned int i)
@@ -812,12 +818,14 @@ int cx23885_set_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int i)
 {
-	return cx23885_set_input(file, priv, i);
+	return cx23885_set_input(file, state, i);
 }
 
-static int vidioc_log_status(struct file *file, void *priv)
+static int vidioc_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 
@@ -848,14 +856,15 @@ static int cx23885_query_audinput(struct file *file, void *priv,
 
 }
 
-static int vidioc_enum_audinput(struct file *file, void *priv,
+static int vidioc_enum_audinput(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_audio *i)
 {
-	return cx23885_query_audinput(file, priv, i);
+	return cx23885_query_audinput(file, state, i);
 }
 
-static int vidioc_g_audinput(struct file *file, void *priv,
-	struct v4l2_audio *i)
+static int vidioc_g_audinput(struct file *file,
+			     struct video_device_state *state, struct v4l2_audio *i)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 
@@ -866,11 +875,11 @@ static int vidioc_g_audinput(struct file *file, void *priv,
 		i->index = dev->audinput;
 	dprintk(1, "%s(input=%d)\n", __func__, i->index);
 
-	return cx23885_query_audinput(file, priv, i);
+	return cx23885_query_audinput(file, state, i);
 }
 
-static int vidioc_s_audinput(struct file *file, void *priv,
-	const struct v4l2_audio *i)
+static int vidioc_s_audinput(struct file *file,
+			     struct video_device_state *state, const struct v4l2_audio *i)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 
@@ -891,7 +900,8 @@ static int vidioc_s_audinput(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 				struct v4l2_tuner *t)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
@@ -916,7 +926,8 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 				const struct v4l2_tuner *t)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
@@ -940,7 +951,8 @@ static int vidioc_s_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 				struct v4l2_frequency *f)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
@@ -1090,10 +1102,10 @@ int cx23885_set_frequency(struct file *file, void *priv,
 	return ret;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
-	const struct v4l2_frequency *f)
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state, const struct v4l2_frequency *f)
 {
-	return cx23885_set_frequency(file, priv, f);
+	return cx23885_set_frequency(file, state, f);
 }
 
 /* ----------------------------------------------------------- */

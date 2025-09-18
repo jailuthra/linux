@@ -473,7 +473,8 @@ static const struct vb2_ops isc_vb2_ops = {
 	.unprepare_streaming	= isc_unprepare_streaming,
 };
 
-static int isc_querycap(struct file *file, void *priv,
+static int isc_querycap(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, "microchip-isc", sizeof(cap->driver));
@@ -482,7 +483,8 @@ static int isc_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int isc_enum_fmt_vid_cap(struct file *file, void *priv,
+static int isc_enum_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_fmtdesc *f)
 {
 	struct isc_device *isc = video_drvdata(file);
@@ -546,7 +548,8 @@ static int isc_enum_fmt_vid_cap(struct file *file, void *priv,
 	return -EINVAL;
 }
 
-static int isc_g_fmt_vid_cap(struct file *file, void *priv,
+static int isc_g_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *fmt)
 {
 	struct isc_device *isc = video_drvdata(file);
@@ -985,7 +988,8 @@ static int isc_link_validate(struct media_link *link)
 	return 0;
 }
 
-static int isc_s_fmt_vid_cap(struct file *file, void *priv,
+static int isc_s_fmt_vid_cap(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct isc_device *isc = video_drvdata(file);
@@ -996,7 +1000,8 @@ static int isc_s_fmt_vid_cap(struct file *file, void *priv,
 	return isc_set_fmt(isc, f);
 }
 
-static int isc_try_fmt_vid_cap(struct file *file, void *priv,
+static int isc_try_fmt_vid_cap(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_format *f)
 {
 	struct isc_device *isc = video_drvdata(file);
@@ -1004,7 +1009,8 @@ static int isc_try_fmt_vid_cap(struct file *file, void *priv,
 	return isc_try_fmt(isc, f);
 }
 
-static int isc_enum_input(struct file *file, void *priv,
+static int isc_enum_input(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_input *inp)
 {
 	if (inp->index != 0)
@@ -1017,14 +1023,16 @@ static int isc_enum_input(struct file *file, void *priv,
 	return 0;
 }
 
-static int isc_g_input(struct file *file, void *priv, unsigned int *i)
+static int isc_g_input(struct file *file, struct video_device_state *state,
+		       unsigned int *i)
 {
 	*i = 0;
 
 	return 0;
 }
 
-static int isc_s_input(struct file *file, void *priv, unsigned int i)
+static int isc_s_input(struct file *file, struct video_device_state *state,
+		       unsigned int i)
 {
 	if (i > 0)
 		return -EINVAL;
@@ -1032,21 +1040,24 @@ static int isc_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
-static int isc_g_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int isc_g_parm(struct file *file, struct video_device_state *state,
+		      struct v4l2_streamparm *a)
 {
 	struct isc_device *isc = video_drvdata(file);
 
 	return v4l2_g_parm_cap(video_devdata(file), isc->current_subdev->sd, a);
 }
 
-static int isc_s_parm(struct file *file, void *fh, struct v4l2_streamparm *a)
+static int isc_s_parm(struct file *file, struct video_device_state *state,
+		      struct v4l2_streamparm *a)
 {
 	struct isc_device *isc = video_drvdata(file);
 
 	return v4l2_s_parm_cap(video_devdata(file), isc->current_subdev->sd, a);
 }
 
-static int isc_enum_framesizes(struct file *file, void *fh,
+static int isc_enum_framesizes(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_frmsizeenum *fsize)
 {
 	struct isc_device *isc = video_drvdata(file);

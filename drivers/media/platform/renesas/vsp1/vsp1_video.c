@@ -894,7 +894,8 @@ static const struct vb2_ops vsp1_video_queue_qops = {
  */
 
 static int
-vsp1_video_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+vsp1_video_querycap(struct file *file, struct video_device_state *state,
+		    struct v4l2_capability *cap)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct vsp1_video *video = to_vsp1_video(vfh->vdev);
@@ -909,7 +910,8 @@ vsp1_video_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
 	return 0;
 }
 
-static int vsp1_video_enum_format(struct file *file, void *fh,
+static int vsp1_video_enum_format(struct file *file,
+				  struct video_device_state *state,
 				  struct v4l2_fmtdesc *f)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
@@ -931,7 +933,8 @@ static int vsp1_video_enum_format(struct file *file, void *fh,
 }
 
 static int
-vsp1_video_get_format(struct file *file, void *fh, struct v4l2_format *format)
+vsp1_video_get_format(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *format)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct vsp1_video *video = to_vsp1_video(vfh->vdev);
@@ -947,7 +950,8 @@ vsp1_video_get_format(struct file *file, void *fh, struct v4l2_format *format)
 }
 
 static int
-vsp1_video_try_format(struct file *file, void *fh, struct v4l2_format *format)
+vsp1_video_try_format(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *format)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct vsp1_video *video = to_vsp1_video(vfh->vdev);
@@ -959,7 +963,8 @@ vsp1_video_try_format(struct file *file, void *fh, struct v4l2_format *format)
 }
 
 static int
-vsp1_video_set_format(struct file *file, void *fh, struct v4l2_format *format)
+vsp1_video_set_format(struct file *file, struct video_device_state *state,
+		      struct v4l2_format *format)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct vsp1_video *video = to_vsp1_video(vfh->vdev);
@@ -989,7 +994,8 @@ done:
 }
 
 static int
-vsp1_video_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
+vsp1_video_streamon(struct file *file, struct video_device_state *state,
+		    enum v4l2_buf_type type)
 {
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
 	struct vsp1_video *video = to_vsp1_video(vfh->vdev);

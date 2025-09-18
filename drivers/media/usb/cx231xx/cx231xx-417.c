@@ -1462,8 +1462,9 @@ static const struct vb2_ops cx231xx_video_qops = {
 
 /* ------------------------------------------------------------------ */
 
-static int vidioc_g_pixelaspect(struct file *file, void *priv,
-				int type, struct v4l2_fract *f)
+static int vidioc_g_pixelaspect(struct file *file,
+				struct video_device_state *state, int type,
+				struct v4l2_fract *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
 	bool is_50hz = dev->encodernorm.id & V4L2_STD_625_50;
@@ -1477,7 +1478,8 @@ static int vidioc_g_pixelaspect(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_selection(struct file *file, void *priv,
+static int vidioc_g_selection(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_selection *s)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1499,7 +1501,8 @@ static int vidioc_g_selection(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *norm)
+static int vidioc_g_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id *norm)
 {
 	struct cx231xx *dev = video_drvdata(file);
 
@@ -1507,7 +1510,8 @@ static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *norm)
 	return 0;
 }
 
-static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id id)
+static int vidioc_s_std(struct file *file, struct video_device_state *state,
+			v4l2_std_id id)
 {
 	struct cx231xx *dev = video_drvdata(file);
 	unsigned int i;
@@ -1538,7 +1542,8 @@ static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id id)
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
+static int vidioc_enum_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 					struct v4l2_fmtdesc *f)
 {
 	if (f->index != 0)
@@ -1549,7 +1554,8 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_g_fmt_vid_cap(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1568,7 +1574,8 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+static int vidioc_try_fmt_vid_cap(struct file *file,
+				  struct video_device_state *state,
 				struct v4l2_format *f)
 {
 	struct cx231xx *dev = video_drvdata(file);
@@ -1585,12 +1592,13 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_log_status(struct file *file, void *priv)
+static int vidioc_log_status(struct file *file,
+			     struct video_device_state *state)
 {
 	struct cx231xx *dev = video_drvdata(file);
 
 	call_all(dev, core, log_status);
-	return v4l2_ctrl_log_status(file, priv);
+	return v4l2_ctrl_log_status(file, state);
 }
 
 static const struct v4l2_file_operations mpeg_fops = {

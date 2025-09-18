@@ -127,7 +127,8 @@ static void fmi_set_freq(struct fmi *fmi)
 	lm7000_set_freq((fmi->curfreq / 800) * 800, fmi, fmi_set_pins);
 }
 
-static int vidioc_querycap(struct file *file, void  *priv,
+static int vidioc_querycap(struct file *file,
+			   struct video_device_state *state,
 					struct v4l2_capability *v)
 {
 	strscpy(v->driver, "radio-sf16fmi", sizeof(v->driver));
@@ -136,7 +137,8 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *priv,
+static int vidioc_g_tuner(struct file *file,
+			  struct video_device_state *state,
 					struct v4l2_tuner *v)
 {
 	struct fmi *fmi = video_drvdata(file);
@@ -155,13 +157,15 @@ static int vidioc_g_tuner(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *priv,
+static int vidioc_s_tuner(struct file *file,
+			  struct video_device_state *state,
 					const struct v4l2_tuner *v)
 {
 	return v->index ? -EINVAL : 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *priv,
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
 					const struct v4l2_frequency *f)
 {
 	struct fmi *fmi = video_drvdata(file);
@@ -175,7 +179,8 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-static int vidioc_g_frequency(struct file *file, void *priv,
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
 					struct v4l2_frequency *f)
 {
 	struct fmi *fmi = video_drvdata(file);

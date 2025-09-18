@@ -962,7 +962,8 @@ static const __u32 videocaps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_TUNER |
 	V4L2_CAP_READWRITE | V4L2_CAP_STREAMING;
 static const __u32 radiocaps = V4L2_CAP_TUNER | V4L2_CAP_RADIO;
 
-static int cxusb_medion_v_querycap(struct file *file, void *fh,
+static int cxusb_medion_v_querycap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_capability *cap)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -977,7 +978,8 @@ static int cxusb_medion_v_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int cxusb_medion_v_enum_fmt_vid_cap(struct file *file, void *fh,
+static int cxusb_medion_v_enum_fmt_vid_cap(struct file *file,
+					   struct video_device_state *state,
 					   struct v4l2_fmtdesc *f)
 {
 	if (f->index != 0)
@@ -988,7 +990,8 @@ static int cxusb_medion_v_enum_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int cxusb_medion_g_fmt_vid_cap(struct file *file, void *fh,
+static int cxusb_medion_g_fmt_vid_cap(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_format *f)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1051,13 +1054,15 @@ static int cxusb_medion_try_s_fmt_vid_cap(struct file *file,
 	return 0;
 }
 
-static int cxusb_medion_try_fmt_vid_cap(struct file *file, void *fh,
+static int cxusb_medion_try_fmt_vid_cap(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	return cxusb_medion_try_s_fmt_vid_cap(file, f, false);
 }
 
-static int cxusb_medion_s_fmt_vid_cap(struct file *file, void *fh,
+static int cxusb_medion_s_fmt_vid_cap(struct file *file,
+				      struct video_device_state *state,
 				      struct v4l2_format *f)
 {
 	return cxusb_medion_try_s_fmt_vid_cap(file, f, true);
@@ -1082,7 +1087,8 @@ static const struct {
 
 #define CXUSB_INPUT_CNT ARRAY_SIZE(cxusb_medion_inputs)
 
-static int cxusb_medion_enum_input(struct file *file, void *fh,
+static int cxusb_medion_enum_input(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_input *inp)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1113,7 +1119,8 @@ static int cxusb_medion_enum_input(struct file *file, void *fh,
 	return 0;
 }
 
-static int cxusb_medion_g_input(struct file *file, void *fh,
+static int cxusb_medion_g_input(struct file *file,
+				struct video_device_state *state,
 				unsigned int *i)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1182,7 +1189,8 @@ ret_savenorm:
 	return 0;
 }
 
-static int cxusb_medion_s_input(struct file *file, void *fh,
+static int cxusb_medion_s_input(struct file *file,
+				struct video_device_state *state,
 				unsigned int i)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1210,7 +1218,8 @@ static int cxusb_medion_s_input(struct file *file, void *fh,
 	return 0;
 }
 
-static int cxusb_medion_g_tuner(struct file *file, void *fh,
+static int cxusb_medion_g_tuner(struct file *file,
+				struct video_device_state *state,
 				struct v4l2_tuner *tuner)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1267,7 +1276,8 @@ static int cxusb_medion_g_tuner(struct file *file, void *fh,
 	return 0;
 }
 
-static int cxusb_medion_s_tuner(struct file *file, void *fh,
+static int cxusb_medion_s_tuner(struct file *file,
+				struct video_device_state *state,
 				const struct v4l2_tuner *tuner)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1298,7 +1308,8 @@ static int cxusb_medion_s_tuner(struct file *file, void *fh,
 	return v4l2_subdev_call(cxdev->cx25840, tuner, s_tuner, tuner);
 }
 
-static int cxusb_medion_g_frequency(struct file *file, void *fh,
+static int cxusb_medion_g_frequency(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_frequency *freq)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1310,7 +1321,8 @@ static int cxusb_medion_g_frequency(struct file *file, void *fh,
 	return v4l2_subdev_call(cxdev->tuner, tuner, g_frequency, freq);
 }
 
-static int cxusb_medion_s_frequency(struct file *file, void *fh,
+static int cxusb_medion_s_frequency(struct file *file,
+				    struct video_device_state *state,
 				    const struct v4l2_frequency *freq)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1341,7 +1353,8 @@ static int cxusb_medion_s_frequency(struct file *file, void *fh,
 	return v4l2_subdev_call(cxdev->cx25840, tuner, s_frequency, freq);
 }
 
-static int cxusb_medion_g_std(struct file *file, void *fh,
+static int cxusb_medion_g_std(struct file *file,
+			      struct video_device_state *state,
 			      v4l2_std_id *norm)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1355,7 +1368,8 @@ static int cxusb_medion_g_std(struct file *file, void *fh,
 	return 0;
 }
 
-static int cxusb_medion_s_std(struct file *file, void *fh,
+static int cxusb_medion_s_std(struct file *file,
+			      struct video_device_state *state,
 			      v4l2_std_id norm)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1364,7 +1378,8 @@ static int cxusb_medion_s_std(struct file *file, void *fh,
 	return cxusb_medion_set_norm(cxdev, norm);
 }
 
-static int cxusb_medion_querystd(struct file *file, void *fh,
+static int cxusb_medion_querystd(struct file *file,
+				 struct video_device_state *state,
 				 v4l2_std_id *norm)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
@@ -1396,7 +1411,8 @@ static int cxusb_medion_querystd(struct file *file, void *fh,
 	return 0;
 }
 
-static int cxusb_medion_log_status(struct file *file, void *fh)
+static int cxusb_medion_log_status(struct file *file,
+				   struct video_device_state *state)
 {
 	struct dvb_usb_device *dvbdev = video_drvdata(file);
 	struct cxusb_medion_dev *cxdev = dvbdev->priv;

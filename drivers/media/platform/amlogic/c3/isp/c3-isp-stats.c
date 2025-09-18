@@ -85,7 +85,8 @@ void c3_isp_stats_pre_cfg(struct c3_isp_device *isp)
 	c3_isp_stats_cfg_buff(stats);
 }
 
-static int c3_isp_stats_querycap(struct file *file, void *fh,
+static int c3_isp_stats_querycap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_capability *cap)
 {
 	strscpy(cap->driver, C3_ISP_DRIVER_NAME, sizeof(cap->driver));
@@ -94,7 +95,8 @@ static int c3_isp_stats_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int c3_isp_stats_enum_fmt(struct file *file, void *fh,
+static int c3_isp_stats_enum_fmt(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_fmtdesc *f)
 {
 	struct c3_isp_stats *stats = video_drvdata(file);
@@ -107,7 +109,8 @@ static int c3_isp_stats_enum_fmt(struct file *file, void *fh,
 	return 0;
 }
 
-static int c3_isp_stats_g_fmt(struct file *file, void *fh,
+static int c3_isp_stats_g_fmt(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct c3_isp_stats *stats = video_drvdata(file);

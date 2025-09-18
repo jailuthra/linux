@@ -639,7 +639,8 @@ void omap3isp_video_resume(struct isp_video *video, int continuous)
  */
 
 static int
-isp_video_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
+isp_video_querycap(struct file *file, struct video_device_state *state,
+		   struct v4l2_capability *cap)
 {
 	struct isp_video *video = video_drvdata(file);
 
@@ -655,7 +656,8 @@ isp_video_querycap(struct file *file, void *fh, struct v4l2_capability *cap)
 }
 
 static int
-isp_video_get_format(struct file *file, void *fh, struct v4l2_format *format)
+isp_video_get_format(struct file *file, struct video_device_state *state,
+		     struct v4l2_format *format)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -671,7 +673,8 @@ isp_video_get_format(struct file *file, void *fh, struct v4l2_format *format)
 }
 
 static int
-isp_video_set_format(struct file *file, void *fh, struct v4l2_format *format)
+isp_video_set_format(struct file *file, struct video_device_state *state,
+		     struct v4l2_format *format)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -729,7 +732,8 @@ isp_video_set_format(struct file *file, void *fh, struct v4l2_format *format)
 }
 
 static int
-isp_video_try_format(struct file *file, void *fh, struct v4l2_format *format)
+isp_video_try_format(struct file *file, struct video_device_state *state,
+		     struct v4l2_format *format)
 {
 	struct isp_video *video = video_drvdata(file);
 	struct v4l2_subdev_format fmt = {
@@ -758,7 +762,8 @@ isp_video_try_format(struct file *file, void *fh, struct v4l2_format *format)
 }
 
 static int
-isp_video_get_selection(struct file *file, void *fh, struct v4l2_selection *sel)
+isp_video_get_selection(struct file *file, struct video_device_state *state,
+			struct v4l2_selection *sel)
 {
 	struct isp_video *video = video_drvdata(file);
 	struct v4l2_subdev_format format = {
@@ -816,7 +821,8 @@ isp_video_get_selection(struct file *file, void *fh, struct v4l2_selection *sel)
 }
 
 static int
-isp_video_set_selection(struct file *file, void *fh, struct v4l2_selection *sel)
+isp_video_set_selection(struct file *file, struct video_device_state *state,
+			struct v4l2_selection *sel)
 {
 	struct isp_video *video = video_drvdata(file);
 	struct v4l2_subdev *subdev;
@@ -856,7 +862,8 @@ isp_video_set_selection(struct file *file, void *fh, struct v4l2_selection *sel)
 }
 
 static int
-isp_video_get_param(struct file *file, void *fh, struct v4l2_streamparm *a)
+isp_video_get_param(struct file *file, struct video_device_state *state,
+		    struct v4l2_streamparm *a)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -874,7 +881,8 @@ isp_video_get_param(struct file *file, void *fh, struct v4l2_streamparm *a)
 }
 
 static int
-isp_video_set_param(struct file *file, void *fh, struct v4l2_streamparm *a)
+isp_video_set_param(struct file *file, struct video_device_state *state,
+		    struct v4l2_streamparm *a)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -892,7 +900,8 @@ isp_video_set_param(struct file *file, void *fh, struct v4l2_streamparm *a)
 }
 
 static int
-isp_video_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffers *rb)
+isp_video_reqbufs(struct file *file, struct video_device_state *state,
+		  struct v4l2_requestbuffers *rb)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -906,7 +915,8 @@ isp_video_reqbufs(struct file *file, void *fh, struct v4l2_requestbuffers *rb)
 }
 
 static int
-isp_video_querybuf(struct file *file, void *fh, struct v4l2_buffer *b)
+isp_video_querybuf(struct file *file, struct video_device_state *state,
+		   struct v4l2_buffer *b)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -920,7 +930,8 @@ isp_video_querybuf(struct file *file, void *fh, struct v4l2_buffer *b)
 }
 
 static int
-isp_video_qbuf(struct file *file, void *fh, struct v4l2_buffer *b)
+isp_video_qbuf(struct file *file, struct video_device_state *state,
+	       struct v4l2_buffer *b)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -934,7 +945,8 @@ isp_video_qbuf(struct file *file, void *fh, struct v4l2_buffer *b)
 }
 
 static int
-isp_video_dqbuf(struct file *file, void *fh, struct v4l2_buffer *b)
+isp_video_dqbuf(struct file *file, struct video_device_state *state,
+		struct v4l2_buffer *b)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -1072,7 +1084,8 @@ static int isp_video_check_external_subdevs(struct isp_video *video,
  * not sleep.
  */
 static int
-isp_video_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
+isp_video_streamon(struct file *file, struct video_device_state *vstate,
+		   enum v4l2_buf_type type)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -1178,7 +1191,8 @@ err_enum_init:
 }
 
 static int
-isp_video_streamoff(struct file *file, void *fh, enum v4l2_buf_type type)
+isp_video_streamoff(struct file *file, struct video_device_state *vstate,
+		    enum v4l2_buf_type type)
 {
 	struct isp_video_fh *vfh = file_to_isp_video_fh(file);
 	struct isp_video *video = video_drvdata(file);
@@ -1233,7 +1247,8 @@ done:
 }
 
 static int
-isp_video_enum_input(struct file *file, void *fh, struct v4l2_input *input)
+isp_video_enum_input(struct file *file, struct video_device_state *state,
+		     struct v4l2_input *input)
 {
 	if (input->index > 0)
 		return -EINVAL;
@@ -1245,7 +1260,8 @@ isp_video_enum_input(struct file *file, void *fh, struct v4l2_input *input)
 }
 
 static int
-isp_video_g_input(struct file *file, void *fh, unsigned int *input)
+isp_video_g_input(struct file *file, struct video_device_state *state,
+		  unsigned int *input)
 {
 	*input = 0;
 
@@ -1253,7 +1269,8 @@ isp_video_g_input(struct file *file, void *fh, unsigned int *input)
 }
 
 static int
-isp_video_s_input(struct file *file, void *fh, unsigned int input)
+isp_video_s_input(struct file *file, struct video_device_state *state,
+		  unsigned int input)
 {
 	return input == 0 ? 0 : -EINVAL;
 }
@@ -1351,7 +1368,7 @@ static int isp_video_release(struct file *file)
 	struct isp_video_fh *handle = file_to_isp_video_fh(file);
 
 	/* Disable streaming and free the buffers queue resources. */
-	isp_video_streamoff(file, vfh, video->type);
+	isp_video_streamoff(file, vfh->state, video->type);
 
 	mutex_lock(&video->queue_lock);
 	vb2_queue_release(&handle->queue);

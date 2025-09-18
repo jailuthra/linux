@@ -12,6 +12,7 @@
 #include <linux/mutex.h>
 #include <linux/videodev2.h>
 #include <media/media-request.h>
+#include <media/v4l2-dev.h>
 
 /* forward references */
 struct file;
@@ -1313,13 +1314,13 @@ void v4l2_ctrl_merge(const struct v4l2_event *old, struct v4l2_event *new);
  * v4l2_ctrl_log_status - helper function to implement %VIDIOC_LOG_STATUS ioctl
  *
  * @file: pointer to struct file
- * @priv: unused. Kept just to be compatible to the arguments expected by
+ * @state: unused. Kept just to be compatible to the arguments expected by
  *	&struct v4l2_ioctl_ops.vidioc_log_status.
  *
  * Can be used as a vidioc_log_status function that just dumps all controls
  * associated with the filehandle.
  */
-int v4l2_ctrl_log_status(struct file *file, void *priv);
+int v4l2_ctrl_log_status(struct file *file, struct video_device_state *state);
 
 /**
  * v4l2_ctrl_subscribe_event - Subscribes to an event

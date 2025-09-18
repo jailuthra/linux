@@ -11,8 +11,8 @@
 #include "cx23885-ioctl.h"
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-int cx23885_g_chip_info(struct file *file, void *fh,
-			 struct v4l2_dbg_chip_info *chip)
+int cx23885_g_chip_info(struct file *file, struct video_device_state *state,
+			struct v4l2_dbg_chip_info *chip)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
 
@@ -47,7 +47,7 @@ static int cx23417_g_register(struct cx23885_dev *dev,
 	return 0;
 }
 
-int cx23885_g_register(struct file *file, void *fh,
+int cx23885_g_register(struct file *file, struct video_device_state *state,
 		       struct v4l2_dbg_register *reg)
 {
 	struct cx23885_dev *dev = video_drvdata(file);
@@ -79,7 +79,7 @@ static int cx23417_s_register(struct cx23885_dev *dev,
 	return 0;
 }
 
-int cx23885_s_register(struct file *file, void *fh,
+int cx23885_s_register(struct file *file, struct video_device_state *state,
 		       const struct v4l2_dbg_register *reg)
 {
 	struct cx23885_dev *dev = video_drvdata(file);

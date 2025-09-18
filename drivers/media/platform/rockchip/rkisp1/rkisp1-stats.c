@@ -18,7 +18,8 @@
 #define RKISP1_ISP_STATS_REQ_BUFS_MIN 2
 #define RKISP1_ISP_STATS_REQ_BUFS_MAX 8
 
-static int rkisp1_stats_enum_fmt_meta_cap(struct file *file, void *priv,
+static int rkisp1_stats_enum_fmt_meta_cap(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_fmtdesc *f)
 {
 	struct video_device *video = video_devdata(file);
@@ -31,7 +32,8 @@ static int rkisp1_stats_enum_fmt_meta_cap(struct file *file, void *priv,
 	return 0;
 }
 
-static int rkisp1_stats_g_fmt_meta_cap(struct file *file, void *priv,
+static int rkisp1_stats_g_fmt_meta_cap(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct video_device *video = video_devdata(file);
@@ -49,7 +51,8 @@ static int rkisp1_stats_g_fmt_meta_cap(struct file *file, void *priv,
 }
 
 static int rkisp1_stats_querycap(struct file *file,
-				 void *priv, struct v4l2_capability *cap)
+				 struct video_device_state *state,
+				 struct v4l2_capability *cap)
 {
 	struct video_device *vdev = video_devdata(file);
 

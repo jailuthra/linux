@@ -1323,8 +1323,8 @@ static int mcam_setup_vb2(struct mcam_camera *cam)
  * The long list of V4L2 ioctl() operations.
  */
 
-static int mcam_vidioc_querycap(struct file *file, void *priv,
-		struct v4l2_capability *cap)
+static int mcam_vidioc_querycap(struct file *file,
+				struct video_device_state *state, struct v4l2_capability *cap)
 {
 	struct mcam_camera *cam = video_drvdata(file);
 
@@ -1336,7 +1336,7 @@ static int mcam_vidioc_querycap(struct file *file, void *priv,
 
 
 static int mcam_vidioc_enum_fmt_vid_cap(struct file *filp,
-		void *priv, struct v4l2_fmtdesc *fmt)
+		struct video_device_state *state, struct v4l2_fmtdesc *fmt)
 {
 	if (fmt->index >= N_MCAM_FMTS)
 		return -EINVAL;
@@ -1344,8 +1344,8 @@ static int mcam_vidioc_enum_fmt_vid_cap(struct file *filp,
 	return 0;
 }
 
-static int mcam_vidioc_try_fmt_vid_cap(struct file *filp, void *priv,
-		struct v4l2_format *fmt)
+static int mcam_vidioc_try_fmt_vid_cap(struct file *filp,
+				       struct video_device_state *state, struct v4l2_format *fmt)
 {
 	struct mcam_camera *cam = video_drvdata(filp);
 	struct mcam_format_struct *f;
@@ -1378,8 +1378,8 @@ static int mcam_vidioc_try_fmt_vid_cap(struct file *filp, void *priv,
 	return ret;
 }
 
-static int mcam_vidioc_s_fmt_vid_cap(struct file *filp, void *priv,
-		struct v4l2_format *fmt)
+static int mcam_vidioc_s_fmt_vid_cap(struct file *filp,
+				     struct video_device_state *state, struct v4l2_format *fmt)
 {
 	struct mcam_camera *cam = video_drvdata(filp);
 	struct mcam_format_struct *f;
@@ -1397,7 +1397,7 @@ static int mcam_vidioc_s_fmt_vid_cap(struct file *filp, void *priv,
 	/*
 	 * See if the formatting works in principle.
 	 */
-	ret = mcam_vidioc_try_fmt_vid_cap(filp, priv, fmt);
+	ret = mcam_vidioc_try_fmt_vid_cap(filp, state, fmt);
 	if (ret)
 		return ret;
 	/*
@@ -1425,8 +1425,8 @@ out:
  * The V4l2 spec wants us to be smarter, and actually get this from
  * the camera (and not mess with it at open time).  Someday.
  */
-static int mcam_vidioc_g_fmt_vid_cap(struct file *filp, void *priv,
-		struct v4l2_format *f)
+static int mcam_vidioc_g_fmt_vid_cap(struct file *filp,
+				     struct video_device_state *state, struct v4l2_format *f)
 {
 	struct mcam_camera *cam = video_drvdata(filp);
 
@@ -1437,8 +1437,8 @@ static int mcam_vidioc_g_fmt_vid_cap(struct file *filp, void *priv,
 /*
  * We only have one input - the sensor - so minimize the nonsense here.
  */
-static int mcam_vidioc_enum_input(struct file *filp, void *priv,
-		struct v4l2_input *input)
+static int mcam_vidioc_enum_input(struct file *filp,
+				  struct video_device_state *state, struct v4l2_input *input)
 {
 	if (input->index != 0)
 		return -EINVAL;
@@ -1448,13 +1448,17 @@ static int mcam_vidioc_enum_input(struct file *filp, void *priv,
 	return 0;
 }
 
-static int mcam_vidioc_g_input(struct file *filp, void *priv, unsigned int *i)
+static int mcam_vidioc_g_input(struct file *filp,
+			       struct video_device_state *state,
+			       unsigned int *i)
 {
 	*i = 0;
 	return 0;
 }
 
-static int mcam_vidioc_s_input(struct file *filp, void *priv, unsigned int i)
+static int mcam_vidioc_s_input(struct file *filp,
+			       struct video_device_state *state,
+			       unsigned int i)
 {
 	if (i != 0)
 		return -EINVAL;
@@ -1465,8 +1469,8 @@ static int mcam_vidioc_s_input(struct file *filp, void *priv, unsigned int i)
  * G/S_PARM.  Most of this is done by the sensor, but we are
  * the level which controls the number of read buffers.
  */
-static int mcam_vidioc_g_parm(struct file *filp, void *priv,
-		struct v4l2_streamparm *a)
+static int mcam_vidioc_g_parm(struct file *filp,
+			      struct video_device_state *state, struct v4l2_streamparm *a)
 {
 	struct mcam_camera *cam = video_drvdata(filp);
 	int ret;
@@ -1476,8 +1480,8 @@ static int mcam_vidioc_g_parm(struct file *filp, void *priv,
 	return ret;
 }
 
-static int mcam_vidioc_s_parm(struct file *filp, void *priv,
-		struct v4l2_streamparm *a)
+static int mcam_vidioc_s_parm(struct file *filp,
+			      struct video_device_state *state, struct v4l2_streamparm *a)
 {
 	struct mcam_camera *cam = video_drvdata(filp);
 	int ret;
@@ -1487,7 +1491,8 @@ static int mcam_vidioc_s_parm(struct file *filp, void *priv,
 	return ret;
 }
 
-static int mcam_vidioc_enum_framesizes(struct file *filp, void *priv,
+static int mcam_vidioc_enum_framesizes(struct file *filp,
+				       struct video_device_state *state,
 		struct v4l2_frmsizeenum *sizes)
 {
 	struct mcam_camera *cam = video_drvdata(filp);
@@ -1522,7 +1527,8 @@ static int mcam_vidioc_enum_framesizes(struct file *filp, void *priv,
 	return 0;
 }
 
-static int mcam_vidioc_enum_frameintervals(struct file *filp, void *priv,
+static int mcam_vidioc_enum_frameintervals(struct file *filp,
+					   struct video_device_state *state,
 		struct v4l2_frmivalenum *interval)
 {
 	struct mcam_camera *cam = video_drvdata(filp);
@@ -1548,7 +1554,8 @@ static int mcam_vidioc_enum_frameintervals(struct file *filp, void *priv,
 }
 
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-static int mcam_vidioc_g_register(struct file *file, void *priv,
+static int mcam_vidioc_g_register(struct file *file,
+				  struct video_device_state *state,
 		struct v4l2_dbg_register *reg)
 {
 	struct mcam_camera *cam = video_drvdata(file);
@@ -1560,7 +1567,8 @@ static int mcam_vidioc_g_register(struct file *file, void *priv,
 	return 0;
 }
 
-static int mcam_vidioc_s_register(struct file *file, void *priv,
+static int mcam_vidioc_s_register(struct file *file,
+				  struct video_device_state *state,
 		const struct v4l2_dbg_register *reg)
 {
 	struct mcam_camera *cam = video_drvdata(file);

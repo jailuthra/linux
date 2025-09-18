@@ -227,9 +227,12 @@ int bttv_buffer_activate_vbi(struct bttv *btv,
 
 #define VBI_DEFLINES 16
 
-int bttv_try_fmt_vbi_cap(struct file *file, void *fh, struct v4l2_format *f);
-int bttv_g_fmt_vbi_cap(struct file *file, void *fh, struct v4l2_format *f);
-int bttv_s_fmt_vbi_cap(struct file *file, void *fh, struct v4l2_format *f);
+int bttv_try_fmt_vbi_cap(struct file *file, struct video_device_state *state,
+			 struct v4l2_format *f);
+int bttv_g_fmt_vbi_cap(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f);
+int bttv_s_fmt_vbi_cap(struct file *file, struct video_device_state *state,
+		       struct v4l2_format *f);
 
 /* ---------------------------------------------------------- */
 /* bttv-gpio.c */

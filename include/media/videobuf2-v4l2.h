@@ -14,6 +14,7 @@
 
 #include <linux/videodev2.h>
 #include <media/videobuf2-core.h>
+#include <media/v4l2-dev.h>
 
 #if VB2_MAX_FRAME != VIDEO_MAX_FRAME
 #error VB2_MAX_FRAME != VIDEO_MAX_FRAME
@@ -321,20 +322,28 @@ static inline bool vb2_queue_is_busy(struct vb2_queue *q, struct file *file)
 
 /* struct v4l2_ioctl_ops helpers */
 
-int vb2_ioctl_reqbufs(struct file *file, void *priv,
-			  struct v4l2_requestbuffers *p);
-int vb2_ioctl_create_bufs(struct file *file, void *priv,
+int vb2_ioctl_reqbufs(struct file *file, struct video_device_state *state,
+		      struct v4l2_requestbuffers *p);
+int vb2_ioctl_create_bufs(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_create_buffers *p);
-int vb2_ioctl_prepare_buf(struct file *file, void *priv,
+int vb2_ioctl_prepare_buf(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_buffer *p);
-int vb2_ioctl_querybuf(struct file *file, void *priv, struct v4l2_buffer *p);
-int vb2_ioctl_qbuf(struct file *file, void *priv, struct v4l2_buffer *p);
-int vb2_ioctl_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p);
-int vb2_ioctl_streamon(struct file *file, void *priv, enum v4l2_buf_type i);
-int vb2_ioctl_streamoff(struct file *file, void *priv, enum v4l2_buf_type i);
-int vb2_ioctl_expbuf(struct file *file, void *priv,
-	struct v4l2_exportbuffer *p);
-int vb2_ioctl_remove_bufs(struct file *file, void *priv,
+int vb2_ioctl_querybuf(struct file *file, struct video_device_state *state,
+		       struct v4l2_buffer *p);
+int vb2_ioctl_qbuf(struct file *file, struct video_device_state *state,
+		   struct v4l2_buffer *p);
+int vb2_ioctl_dqbuf(struct file *file, struct video_device_state *state,
+		    struct v4l2_buffer *p);
+int vb2_ioctl_streamon(struct file *file, struct video_device_state *state,
+		       enum v4l2_buf_type i);
+int vb2_ioctl_streamoff(struct file *file, struct video_device_state *state,
+			enum v4l2_buf_type i);
+int vb2_ioctl_expbuf(struct file *file,
+		     struct video_device_state *state, struct v4l2_exportbuffer *p);
+int vb2_ioctl_remove_bufs(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_remove_buffers *p);
 
 /* struct v4l2_file_operations helpers */

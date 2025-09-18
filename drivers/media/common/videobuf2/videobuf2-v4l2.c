@@ -996,7 +996,8 @@ EXPORT_SYMBOL_GPL(vb2_poll);
 
 /* vb2 ioctl helpers */
 
-int vb2_ioctl_remove_bufs(struct file *file, void *priv,
+int vb2_ioctl_remove_bufs(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_remove_buffers *d)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -1014,7 +1015,8 @@ int vb2_ioctl_remove_bufs(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_remove_bufs);
 
-int vb2_ioctl_reqbufs(struct file *file, void *priv,
+int vb2_ioctl_reqbufs(struct file *file,
+		      struct video_device_state *state,
 			  struct v4l2_requestbuffers *p)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -1037,7 +1039,8 @@ int vb2_ioctl_reqbufs(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_reqbufs);
 
-int vb2_ioctl_create_bufs(struct file *file, void *priv,
+int vb2_ioctl_create_bufs(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_create_buffers *p)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -1064,7 +1067,8 @@ int vb2_ioctl_create_bufs(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_create_bufs);
 
-int vb2_ioctl_prepare_buf(struct file *file, void *priv,
+int vb2_ioctl_prepare_buf(struct file *file,
+			  struct video_device_state *state,
 			  struct v4l2_buffer *p)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -1075,7 +1079,8 @@ int vb2_ioctl_prepare_buf(struct file *file, void *priv,
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_prepare_buf);
 
-int vb2_ioctl_querybuf(struct file *file, void *priv, struct v4l2_buffer *p)
+int vb2_ioctl_querybuf(struct file *file, struct video_device_state *state,
+		       struct v4l2_buffer *p)
 {
 	struct video_device *vdev = video_devdata(file);
 
@@ -1084,7 +1089,8 @@ int vb2_ioctl_querybuf(struct file *file, void *priv, struct v4l2_buffer *p)
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_querybuf);
 
-int vb2_ioctl_qbuf(struct file *file, void *priv, struct v4l2_buffer *p)
+int vb2_ioctl_qbuf(struct file *file, struct video_device_state *state,
+		   struct v4l2_buffer *p)
 {
 	struct video_device *vdev = video_devdata(file);
 
@@ -1094,7 +1100,8 @@ int vb2_ioctl_qbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_qbuf);
 
-int vb2_ioctl_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p)
+int vb2_ioctl_dqbuf(struct file *file, struct video_device_state *state,
+		    struct v4l2_buffer *p)
 {
 	struct video_device *vdev = video_devdata(file);
 
@@ -1104,7 +1111,8 @@ int vb2_ioctl_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p)
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_dqbuf);
 
-int vb2_ioctl_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
+int vb2_ioctl_streamon(struct file *file, struct video_device_state *state,
+		       enum v4l2_buf_type i)
 {
 	struct video_device *vdev = video_devdata(file);
 
@@ -1114,7 +1122,8 @@ int vb2_ioctl_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_streamon);
 
-int vb2_ioctl_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
+int vb2_ioctl_streamoff(struct file *file, struct video_device_state *state,
+			enum v4l2_buf_type i)
 {
 	struct video_device *vdev = video_devdata(file);
 
@@ -1124,7 +1133,8 @@ int vb2_ioctl_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 }
 EXPORT_SYMBOL_GPL(vb2_ioctl_streamoff);
 
-int vb2_ioctl_expbuf(struct file *file, void *priv, struct v4l2_exportbuffer *p)
+int vb2_ioctl_expbuf(struct file *file, struct video_device_state *state,
+		     struct v4l2_exportbuffer *p)
 {
 	struct video_device *vdev = video_devdata(file);
 

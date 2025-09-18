@@ -290,7 +290,8 @@ static int av7110_dvb_c_switch(struct saa7146_dev *dev)
 	return 0;
 }
 
-static int vidioc_g_tuner(struct file *file, void *fh, struct v4l2_tuner *t)
+static int vidioc_g_tuner(struct file *file, struct video_device_state *state,
+			  struct v4l2_tuner *t)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
@@ -336,7 +337,8 @@ static int vidioc_g_tuner(struct file *file, void *fh, struct v4l2_tuner *t)
 	return 0;
 }
 
-static int vidioc_s_tuner(struct file *file, void *fh, const struct v4l2_tuner *t)
+static int vidioc_s_tuner(struct file *file, struct video_device_state *state,
+			  const struct v4l2_tuner *t)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
@@ -381,7 +383,9 @@ static int vidioc_s_tuner(struct file *file, void *fh, const struct v4l2_tuner *
 	return 0;
 }
 
-static int vidioc_g_frequency(struct file *file, void *fh, struct v4l2_frequency *f)
+static int vidioc_g_frequency(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_frequency *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
@@ -397,7 +401,9 @@ static int vidioc_g_frequency(struct file *file, void *fh, struct v4l2_frequency
 	return 0;
 }
 
-static int vidioc_s_frequency(struct file *file, void *fh, const struct v4l2_frequency *f)
+static int vidioc_s_frequency(struct file *file,
+			      struct video_device_state *state,
+			      const struct v4l2_frequency *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
@@ -427,7 +433,9 @@ static int vidioc_s_frequency(struct file *file, void *fh, const struct v4l2_fre
 	return 0;
 }
 
-static int vidioc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
+static int vidioc_enum_input(struct file *file,
+			     struct video_device_state *state,
+			     struct v4l2_input *i)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
@@ -447,7 +455,8 @@ static int vidioc_enum_input(struct file *file, void *fh, struct v4l2_input *i)
 	return 0;
 }
 
-static int vidioc_g_input(struct file *file, void *fh, unsigned int *input)
+static int vidioc_g_input(struct file *file, struct video_device_state *state,
+			  unsigned int *input)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
@@ -457,7 +466,8 @@ static int vidioc_g_input(struct file *file, void *fh, unsigned int *input)
 	return 0;
 }
 
-static int vidioc_s_input(struct file *file, void *fh, unsigned int input)
+static int vidioc_s_input(struct file *file, struct video_device_state *state,
+			  unsigned int input)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
@@ -474,7 +484,9 @@ static int vidioc_s_input(struct file *file, void *fh, unsigned int input)
 	return av7110_dvb_c_switch(dev);
 }
 
-static int vidioc_enum_output(struct file *file, void *fh, struct v4l2_output *o)
+static int vidioc_enum_output(struct file *file,
+			      struct video_device_state *state,
+			      struct v4l2_output *o)
 {
 	if (o->index)
 		return -EINVAL;
@@ -485,18 +497,24 @@ static int vidioc_enum_output(struct file *file, void *fh, struct v4l2_output *o
 	return 0;
 }
 
-static int vidioc_g_output(struct file *file, void *fh, unsigned int *output)
+static int vidioc_g_output(struct file *file,
+			   struct video_device_state *state,
+			   unsigned int *output)
 {
 	*output = 0;
 	return 0;
 }
 
-static int vidioc_s_output(struct file *file, void *fh, unsigned int output)
+static int vidioc_s_output(struct file *file,
+			   struct video_device_state *state,
+			   unsigned int output)
 {
 	return output ? -EINVAL : 0;
 }
 
-static int vidioc_enumaudio(struct file *file, void *fh, struct v4l2_audio *a)
+static int vidioc_enumaudio(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_audio *a)
 {
 	dprintk(2, "VIDIOC_G_AUDIO: %d\n", a->index);
 	if (a->index != 0)
@@ -505,7 +523,8 @@ static int vidioc_enumaudio(struct file *file, void *fh, struct v4l2_audio *a)
 	return 0;
 }
 
-static int vidioc_g_audio(struct file *file, void *fh, struct v4l2_audio *a)
+static int vidioc_g_audio(struct file *file, struct video_device_state *state,
+			  struct v4l2_audio *a)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
@@ -519,7 +538,8 @@ static int vidioc_g_audio(struct file *file, void *fh, struct v4l2_audio *a)
 	return 0;
 }
 
-static int vidioc_s_audio(struct file *file, void *fh, const struct v4l2_audio *a)
+static int vidioc_s_audio(struct file *file, struct video_device_state *state,
+			  const struct v4l2_audio *a)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
@@ -530,7 +550,8 @@ static int vidioc_s_audio(struct file *file, void *fh, const struct v4l2_audio *
 	return a->index ? -EINVAL : 0;
 }
 
-static int vidioc_g_sliced_vbi_cap(struct file *file, void *fh,
+static int vidioc_g_sliced_vbi_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_sliced_vbi_cap *cap)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
@@ -546,7 +567,8 @@ static int vidioc_g_sliced_vbi_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_g_fmt_sliced_vbi_out(struct file *file, void *fh,
+static int vidioc_g_fmt_sliced_vbi_out(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
@@ -564,7 +586,8 @@ static int vidioc_g_fmt_sliced_vbi_out(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_try_fmt_sliced_vbi_out(struct file *file, void *fh,
+static int vidioc_try_fmt_sliced_vbi_out(struct file *file,
+					 struct video_device_state *state,
 					 struct v4l2_format *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
@@ -585,14 +608,15 @@ static int vidioc_try_fmt_sliced_vbi_out(struct file *file, void *fh,
 	return 0;
 }
 
-static int vidioc_s_fmt_sliced_vbi_out(struct file *file, void *fh,
+static int vidioc_s_fmt_sliced_vbi_out(struct file *file,
+				       struct video_device_state *state,
 				       struct v4l2_format *f)
 {
 	struct saa7146_dev *dev = video_drvdata(file);
 	struct av7110 *av7110 = (struct av7110 *)dev->ext_priv;
 
 	dprintk(2, "VIDIOC_S_FMT\n");
-	if (vidioc_try_fmt_sliced_vbi_out(file, fh, f))
+	if (vidioc_try_fmt_sliced_vbi_out(file, state, f))
 		return -EINVAL;
 	if (f->fmt.sliced.service_set & V4L2_SLICED_WSS_625) {
 		/* WSS controlled by userspace */

@@ -254,7 +254,8 @@ static void hva_dbg_summary(struct hva_ctx *ctx)
  * V4L2 ioctl operations
  */
 
-static int hva_querycap(struct file *file, void *priv,
+static int hva_querycap(struct file *file,
+			struct video_device_state *state,
 			struct v4l2_capability *cap)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
@@ -268,7 +269,8 @@ static int hva_querycap(struct file *file, void *priv,
 	return 0;
 }
 
-static int hva_enum_fmt_stream(struct file *file, void *priv,
+static int hva_enum_fmt_stream(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_fmtdesc *f)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
@@ -282,7 +284,8 @@ static int hva_enum_fmt_stream(struct file *file, void *priv,
 	return 0;
 }
 
-static int hva_enum_fmt_frame(struct file *file, void *priv,
+static int hva_enum_fmt_frame(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_fmtdesc *f)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
@@ -296,7 +299,9 @@ static int hva_enum_fmt_frame(struct file *file, void *priv,
 	return 0;
 }
 
-static int hva_g_fmt_stream(struct file *file, void *fh, struct v4l2_format *f)
+static int hva_g_fmt_stream(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_format *f)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
 	struct hva_streaminfo *streaminfo = &ctx->streaminfo;
@@ -315,7 +320,9 @@ static int hva_g_fmt_stream(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int hva_g_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
+static int hva_g_fmt_frame(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_format *f)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
 	struct hva_frameinfo *frameinfo = &ctx->frameinfo;
@@ -335,7 +342,8 @@ static int hva_g_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int hva_try_fmt_stream(struct file *file, void *priv,
+static int hva_try_fmt_stream(struct file *file,
+			      struct video_device_state *state,
 			      struct v4l2_format *f)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
@@ -399,7 +407,8 @@ static int hva_try_fmt_stream(struct file *file, void *priv,
 	return 0;
 }
 
-static int hva_try_fmt_frame(struct file *file, void *priv,
+static int hva_try_fmt_frame(struct file *file,
+			     struct video_device_state *state,
 			     struct v4l2_format *f)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
@@ -450,14 +459,16 @@ static int hva_try_fmt_frame(struct file *file, void *priv,
 	return 0;
 }
 
-static int hva_s_fmt_stream(struct file *file, void *fh, struct v4l2_format *f)
+static int hva_s_fmt_stream(struct file *file,
+			    struct video_device_state *state,
+			    struct v4l2_format *f)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
 	struct device *dev = ctx_to_dev(ctx);
 	struct vb2_queue *vq;
 	int ret;
 
-	ret = hva_try_fmt_stream(file, fh, f);
+	ret = hva_try_fmt_stream(file, state, f);
 	if (ret) {
 		dev_dbg(dev, "%s V4L2 S_FMT (CAPTURE): unsupported format %.4s\n",
 			ctx->name, (char *)&f->fmt.pix.pixelformat);
@@ -480,7 +491,9 @@ static int hva_s_fmt_stream(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int hva_s_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
+static int hva_s_fmt_frame(struct file *file,
+			   struct video_device_state *state,
+			   struct v4l2_format *f)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
 	struct device *dev = ctx_to_dev(ctx);
@@ -488,7 +501,7 @@ static int hva_s_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
 	struct vb2_queue *vq;
 	int ret;
 
-	ret = hva_try_fmt_frame(file, fh, f);
+	ret = hva_try_fmt_frame(file, state, f);
 	if (ret) {
 		dev_dbg(dev, "%s V4L2 S_FMT (OUTPUT): unsupported format %.4s\n",
 			ctx->name, (char *)&pix->pixelformat);
@@ -518,7 +531,8 @@ static int hva_s_fmt_frame(struct file *file, void *fh, struct v4l2_format *f)
 	return 0;
 }
 
-static int hva_g_parm(struct file *file, void *fh, struct v4l2_streamparm *sp)
+static int hva_g_parm(struct file *file, struct video_device_state *state,
+		      struct v4l2_streamparm *sp)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
 	struct v4l2_fract *time_per_frame = &ctx->ctrls.time_per_frame;
@@ -534,7 +548,8 @@ static int hva_g_parm(struct file *file, void *fh, struct v4l2_streamparm *sp)
 	return 0;
 }
 
-static int hva_s_parm(struct file *file, void *fh, struct v4l2_streamparm *sp)
+static int hva_s_parm(struct file *file, struct video_device_state *state,
+		      struct v4l2_streamparm *sp)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
 	struct v4l2_fract *time_per_frame = &ctx->ctrls.time_per_frame;
@@ -544,7 +559,7 @@ static int hva_s_parm(struct file *file, void *fh, struct v4l2_streamparm *sp)
 
 	if (!sp->parm.output.timeperframe.numerator ||
 	    !sp->parm.output.timeperframe.denominator)
-		return hva_g_parm(file, fh, sp);
+		return hva_g_parm(file, state, sp);
 
 	sp->parm.output.capability = V4L2_CAP_TIMEPERFRAME;
 	time_per_frame->numerator = sp->parm.output.timeperframe.numerator;
@@ -554,7 +569,8 @@ static int hva_s_parm(struct file *file, void *fh, struct v4l2_streamparm *sp)
 	return 0;
 }
 
-static int hva_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
+static int hva_qbuf(struct file *file, struct video_device_state *state,
+		    struct v4l2_buffer *buf)
 {
 	struct hva_ctx *ctx = file_to_ctx(file);
 	struct device *dev = ctx_to_dev(ctx);

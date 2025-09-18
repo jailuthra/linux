@@ -78,7 +78,8 @@ static const struct imx_media_pixfmt *capture_find_format(u32 code, u32 fourcc)
 	return imx_media_find_mbus_format(code, PIXFMT_SEL_ANY);
 }
 
-static int capture_querycap(struct file *file, void *fh,
+static int capture_querycap(struct file *file,
+			    struct video_device_state *state,
 			    struct v4l2_capability *cap)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -91,14 +92,16 @@ static int capture_querycap(struct file *file, void *fh,
 	return 0;
 }
 
-static int capture_enum_fmt_vid_cap(struct file *file, void *fh,
+static int capture_enum_fmt_vid_cap(struct file *file,
+				    struct video_device_state *state,
 				    struct v4l2_fmtdesc *f)
 {
 	return imx_media_enum_pixel_formats(&f->pixelformat, f->index,
 					    PIXFMT_SEL_ANY, f->mbus_code);
 }
 
-static int capture_enum_framesizes(struct file *file, void *fh,
+static int capture_enum_framesizes(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_frmsizeenum *fsize)
 {
 	const struct imx_media_pixfmt *cc;
@@ -126,7 +129,8 @@ static int capture_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int capture_g_fmt_vid_cap(struct file *file, void *fh,
+static int capture_g_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -179,14 +183,16 @@ __capture_try_fmt(struct v4l2_pix_format *pixfmt, struct v4l2_rect *compose)
 	return cc;
 }
 
-static int capture_try_fmt_vid_cap(struct file *file, void *fh,
+static int capture_try_fmt_vid_cap(struct file *file,
+				   struct video_device_state *state,
 				   struct v4l2_format *f)
 {
 	__capture_try_fmt(&f->fmt.pix, NULL);
 	return 0;
 }
 
-static int capture_s_fmt_vid_cap(struct file *file, void *fh,
+static int capture_s_fmt_vid_cap(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_format *f)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -205,7 +211,8 @@ static int capture_s_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int capture_g_selection(struct file *file, void *fh,
+static int capture_g_selection(struct file *file,
+			       struct video_device_state *state,
 			       struct v4l2_selection *s)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -276,7 +283,8 @@ static const struct v4l2_ioctl_ops capture_ioctl_ops = {
  * Legacy Video IOCTLs
  */
 
-static int capture_legacy_enum_framesizes(struct file *file, void *fh,
+static int capture_legacy_enum_framesizes(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_frmsizeenum *fsize)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -316,7 +324,8 @@ static int capture_legacy_enum_framesizes(struct file *file, void *fh,
 	return 0;
 }
 
-static int capture_legacy_enum_frameintervals(struct file *file, void *fh,
+static int capture_legacy_enum_frameintervals(struct file *file,
+					      struct video_device_state *state,
 					      struct v4l2_frmivalenum *fival)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -347,7 +356,8 @@ static int capture_legacy_enum_frameintervals(struct file *file, void *fh,
 	return 0;
 }
 
-static int capture_legacy_enum_fmt_vid_cap(struct file *file, void *fh,
+static int capture_legacy_enum_fmt_vid_cap(struct file *file,
+					   struct video_device_state *state,
 					   struct v4l2_fmtdesc *f)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -422,7 +432,8 @@ __capture_legacy_try_fmt(struct capture_priv *priv,
 	return cc;
 }
 
-static int capture_legacy_try_fmt_vid_cap(struct file *file, void *fh,
+static int capture_legacy_try_fmt_vid_cap(struct file *file,
+					  struct video_device_state *state,
 					  struct v4l2_format *f)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -442,7 +453,8 @@ static int capture_legacy_try_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int capture_legacy_s_fmt_vid_cap(struct file *file, void *fh,
+static int capture_legacy_s_fmt_vid_cap(struct file *file,
+					struct video_device_state *state,
 					struct v4l2_format *f)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -474,7 +486,8 @@ static int capture_legacy_s_fmt_vid_cap(struct file *file, void *fh,
 	return 0;
 }
 
-static int capture_legacy_querystd(struct file *file, void *fh,
+static int capture_legacy_querystd(struct file *file,
+				   struct video_device_state *state,
 				   v4l2_std_id *std)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -482,14 +495,18 @@ static int capture_legacy_querystd(struct file *file, void *fh,
 	return v4l2_subdev_call(priv->src_sd, video, querystd, std);
 }
 
-static int capture_legacy_g_std(struct file *file, void *fh, v4l2_std_id *std)
+static int capture_legacy_g_std(struct file *file,
+				struct video_device_state *state,
+				v4l2_std_id *std)
 {
 	struct capture_priv *priv = video_drvdata(file);
 
 	return v4l2_subdev_call(priv->src_sd, video, g_std, std);
 }
 
-static int capture_legacy_s_std(struct file *file, void *fh, v4l2_std_id std)
+static int capture_legacy_s_std(struct file *file,
+				struct video_device_state *state,
+				v4l2_std_id std)
 {
 	struct capture_priv *priv = video_drvdata(file);
 
@@ -499,7 +516,8 @@ static int capture_legacy_s_std(struct file *file, void *fh, v4l2_std_id std)
 	return v4l2_subdev_call(priv->src_sd, video, s_std, std);
 }
 
-static int capture_legacy_g_parm(struct file *file, void *fh,
+static int capture_legacy_g_parm(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_streamparm *a)
 {
 	struct capture_priv *priv = video_drvdata(file);
@@ -522,7 +540,8 @@ static int capture_legacy_g_parm(struct file *file, void *fh,
 	return 0;
 }
 
-static int capture_legacy_s_parm(struct file *file, void *fh,
+static int capture_legacy_s_parm(struct file *file,
+				 struct video_device_state *state,
 				 struct v4l2_streamparm *a)
 {
 	struct capture_priv *priv = video_drvdata(file);
