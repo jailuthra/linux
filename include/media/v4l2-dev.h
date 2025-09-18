@@ -244,6 +244,15 @@ struct video_device_state {
 	enum video_device_state_whence which;
 };
 
+/**
+ * struct video_device_internal_ops - Callbacks for video device management.
+ *
+ * @init_state: pointer to a function that initializes the video device state.
+ */
+struct video_device_internal_ops {
+	int (*init_state)(struct video_device_state *state);
+};
+
 /*
  * Newer version of video_device, handled by videodev2.c
  *	This version moves redundant code from video device code to
@@ -284,6 +293,7 @@ struct video_device_state {
  *
  * @release: video device release() callback
  * @ioctl_ops: pointer to &struct v4l2_ioctl_ops with ioctl callbacks
+ * @vdev_ops: pointer to &struct video_device_internal_ops
  *
  * @valid_ioctls: bitmap with the valid ioctls for this device
  * @lock: pointer to &struct mutex serialization lock
@@ -336,6 +346,7 @@ struct video_device {
 	/* callbacks */
 	void (*release)(struct video_device *vdev);
 	const struct v4l2_ioctl_ops *ioctl_ops;
+	const struct video_device_internal_ops *vdev_ops;
 	DECLARE_BITMAP(valid_ioctls, BASE_VIDIOC_PRIVATE);
 
 	struct mutex *lock;

@@ -169,6 +169,7 @@ __video_device_state_alloc(struct video_device *vdev,
 {
 	struct video_device_state *state =
 		kzalloc(sizeof(struct video_device_state), GFP_KERNEL);
+	int ret;
 
 	if (!state)
 		return ERR_PTR(-ENOMEM);
@@ -176,7 +177,19 @@ __video_device_state_alloc(struct video_device *vdev,
 	state->which = which;
 	state->vdev = vdev;
 
+	if (vdev->vdev_ops && vdev->vdev_ops->init_state) {
+		ret = vdev->vdev_ops->init_state(state);
+
+		if (ret)
+			goto err;
+	}
+
 	return state;
+
+err:
+	kfree(state);
+
+	return ERR_PTR(ret);
 }
 EXPORT_SYMBOL_GPL(__video_device_state_alloc);
 
