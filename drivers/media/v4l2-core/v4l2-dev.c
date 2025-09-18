@@ -163,6 +163,27 @@ void video_device_release_empty(struct video_device *vdev)
 }
 EXPORT_SYMBOL(video_device_release_empty);
 
+struct video_device_state *
+__video_device_state_alloc(struct video_device *vdev)
+{
+	struct video_device_state *state =
+		kzalloc(sizeof(struct video_device_state), GFP_KERNEL);
+
+	if (!state)
+		return ERR_PTR(-ENOMEM);
+
+	state->vdev = vdev;
+
+	return state;
+}
+EXPORT_SYMBOL_GPL(__video_device_state_alloc);
+
+void __video_device_state_free(struct video_device_state *state)
+{
+	kfree(state);
+}
+EXPORT_SYMBOL_GPL(__video_device_state_free);
+
 static inline void video_get(struct video_device *vdev)
 {
 	get_device(&vdev->dev);
@@ -939,6 +960,10 @@ int __video_register_device(struct video_device *vdev,
 	spin_lock_init(&vdev->fh_lock);
 	INIT_LIST_HEAD(&vdev->fh_list);
 
+	/* state support */
+	if (test_bit(V4L2_FL_USES_STATE, &vdev->flags))
+		vdev->state = __video_device_state_alloc(vdev);
+
 	/* Part 1: check device type */
 	switch (type) {
 	case VFL_TYPE_VIDEO:
@@ -1127,6 +1152,8 @@ void video_unregister_device(struct video_device *vdev)
 	clear_bit(V4L2_FL_REGISTERED, &vdev->flags);
 	mutex_unlock(&videodev_lock);
 	v4l2_event_wake_all(vdev);
+	if (test_bit(V4L2_FL_USES_STATE, &vdev->flags))
+		__video_device_state_free(vdev->state);
 	device_unregister(&vdev->dev);
 }
 EXPORT_SYMBOL(video_unregister_device);
