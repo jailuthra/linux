@@ -3070,6 +3070,21 @@ void v4l_printk_ioctl(const char *prefix, unsigned int cmd)
 }
 EXPORT_SYMBOL(v4l_printk_ioctl);
 
+static struct video_device_state *
+video_device_get_state(struct video_device *vfd, struct v4l2_fh *vfh,
+		       unsigned int cmd)
+{
+	switch (cmd) {
+	default:
+		return NULL;
+	case VIDIOC_G_FMT:
+	case VIDIOC_S_FMT:
+		return vfd->state;
+	case VIDIOC_TRY_FMT:
+		return vfh->state;
+	}
+}
+
 static long __video_do_ioctl(struct file *file,
 		unsigned int cmd, void *arg)
 {
@@ -3078,6 +3093,7 @@ static long __video_do_ioctl(struct file *file,
 	struct mutex *lock; /* ioctl serialization mutex */
 	const struct v4l2_ioctl_ops *ops = vfd->ioctl_ops;
 	bool write_only = false;
+	struct video_device_state *state = NULL;
 	struct v4l2_ioctl_info default_info;
 	const struct v4l2_ioctl_info *info;
 	struct v4l2_fh *vfh = file_to_v4l2_fh(file);
@@ -3089,6 +3105,9 @@ static long __video_do_ioctl(struct file *file,
 				video_device_node_name(vfd));
 		return ret;
 	}
+
+	if (test_bit(V4L2_FL_USES_STATE, &vfd->flags))
+		state = video_device_get_state(vfd, vfh, cmd);
 
 	/*
 	 * We need to serialize streamon/off with queueing new requests.
@@ -3138,11 +3157,11 @@ static long __video_do_ioctl(struct file *file,
 
 	write_only = _IOC_DIR(cmd) == _IOC_WRITE;
 	if (info != &default_info) {
-		ret = info->func(ops, file, NULL, arg);
+		ret = info->func(ops, file, state, arg);
 	} else if (!ops->vidioc_default) {
 		ret = -ENOTTY;
 	} else {
-		ret = ops->vidioc_default(file, NULL,
+		ret = ops->vidioc_default(file, state,
 			v4l2_prio_check(vfd->prio, vfh->prio) >= 0,
 			cmd, arg);
 	}
