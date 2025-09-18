@@ -164,7 +164,8 @@ void video_device_release_empty(struct video_device *vdev)
 EXPORT_SYMBOL(video_device_release_empty);
 
 struct video_device_state *
-__video_device_state_alloc(struct video_device *vdev)
+__video_device_state_alloc(struct video_device *vdev,
+			   enum video_device_state_whence which)
 {
 	struct video_device_state *state =
 		kzalloc(sizeof(struct video_device_state), GFP_KERNEL);
@@ -172,6 +173,7 @@ __video_device_state_alloc(struct video_device *vdev)
 	if (!state)
 		return ERR_PTR(-ENOMEM);
 
+	state->which = which;
 	state->vdev = vdev;
 
 	return state;
@@ -962,7 +964,8 @@ int __video_register_device(struct video_device *vdev,
 
 	/* state support */
 	if (test_bit(V4L2_FL_USES_STATE, &vdev->flags))
-		vdev->state = __video_device_state_alloc(vdev);
+		vdev->state = __video_device_state_alloc(vdev,
+							 VIDEO_DEVICE_STATE_ACTIVE);
 
 	/* Part 1: check device type */
 	switch (type) {
