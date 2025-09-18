@@ -221,14 +221,27 @@ struct v4l2_file_operations {
 };
 
 /**
+ * enum video_device_state_whence - Video device state type
+ *
+ * @VIDEO_DEVICE_STATE_TRY: from VIDIOC_TRY_xxx, for negotiation only
+ * @VIDEO_DEVICE_STATE_ACTIVE: from VIDIOC_S_xxx, applied to the device
+ */
+enum video_device_state_whence {
+	VIDEO_DEVICE_STATE_TRY = 0,
+	VIDEO_DEVICE_STATE_ACTIVE = 1,
+};
+
+/**
  * struct video_device_state - Used for storing video device state information.
  *
  * @fmt: Format of the capture stream
  * @vdev: Pointer to video device
+ * @which: State type (from enum video_device_state_whence)
  */
 struct video_device_state {
 	struct v4l2_format fmt;
 	struct video_device *vdev;
+	enum video_device_state_whence which;
 };
 
 /*
@@ -568,13 +581,15 @@ static inline int video_is_registered(struct video_device *vdev)
 /** __video_device_state_alloc - allocate video device state structure
  *
  * @vdev: pointer to struct video_device
+ * @which: type of video device state (from enum video_device_state_whence)
  *
  * .. note::
  *
  *	This function is meant to be used only inside the V4L2 core.
  */
 struct video_device_state *
-__video_device_state_alloc(struct video_device *vdev);
+__video_device_state_alloc(struct video_device *vdev,
+			   enum video_device_state_whence which);
 
 /** __video_device_state_free - free video device state structure
  *

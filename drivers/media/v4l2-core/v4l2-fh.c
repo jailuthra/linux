@@ -38,6 +38,10 @@ void v4l2_fh_init(struct v4l2_fh *fh, struct video_device *vdev)
 	INIT_LIST_HEAD(&fh->subscribed);
 	fh->sequence = -1;
 	mutex_init(&fh->subscribe_lock);
+	/* state support */
+	if (test_bit(V4L2_FL_USES_STATE, &fh->vdev->flags))
+		fh->state = __video_device_state_alloc(vdev,
+						       VIDEO_DEVICE_STATE_TRY);
 }
 EXPORT_SYMBOL_GPL(v4l2_fh_init);
 
@@ -84,6 +88,8 @@ void v4l2_fh_exit(struct v4l2_fh *fh)
 {
 	if (fh->vdev == NULL)
 		return;
+	if (test_bit(V4L2_FL_USES_STATE, &fh->vdev->flags))
+		kfree(fh->state);
 	v4l_disable_media_source(fh->vdev);
 	v4l2_event_unsubscribe_all(fh);
 	mutex_destroy(&fh->subscribe_lock);
