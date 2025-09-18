@@ -17,6 +17,7 @@
 
 #include <media/cadence/cdns-csi2rx.h>
 #include <media/mipi-csi2.h>
+#include <media/v4l2-dev.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-mc.h>
@@ -110,7 +111,6 @@ struct ti_csi2rx_dev {
 	struct v4l2_subdev		*source;
 	struct vb2_queue		vidq;
 	struct mutex			mutex; /* To serialize ioctls. */
-	struct v4l2_format		v_fmt;
 	struct ti_csi2rx_dma		dma;
 	u32				sequence;
 	u8				pix_per_clk;
@@ -308,22 +308,19 @@ static int ti_csi2rx_enum_fmt_vid_cap(struct file *file,
 	return 0;
 }
 
-static int ti_csi2rx_g_fmt_vid_cap(struct file *file,
-				   struct video_device_state *state,
-				   struct v4l2_format *f)
-{
-	struct ti_csi2rx_dev *csi = video_drvdata(file);
-
-	*f = csi->v_fmt;
-
-	return 0;
-}
-
-static int ti_csi2rx_try_fmt_vid_cap(struct file *file,
+static int ti_csi2rx_adj_fmt_vid_cap(struct file *file,
 				     struct video_device_state *state,
 				     struct v4l2_format *f)
 {
 	const struct ti_csi2rx_fmt *fmt;
+	struct v4l2_format *format;
+
+	if (state->which == VIDEO_DEVICE_STATE_ACTIVE) {
+		struct ti_csi2rx_dev *csi = video_drvdata(file);
+
+		if (vb2_is_busy(csi->vdev.queue))
+			return -EBUSY;
+	}
 
 	/*
 	 * Default to the first format if the requested pixel format code isn't
@@ -338,25 +335,8 @@ static int ti_csi2rx_try_fmt_vid_cap(struct file *file,
 
 	ti_csi2rx_fill_fmt(fmt, f);
 
-	return 0;
-}
-
-static int ti_csi2rx_s_fmt_vid_cap(struct file *file,
-				   struct video_device_state *state,
-				   struct v4l2_format *f)
-{
-	struct ti_csi2rx_dev *csi = video_drvdata(file);
-	struct vb2_queue *q = &csi->vidq;
-	int ret;
-
-	if (vb2_is_busy(q))
-		return -EBUSY;
-
-	ret = ti_csi2rx_try_fmt_vid_cap(file, state, f);
-	if (ret < 0)
-		return ret;
-
-	csi->v_fmt = *f;
+	format = video_device_state_get_fmt(state);
+	*format = *f;
 
 	return 0;
 }
@@ -390,12 +370,36 @@ static int ti_csi2rx_enum_framesizes(struct file *file,
 	return 0;
 }
 
+static int ti_csi2rx_vdev_init_state(struct video_device_state *state)
+{
+	const struct ti_csi2rx_fmt *fmt;
+	struct v4l2_pix_format *pix_fmt;
+
+	fmt = find_format_by_fourcc(V4L2_PIX_FMT_UYVY);
+	if (!fmt)
+		return -EINVAL;
+
+	state->fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	pix_fmt = &state->fmt.fmt.pix;
+	pix_fmt->width = 640;
+	pix_fmt->height = 480;
+	pix_fmt->field = V4L2_FIELD_NONE;
+	pix_fmt->colorspace = V4L2_COLORSPACE_SRGB;
+	pix_fmt->ycbcr_enc = V4L2_YCBCR_ENC_601;
+	pix_fmt->quantization = V4L2_QUANTIZATION_LIM_RANGE;
+	pix_fmt->xfer_func = V4L2_XFER_FUNC_SRGB;
+
+	ti_csi2rx_fill_fmt(fmt, &state->fmt);
+
+	return 0;
+}
+
 static const struct v4l2_ioctl_ops csi_ioctl_ops = {
 	.vidioc_querycap      = ti_csi2rx_querycap,
 	.vidioc_enum_fmt_vid_cap = ti_csi2rx_enum_fmt_vid_cap,
-	.vidioc_try_fmt_vid_cap = ti_csi2rx_try_fmt_vid_cap,
-	.vidioc_g_fmt_vid_cap = ti_csi2rx_g_fmt_vid_cap,
-	.vidioc_s_fmt_vid_cap = ti_csi2rx_s_fmt_vid_cap,
+	.vidioc_try_fmt_vid_cap = ti_csi2rx_adj_fmt_vid_cap,
+	.vidioc_g_fmt_vid_cap = video_device_g_fmt,
+	.vidioc_s_fmt_vid_cap = ti_csi2rx_adj_fmt_vid_cap,
 	.vidioc_enum_framesizes = ti_csi2rx_enum_framesizes,
 	.vidioc_reqbufs       = vb2_ioctl_reqbufs,
 	.vidioc_create_bufs   = vb2_ioctl_create_bufs,
@@ -416,6 +420,10 @@ static const struct v4l2_file_operations csi_fops = {
 	.poll = vb2_fop_poll,
 	.unlocked_ioctl = video_ioctl2,
 	.mmap = vb2_fop_mmap,
+};
+
+static const struct video_device_internal_ops csi_vdev_ops = {
+	.init_state = ti_csi2rx_vdev_init_state,
 };
 
 static int csi_async_notifier_bound(struct v4l2_async_notifier *notifier,
@@ -518,9 +526,11 @@ static void ti_csi2rx_request_max_ppc(struct ti_csi2rx_dev *csi)
 static void ti_csi2rx_setup_shim(struct ti_csi2rx_dev *csi)
 {
 	const struct ti_csi2rx_fmt *fmt;
+	struct v4l2_format *format;
 	unsigned int reg;
 
-	fmt = find_format_by_fourcc(csi->v_fmt.fmt.pix.pixelformat);
+	format = video_device_state_get_fmt(csi->vdev.state);
+	fmt = find_format_by_fourcc(format->fmt.pix.pixelformat);
 
 	/* De-assert the pixel interface reset. */
 	reg = SHIM_CNTL_PIX_RST;
@@ -671,13 +681,21 @@ static void ti_csi2rx_dma_callback(void *param)
 	spin_unlock_irqrestore(&dma->lock, flags);
 }
 
+static u32 ti_csi2rx_sizeimage(struct ti_csi2rx_dev *csi)
+{
+	struct v4l2_format *format =
+		video_device_state_get_fmt(csi->vdev.state);
+
+	return format->fmt.pix.sizeimage;
+}
+
 static int ti_csi2rx_start_dma(struct ti_csi2rx_dev *csi,
 			       struct ti_csi2rx_buffer *buf)
 {
-	unsigned long addr;
 	struct dma_async_tx_descriptor *desc;
-	size_t len = csi->v_fmt.fmt.pix.sizeimage;
+	unsigned long addr;
 	dma_cookie_t cookie;
+	size_t len = ti_csi2rx_sizeimage(csi);
 	int ret = 0;
 
 	addr = vb2_dma_contig_plane_dma_addr(&buf->vb.vb2_buf, 0);
@@ -754,7 +772,7 @@ static int ti_csi2rx_queue_setup(struct vb2_queue *q, unsigned int *nbuffers,
 				 struct device *alloc_devs[])
 {
 	struct ti_csi2rx_dev *csi = vb2_get_drv_priv(q);
-	unsigned int size = csi->v_fmt.fmt.pix.sizeimage;
+	unsigned int size = ti_csi2rx_sizeimage(csi);
 
 	if (*nplanes) {
 		if (sizes[0] < size)
@@ -771,7 +789,7 @@ static int ti_csi2rx_queue_setup(struct vb2_queue *q, unsigned int *nbuffers,
 static int ti_csi2rx_buffer_prepare(struct vb2_buffer *vb)
 {
 	struct ti_csi2rx_dev *csi = vb2_get_drv_priv(vb->vb2_queue);
-	unsigned long size = csi->v_fmt.fmt.pix.sizeimage;
+	unsigned long size = ti_csi2rx_sizeimage(csi);
 
 	if (vb2_plane_size(vb, 0) < size) {
 		dev_err(csi->dev, "Data will not fit into plane\n");
@@ -951,7 +969,8 @@ static int ti_csi2rx_link_validate(struct media_link *link)
 	struct media_entity *entity = link->sink->entity;
 	struct video_device *vdev = media_entity_to_video_device(entity);
 	struct ti_csi2rx_dev *csi = container_of(vdev, struct ti_csi2rx_dev, vdev);
-	struct v4l2_pix_format *csi_fmt = &csi->v_fmt.fmt.pix;
+	struct v4l2_format *format = video_device_state_get_fmt(vdev->state);
+	struct v4l2_pix_format *csi_fmt = &format->fmt.pix;
 	struct v4l2_subdev_format source_fmt = {
 		.which	= V4L2_SUBDEV_FORMAT_ACTIVE,
 		.pad	= link->source->index,
@@ -1041,23 +1060,7 @@ static int ti_csi2rx_v4l2_init(struct ti_csi2rx_dev *csi)
 {
 	struct media_device *mdev = &csi->mdev;
 	struct video_device *vdev = &csi->vdev;
-	const struct ti_csi2rx_fmt *fmt;
-	struct v4l2_pix_format *pix_fmt = &csi->v_fmt.fmt.pix;
 	int ret;
-
-	fmt = find_format_by_fourcc(V4L2_PIX_FMT_UYVY);
-	if (!fmt)
-		return -EINVAL;
-
-	pix_fmt->width = 640;
-	pix_fmt->height = 480;
-	pix_fmt->field = V4L2_FIELD_NONE;
-	pix_fmt->colorspace = V4L2_COLORSPACE_SRGB;
-	pix_fmt->ycbcr_enc = V4L2_YCBCR_ENC_601;
-	pix_fmt->quantization = V4L2_QUANTIZATION_LIM_RANGE;
-	pix_fmt->xfer_func = V4L2_XFER_FUNC_SRGB;
-
-	ti_csi2rx_fill_fmt(fmt, &csi->v_fmt);
 
 	mdev->dev = csi->dev;
 	mdev->hw_revision = 1;
@@ -1070,10 +1073,12 @@ static int ti_csi2rx_v4l2_init(struct ti_csi2rx_dev *csi)
 	vdev->vfl_dir = VFL_DIR_RX;
 	vdev->fops = &csi_fops;
 	vdev->ioctl_ops = &csi_ioctl_ops;
+	vdev->vdev_ops = &csi_vdev_ops;
 	vdev->release = video_device_release_empty;
 	vdev->device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING |
 			    V4L2_CAP_IO_MC;
 	vdev->lock = &csi->mutex;
+	set_bit(V4L2_FL_USES_STATE, &vdev->flags);
 	video_set_drvdata(vdev, csi);
 
 	csi->pad.flags = MEDIA_PAD_FL_SINK;
