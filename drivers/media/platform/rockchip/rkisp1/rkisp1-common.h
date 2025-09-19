@@ -316,8 +316,6 @@ struct rkisp1_device;
  * rkisp1 uses shadow registers, so it needs two buffers at a time
  * @buf.curr:	  the buffer used for current frame
  * @buf.next:	  the buffer used for next frame
- * @pix.cfg:	  pixel configuration
- * @pix.info:	  a pointer to the v4l2_format_info of the pixel format
  */
 struct rkisp1_capture {
 	struct rkisp1_vdev_node vnode;
@@ -336,10 +334,6 @@ struct rkisp1_capture {
 		struct rkisp1_buffer *curr;
 		struct rkisp1_buffer *next;
 	} buf;
-	struct {
-		const struct rkisp1_capture_fmt_cfg *cfg;
-		const struct v4l2_format_info *info;
-	} pix;
 };
 
 struct rkisp1_stats;

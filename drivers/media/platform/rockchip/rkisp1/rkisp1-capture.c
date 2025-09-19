@@ -63,9 +63,12 @@ struct rkisp1_capture_fmt_cfg {
 };
 
 struct rkisp1_capture_ops {
-	void (*config)(struct rkisp1_capture *cap);
+	void (*config)(struct rkisp1_capture *cap,
+		       const struct rkisp1_capture_fmt_cfg *cfg,
+		       const struct v4l2_format_info *info);
 	void (*stop)(struct rkisp1_capture *cap);
-	void (*enable)(struct rkisp1_capture *cap);
+	void (*enable)(struct rkisp1_capture *cap,
+		       const struct v4l2_format_info *info);
 	void (*disable)(struct rkisp1_capture *cap);
 	void (*set_data_path)(struct rkisp1_capture *cap);
 	bool (*is_stopped)(struct rkisp1_capture *cap);
@@ -480,12 +483,30 @@ static void rkisp1_irq_frame_end_enable(struct rkisp1_capture *cap)
 	rkisp1_write(cap->rkisp1, RKISP1_CIF_MI_IMSC, mi_imsc);
 }
 
-static void rkisp1_mp_config(struct rkisp1_capture *cap)
+static const struct rkisp1_capture_fmt_cfg *
+rkisp1_find_fmt_cfg(const struct rkisp1_capture *cap, const u32 pixelfmt)
+{
+	bool yc_swap_support = rkisp1_has_feature(cap->rkisp1, MAIN_STRIDE);
+	unsigned int i;
+
+	for (i = 0; i < cap->config->fmt_size; i++) {
+		const struct rkisp1_capture_fmt_cfg *fmt = &cap->config->fmts[i];
+
+		if (fmt->fourcc == pixelfmt &&
+		    (!fmt->yc_swap || yc_swap_support))
+			return &cap->config->fmts[i];
+	}
+	return NULL;
+}
+
+static void rkisp1_mp_config(struct rkisp1_capture *cap,
+			     const struct rkisp1_capture_fmt_cfg *cfg,
+			     const struct v4l2_format_info *info)
 {
 	const struct v4l2_format *format =
 		video_device_state_get_fmt(cap->vnode.vdev.state);
 	const struct v4l2_pix_format_mplane *pixm = &format->fmt.pix_mp;
-	u32 stride = pixm->plane_fmt[0].bytesperline / cap->pix.info->bpp[0];
+	u32 stride = pixm->plane_fmt[0].bytesperline / info->bpp[0];
 	struct rkisp1_device *rkisp1 = cap->rkisp1;
 	u32 reg;
 
@@ -507,9 +528,9 @@ static void rkisp1_mp_config(struct rkisp1_capture *cap)
 	rkisp1_irq_frame_end_enable(cap);
 
 	/* set uv swapping for semiplanar formats */
-	if (cap->pix.info->comp_planes == 2) {
+	if (info->comp_planes == 2) {
 		reg = rkisp1_read(rkisp1, RKISP1_CIF_MI_XTD_FORMAT_CTRL);
-		if (cap->pix.cfg->uv_swap)
+		if (cfg->uv_swap)
 			reg |= RKISP1_CIF_MI_XTD_FMT_CTRL_MP_CB_CR_SWAP;
 		else
 			reg &= ~RKISP1_CIF_MI_XTD_FMT_CTRL_MP_CB_CR_SWAP;
@@ -523,7 +544,7 @@ static void rkisp1_mp_config(struct rkisp1_capture *cap)
 	 */
 	if (rkisp1_has_feature(rkisp1, MAIN_STRIDE)) {
 		reg = rkisp1_read(rkisp1, RKISP1_CIF_MI_OUTPUT_ALIGN_FORMAT);
-		if (cap->pix.cfg->yc_swap || cap->pix.cfg->byte_swap)
+		if (cfg->yc_swap || cfg->byte_swap)
 			reg |= RKISP1_CIF_OUTPUT_ALIGN_FORMAT_MP_BYTE_SWAP_BYTES;
 		else
 			reg &= ~RKISP1_CIF_OUTPUT_ALIGN_FORMAT_MP_BYTE_SWAP_BYTES;
@@ -531,15 +552,14 @@ static void rkisp1_mp_config(struct rkisp1_capture *cap)
 		reg |= RKISP1_CIF_OUTPUT_ALIGN_FORMAT_MP_LSB_ALIGNMENT;
 		rkisp1_write(rkisp1, RKISP1_CIF_MI_OUTPUT_ALIGN_FORMAT, reg);
 
-		rkisp1_write(rkisp1, RKISP1_CIF_MI_INIT,
-			     cap->pix.cfg->output_format);
+		rkisp1_write(rkisp1, RKISP1_CIF_MI_INIT, cfg->output_format);
 	}
 
 	rkisp1_mi_config_ctrl(cap);
 
 	reg = rkisp1_read(rkisp1, RKISP1_CIF_MI_CTRL);
 	reg &= ~RKISP1_MI_CTRL_MP_FMT_MASK;
-	reg |= cap->pix.cfg->write_format;
+	reg |= cfg->write_format;
 	rkisp1_write(rkisp1, RKISP1_CIF_MI_CTRL, reg);
 
 	reg = rkisp1_read(rkisp1, RKISP1_CIF_MI_CTRL);
@@ -547,12 +567,14 @@ static void rkisp1_mp_config(struct rkisp1_capture *cap)
 	rkisp1_write(rkisp1, RKISP1_CIF_MI_CTRL, reg);
 }
 
-static void rkisp1_sp_config(struct rkisp1_capture *cap)
+static void rkisp1_sp_config(struct rkisp1_capture *cap,
+			     const struct rkisp1_capture_fmt_cfg *cfg,
+			     const struct v4l2_format_info *info)
 {
 	const struct v4l2_format *format =
 		video_device_state_get_fmt(cap->vnode.vdev.state);
 	const struct v4l2_pix_format_mplane *pixm = &format->fmt.pix_mp;
-	u32 stride = pixm->plane_fmt[0].bytesperline / cap->pix.info->bpp[0];
+	u32 stride = pixm->plane_fmt[0].bytesperline / info->bpp[0];
 	struct rkisp1_device *rkisp1 = cap->rkisp1;
 	u32 mi_ctrl, reg;
 
@@ -572,9 +594,9 @@ static void rkisp1_sp_config(struct rkisp1_capture *cap)
 	rkisp1_irq_frame_end_enable(cap);
 
 	/* set uv swapping for semiplanar formats */
-	if (cap->pix.info->comp_planes == 2) {
+	if (info->comp_planes == 2) {
 		reg = rkisp1_read(rkisp1, RKISP1_CIF_MI_XTD_FORMAT_CTRL);
-		if (cap->pix.cfg->uv_swap)
+		if (cfg->uv_swap)
 			reg |= RKISP1_CIF_MI_XTD_FMT_CTRL_SP_CB_CR_SWAP;
 		else
 			reg &= ~RKISP1_CIF_MI_XTD_FMT_CTRL_SP_CB_CR_SWAP;
@@ -588,7 +610,7 @@ static void rkisp1_sp_config(struct rkisp1_capture *cap)
 	 */
 	if (rkisp1_has_feature(rkisp1, MAIN_STRIDE)) {
 		reg = rkisp1_read(rkisp1, RKISP1_CIF_MI_OUTPUT_ALIGN_FORMAT);
-		if (cap->pix.cfg->yc_swap)
+		if (cfg->yc_swap)
 			reg |= RKISP1_CIF_OUTPUT_ALIGN_FORMAT_SP_BYTE_SWAP_BYTES;
 		else
 			reg &= ~RKISP1_CIF_OUTPUT_ALIGN_FORMAT_SP_BYTE_SWAP_BYTES;
@@ -599,10 +621,8 @@ static void rkisp1_sp_config(struct rkisp1_capture *cap)
 
 	mi_ctrl = rkisp1_read(rkisp1, RKISP1_CIF_MI_CTRL);
 	mi_ctrl &= ~RKISP1_MI_CTRL_SP_FMT_MASK;
-	mi_ctrl |= cap->pix.cfg->write_format |
-		   RKISP1_MI_CTRL_SP_INPUT_YUV422 |
-		   cap->pix.cfg->output_format |
-		   RKISP1_CIF_MI_SP_AUTOUPDATE_ENABLE;
+	mi_ctrl |= cfg->write_format | RKISP1_MI_CTRL_SP_INPUT_YUV422 |
+		   cfg->output_format | RKISP1_CIF_MI_SP_AUTOUPDATE_ENABLE;
 	rkisp1_write(rkisp1, RKISP1_CIF_MI_CTRL, mi_ctrl);
 }
 
@@ -623,14 +643,15 @@ static void rkisp1_sp_disable(struct rkisp1_capture *cap)
 	rkisp1_write(cap->rkisp1, RKISP1_CIF_MI_CTRL, mi_ctrl);
 }
 
-static void rkisp1_mp_enable(struct rkisp1_capture *cap)
+static void rkisp1_mp_enable(struct rkisp1_capture *cap,
+			     const struct v4l2_format_info *info)
 {
 	u32 mi_ctrl;
 
 	rkisp1_mp_disable(cap);
 
 	mi_ctrl = rkisp1_read(cap->rkisp1, RKISP1_CIF_MI_CTRL);
-	if (v4l2_is_format_bayer(cap->pix.info))
+	if (v4l2_is_format_bayer(info))
 		mi_ctrl |= RKISP1_CIF_MI_CTRL_RAW_ENABLE;
 	/* YUV */
 	else
@@ -639,7 +660,8 @@ static void rkisp1_mp_enable(struct rkisp1_capture *cap)
 	rkisp1_write(cap->rkisp1, RKISP1_CIF_MI_CTRL, mi_ctrl);
 }
 
-static void rkisp1_sp_enable(struct rkisp1_capture *cap)
+static void rkisp1_sp_enable(struct rkisp1_capture *cap,
+			     const struct v4l2_format_info *info)
 {
 	u32 mi_ctrl = rkisp1_read(cap->rkisp1, RKISP1_CIF_MI_CTRL);
 
@@ -755,26 +777,12 @@ static void rkisp1_set_next_buf(struct rkisp1_capture *cap)
 
 		rkisp1_write(cap->rkisp1, cap->config->mi.y_base_ad_init,
 			     buff_addr[RKISP1_PLANE_Y] >> shift);
-		/*
-		 * In order to support grey format we capture
-		 * YUV422 planar format from the camera and
-		 * set the U and V planes to the dummy buffer
-		 */
-		if (cap->pix.cfg->fourcc == V4L2_PIX_FMT_GREY) {
-			rkisp1_write(cap->rkisp1,
-				     cap->config->mi.cb_base_ad_init,
-				     cap->buf.dummy.dma_addr >> shift);
-			rkisp1_write(cap->rkisp1,
-				     cap->config->mi.cr_base_ad_init,
-				     cap->buf.dummy.dma_addr >> shift);
-		} else {
-			rkisp1_write(cap->rkisp1,
-				     cap->config->mi.cb_base_ad_init,
-				     buff_addr[RKISP1_PLANE_CB] >> shift);
-			rkisp1_write(cap->rkisp1,
-				     cap->config->mi.cr_base_ad_init,
-				     buff_addr[RKISP1_PLANE_CR] >> shift);
-		}
+		rkisp1_write(cap->rkisp1,
+			     cap->config->mi.cb_base_ad_init,
+			     buff_addr[RKISP1_PLANE_CB] >> shift);
+		rkisp1_write(cap->rkisp1,
+			     cap->config->mi.cr_base_ad_init,
+			     buff_addr[RKISP1_PLANE_CR] >> shift);
 	} else {
 		/*
 		 * Use the dummy space allocated by dma_alloc_coherent to
@@ -907,6 +915,10 @@ static int rkisp1_vb2_buf_init(struct vb2_buffer *vb)
 	const struct v4l2_format *format =
 		video_device_state_get_fmt(cap->vnode.vdev.state);
 	const struct v4l2_pix_format_mplane *pixm = &format->fmt.pix_mp;
+	const struct rkisp1_capture_fmt_cfg *cfg =
+		rkisp1_find_fmt_cfg(cap, pixm->pixelformat);
+	const struct v4l2_format_info *info =
+		v4l2_format_info(pixm->pixelformat);
 	unsigned int i;
 
 	memset(ispbuf->buff_addr, 0, sizeof(ispbuf->buff_addr));
@@ -927,9 +939,19 @@ static int rkisp1_vb2_buf_init(struct vb2_buffer *vb)
 	 * uv swap can be supported for planar formats by switching
 	 * the address of cb and cr
 	 */
-	if (cap->pix.info->comp_planes == 3 && cap->pix.cfg->uv_swap)
+	if (info->comp_planes == 3 && cfg->uv_swap)
 		swap(ispbuf->buff_addr[RKISP1_PLANE_CR],
 		     ispbuf->buff_addr[RKISP1_PLANE_CB]);
+
+	/*
+	 * grey format can be supported by using dummy buffer for
+	 * the cb and cr planes
+	 */
+	if (cfg->fourcc == V4L2_PIX_FMT_GREY) {
+		ispbuf->buff_addr[RKISP1_PLANE_CB] = cap->buf.dummy.dma_addr;
+		ispbuf->buff_addr[RKISP1_PLANE_CR] = cap->buf.dummy.dma_addr;
+	}
+
 	return 0;
 }
 
@@ -1001,15 +1023,22 @@ static void rkisp1_cap_stream_enable(struct rkisp1_capture *cap)
 {
 	struct rkisp1_device *rkisp1 = cap->rkisp1;
 	struct rkisp1_capture *other = &rkisp1->capture_devs[cap->id ^ 1];
+	const struct v4l2_format *format =
+		video_device_state_get_fmt(cap->vnode.vdev.state);
+	const struct v4l2_pix_format_mplane *pixm = &format->fmt.pix_mp;
+	const struct rkisp1_capture_fmt_cfg *cfg =
+		rkisp1_find_fmt_cfg(cap, pixm->pixelformat);
+	const struct v4l2_format_info *info =
+		v4l2_format_info(pixm->pixelformat);
 	bool has_self_path = rkisp1_has_feature(rkisp1, SELF_PATH);
 
 	cap->ops->set_data_path(cap);
-	cap->ops->config(cap);
+	cap->ops->config(cap, cfg, info);
 
 	/* Setup a buffer for the next frame */
 	spin_lock_irq(&cap->buf.lock);
 	rkisp1_set_next_buf(cap);
-	cap->ops->enable(cap);
+	cap->ops->enable(cap, info);
 
 	/*
 	 * It's safe to configure ACTIVE and SHADOW registers for the first
@@ -1224,9 +1253,8 @@ static const struct vb2_ops rkisp1_vb2_ops = {
  * IOCTLs operations
  */
 
-static const struct v4l2_format_info *
-rkisp1_fill_pixfmt(const struct rkisp1_capture *cap,
-		   struct v4l2_pix_format_mplane *pixm)
+static void rkisp1_fill_pixfmt(const struct rkisp1_capture *cap,
+			       struct v4l2_pix_format_mplane *pixm)
 {
 	struct v4l2_plane_pix_format *plane_y = &pixm->plane_fmt[0];
 	const struct v4l2_format_info *info;
@@ -1273,34 +1301,13 @@ rkisp1_fill_pixfmt(const struct rkisp1_capture *cap,
 	if (info->mem_planes == 1)
 		for (i = 1; i < info->comp_planes; i++)
 			plane_y->sizeimage += pixm->plane_fmt[i].sizeimage;
-
-	return info;
-}
-
-static const struct rkisp1_capture_fmt_cfg *
-rkisp1_find_fmt_cfg(const struct rkisp1_capture *cap, const u32 pixelfmt)
-{
-	bool yc_swap_support = rkisp1_has_feature(cap->rkisp1, MAIN_STRIDE);
-	unsigned int i;
-
-	for (i = 0; i < cap->config->fmt_size; i++) {
-		const struct rkisp1_capture_fmt_cfg *fmt = &cap->config->fmts[i];
-
-		if (fmt->fourcc == pixelfmt &&
-		    (!fmt->yc_swap || yc_swap_support))
-			return &cap->config->fmts[i];
-	}
-	return NULL;
 }
 
 static void rkisp1_adj_fmt(const struct rkisp1_capture *cap,
-			   struct v4l2_pix_format_mplane *pixm,
-			   const struct rkisp1_capture_fmt_cfg **fmt_cfg,
-			   const struct v4l2_format_info **fmt_info)
+			   struct v4l2_pix_format_mplane *pixm)
 {
 	const struct rkisp1_capture_config *config = cap->config;
 	const struct rkisp1_capture_fmt_cfg *fmt;
-	const struct v4l2_format_info *info;
 	static const unsigned int max_widths[] = {
 		RKISP1_RSZ_MP_SRC_MAX_WIDTH, RKISP1_RSZ_SP_SRC_MAX_WIDTH
 	};
@@ -1324,12 +1331,7 @@ static void rkisp1_adj_fmt(const struct rkisp1_capture *cap,
 	pixm->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
 	pixm->quantization = V4L2_QUANTIZATION_DEFAULT;
 
-	info = rkisp1_fill_pixfmt(cap, pixm);
-
-	if (fmt_cfg)
-		*fmt_cfg = fmt;
-	if (fmt_info)
-		*fmt_info = info;
+	rkisp1_fill_pixfmt(cap, pixm);
 }
 
 static int rkisp1_adj_fmt_vid_cap_mplane(struct file *file,
@@ -1338,17 +1340,13 @@ static int rkisp1_adj_fmt_vid_cap_mplane(struct file *file,
 {
 	struct rkisp1_capture *cap = video_drvdata(file);
 
-	if (state->which == VIDEO_DEVICE_STATE_ACTIVE) {
-		if (vb2_is_busy(cap->vnode.vdev.queue))
-			return -EBUSY;
+	if (state->which == VIDEO_DEVICE_STATE_ACTIVE &&
+	    vb2_is_busy(cap->vnode.vdev.queue))
+		return -EBUSY;
 
-		rkisp1_adj_fmt(cap, &f->fmt.pix_mp, &cap->pix.cfg,
-			       &cap->pix.info);
-	} else {
-		rkisp1_adj_fmt(cap, &f->fmt.pix_mp, NULL, NULL);
-	}
-
+	rkisp1_adj_fmt(cap, &f->fmt.pix_mp);
 	state->fmt = *f;
+
 	return 0;
 }
 
@@ -1458,7 +1456,7 @@ static int rkisp1_vdev_init_state(struct video_device_state *state)
 	pixm->width = RKISP1_DEFAULT_WIDTH;
 	pixm->height = RKISP1_DEFAULT_HEIGHT;
 
-	rkisp1_adj_fmt(cap, pixm, &cap->pix.cfg, &cap->pix.info);
+	rkisp1_adj_fmt(cap, pixm);
 
 	return 0;
 }
