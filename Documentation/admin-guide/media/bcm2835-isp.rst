@@ -68,7 +68,7 @@ The bcm2835-isp driver exposes the following media pads as V4L2 device nodes:
         :ref:`YUV420/YVU420 <V4L2-PIX-FMT-YUV420>`,
         :ref:`NV12/NV21 <V4L2-PIX-FMT-NV12>`,
 
-    * - "bcm2835-isp0-capture1"
+    * - "bcm2835-isp0-capture3"
       - source
       - Image statistics calculated from the input image provided on the
         "bcm2835-isp0-output0" pad.  Statistics are only available for Bayer
