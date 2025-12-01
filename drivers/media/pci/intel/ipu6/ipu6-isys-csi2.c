@@ -449,6 +449,8 @@ static int ipu6_isys_csi2_enable_streams(struct v4l2_subdev *sd,
 	int ret;
 	u8 vc;
 
+	lockdep_assert_held(&csi2->isys->stream_mutex);
+
 	ret = ipu6_isys_buffer_list_get(av->stream, &bl);
 	if (ret < 0) {
 		dev_warn(sd->dev, "no buffer available, DRIVER BUG?\n");
@@ -520,6 +522,8 @@ static int ipu6_isys_csi2_disable_streams(struct v4l2_subdev *sd,
 	struct v4l2_subdev *remote_sd;
 	u64 sink_streams;
 	u8 vc;
+
+	lockdep_assert_held(&csi2->isys->stream_mutex);
 
 	if (!ipu6_isys_csi2_streaming_change(asd, state, pad, &vc, false))
 		goto out_del_csi2_entry;
