@@ -46,12 +46,12 @@ struct ipu6_isys_stream {
 	atomic_t sequence;
 	unsigned int seq_index;
 	struct sequence_info seq[IPU6_ISYS_MAX_PARALLEL_SOF];
-	int stream_source;
 	int stream_handle;
 	unsigned int nr_output_pins;
 	struct ipu6_isys_subdev *asd;
-
 	struct list_head queues;
+	struct list_head csi2_entry;
+
 	struct completion stream_open_completion;
 	struct completion stream_close_completion;
 	struct completion stream_start_completion;
@@ -89,12 +89,19 @@ extern const struct ipu6_isys_pixelformat ipu6_isys_pfmts_packed[];
 
 const struct ipu6_isys_pixelformat *
 ipu6_isys_get_isys_format(u32 pixelformat, u32 code);
-int ipu6_isys_start_stream_firmware(struct ipu6_isys_video *av,
-				    struct ipu6_isys_buffer_list *bl);
-void ipu6_isys_stop_streaming_firmware(struct ipu6_isys_video *av);
-void ipu6_isys_close_streaming_firmware(struct ipu6_isys_video *av);
-int ipu6_isys_video_prepare_stream(struct ipu6_isys_video *av,
-				   struct media_entity *source_entity);
+int ipu6_isys_start_stream_firmware(struct ipu6_isys_stream *stream,
+				    struct ipu6_isys_buffer_list *bl,
+				    struct v4l2_mbus_frame_desc *desc);
+void ipu6_isys_stop_stream_firmware(struct ipu6_isys_stream *stream);
+void ipu6_isys_close_stream_firmware(struct ipu6_isys_stream *stream);
+struct ipu6_isys_stream *
+ipu6_isys_find_stream_firmware(struct ipu6_isys_csi2 *csi2, u8 vc);
+void ipu6_isys_free_stream_firmware(struct ipu6_isys_stream *stream);
+struct ipu6_isys_stream *
+ipu6_isys_alloc_stream_firmware(struct ipu6_isys_csi2 *csi2,
+				struct v4l2_subdev_state *state,
+				struct v4l2_mbus_frame_desc *desc,
+				u8 vc);
 int ipu6_isys_video_set_streaming(struct ipu6_isys_video *av, int state);
 int ipu6_isys_fw_open(struct ipu6_isys *isys);
 void ipu6_isys_fw_close(struct ipu6_isys *isys);
@@ -103,7 +110,6 @@ int ipu6_isys_setup_video(struct ipu6_isys_video *av,
 			  struct media_pad *source_pad);
 int ipu6_isys_video_init(struct ipu6_isys_video *av);
 void ipu6_isys_video_cleanup(struct ipu6_isys_video *av);
-void ipu6_isys_put_stream(struct ipu6_isys_stream *stream);
 struct ipu6_isys_stream *
 ipu6_isys_query_stream_by_handle(struct ipu6_isys *isys, u8 stream_handle);
 struct ipu6_isys_stream *
