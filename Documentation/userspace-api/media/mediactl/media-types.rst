@@ -391,6 +391,7 @@ must be set for every pad.
 .. _MEDIA-LNK-FL-ENABLED:
 .. _MEDIA-LNK-FL-IMMUTABLE:
 .. _MEDIA-LNK-FL-DYNAMIC:
+.. _MEDIA-LNK-FL-VALIDATE-LATE:
 .. _MEDIA-LNK-FL-LINK-TYPE:
 
 .. flat-table:: Media link flags
@@ -409,6 +410,10 @@ must be set for every pad.
     *  -  ``MEDIA_LNK_FL_DYNAMIC``
        -  The link enabled state can be modified during streaming. This flag
 	  is set by drivers and is read-only for applications.
+
+    *  -  ``MEDIA_LNK_FL_VALIDATE_LATE``
+       -  The validation of the link may be delayed from the pipeline start but
+	  it is done no later than starting streaming on the hardware.
 
     *  -  ``MEDIA_LNK_FL_LINK_TYPE``
        -  This is a bitmask that defines the type of the link. The following
