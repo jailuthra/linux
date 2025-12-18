@@ -568,18 +568,11 @@ static int start_streaming(struct vb2_queue *q, unsigned int count)
 		goto out_pipeline_stop;
 	}
 
-	ret = ipu6_isys_fw_open(av->isys);
+	ret = ipu6_isys_stream_start(av);
 	if (ret)
 		goto out_pipeline_stop;
 
-	ret = ipu6_isys_stream_start(av);
-	if (ret)
-		goto out_fw_close;
-
 	return 0;
-
-out_fw_close:
-	ipu6_isys_fw_close(av->isys);
 
 out_pipeline_stop:
 	ipu6_isys_stream_cleanup(av);
@@ -602,8 +595,6 @@ static void stop_streaming(struct vb2_queue *q)
 	ipu6_isys_stream_cleanup(av);
 
 	return_buffers(aq, VB2_BUF_STATE_ERROR);
-
-	ipu6_isys_fw_close(av->isys);
 }
 
 static unsigned int
