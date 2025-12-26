@@ -9,22 +9,21 @@
  *
  */
 
-/* ---- Include Files ----------------------------------------------------- */
 #include <linux/completion.h>
+#include <linux/dev_printk.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/semaphore.h>
 #include <linux/slab.h>
+#include <linux/raspberrypi/vchiq_arm.h>
 #include <linux/types.h>
 
 #include "vc_sm_cma_vchi.h"
 
 #define VC_SM_VER  1
 #define VC_SM_MIN_VER 0
-
-/* ---- Private Constants and Types -------------------------------------- */
 
 /* Command blocks come from a pool */
 #define SM_MAX_NUM_CMD_RSP_BLKS 32
@@ -73,11 +72,6 @@ struct sm_instance {
 	struct vchiq_instance *vchiq_instance;
 };
 
-/* ---- Private Variables ------------------------------------------------ */
-
-/* ---- Private Function Prototypes -------------------------------------- */
-
-/* ---- Private Functions ------------------------------------------------ */
 static int
 bcm2835_vchi_msg_queue(struct vchiq_instance *vchiq_instance, unsigned int handle,
 		       void *data,
@@ -161,14 +155,13 @@ static void vc_sm_cma_vchi_rx_ack(struct sm_instance *instance,
 	mutex_unlock(&instance->lock);
 
 	if (&cmd->head == &instance->rsp_list) {
-		//pr_debug("%s: received response %u, throw away...",
-		pr_err("%s: received response %u, throw away...",
-		       __func__,
-		       reply->trans_id);
+		dev_err(instance->vchiq_instance->state->dev,
+			"%s: received response %u, throw away...", __func__,
+			reply->trans_id);
 	} else if (reply_len > sizeof(cmd->msg)) {
-		pr_err("%s: reply too big (%u) %u, throw away...",
-		       __func__, reply_len,
-		     reply->trans_id);
+		dev_err(instance->vchiq_instance->state->dev,
+			"%s: reply too big (%u) %u, throw away...", __func__,
+			reply_len, reply->trans_id);
 	} else {
 		memcpy(cmd->msg, reply,
 		       reply_len);
@@ -217,8 +210,9 @@ static int vc_sm_cma_vchi_videocore_io(void *arg)
 						       instance->service_handle[0],
 						       cmd->msg, cmd->length);
 			if (status) {
-				pr_err("%s: failed to queue message (%d)",
-				       __func__, status);
+				dev_err(instance->vchiq_instance->state->dev,
+					"%s: failed to queue message (%d)",
+					__func__, status);
 			}
 
 			/* If no reply is needed then we're done */
@@ -283,7 +277,8 @@ static int vc_sm_cma_vchi_callback(struct vchiq_instance *vchiq_instance,
 		break;
 
 	case VCHIQ_SERVICE_CLOSED:
-		pr_info("%s: service CLOSED!!", __func__);
+		dev_info(instance->vchiq_instance->state->dev,
+			 "%s: service CLOSED!!", __func__);
 		break;
 
 	default:
@@ -301,13 +296,12 @@ struct sm_instance *vc_sm_cma_vchi_init(struct vchiq_instance *vchiq_instance,
 	struct sm_instance *instance;
 	int status;
 
-	pr_debug("%s: start", __func__);
-
 	if (num_connections > SM_MAX_NUM_CONNECTIONS) {
-		pr_err("%s: unsupported number of connections %u (max=%u)",
-		       __func__, num_connections, SM_MAX_NUM_CONNECTIONS);
+		dev_err(vchiq_instance->state->dev,
+			"%s: unsupported number of connections %u (max=%u)",
+			__func__, num_connections, SM_MAX_NUM_CONNECTIONS);
 
-		goto err_null;
+		return NULL;
 	}
 	/* Allocate memory for this instance */
 	instance = kzalloc(sizeof(*instance), GFP_KERNEL);
@@ -342,8 +336,9 @@ struct sm_instance *vc_sm_cma_vchi_init(struct vchiq_instance *vchiq_instance,
 		status = vchiq_open_service(vchiq_instance, &params,
 					    &instance->service_handle[i]);
 		if (status) {
-			pr_err("%s: failed to open VCHI service (%d)",
-			       __func__, status);
+			dev_err(vchiq_instance->state->dev,
+				"%s: failed to open VCHI service (%d)",
+				__func__, status);
 
 			goto err_close_services;
 		}
@@ -352,7 +347,8 @@ struct sm_instance *vc_sm_cma_vchi_init(struct vchiq_instance *vchiq_instance,
 	instance->io_thread = kthread_create(&vc_sm_cma_vchi_videocore_io,
 					     (void *)instance, "SMIO");
 	if (!instance->io_thread) {
-		pr_err("%s: failed to create SMIO thread", __func__);
+		dev_err(vchiq_instance->state->dev,
+			"%s: failed to create SMIO thread", __func__);
 
 		goto err_close_services;
 	}
@@ -360,7 +356,6 @@ struct sm_instance *vc_sm_cma_vchi_init(struct vchiq_instance *vchiq_instance,
 	set_user_nice(instance->io_thread, -10);
 	wake_up_process(instance->io_thread);
 
-	pr_debug("%s: success - instance %p", __func__, instance);
 	return instance;
 
 err_close_services:
@@ -369,8 +364,7 @@ err_close_services:
 			vchiq_close_service(vchiq_instance, instance->service_handle[i]);
 	}
 	kfree(instance);
-err_null:
-	pr_debug("%s: FAILED", __func__);
+
 	return NULL;
 }
 
@@ -420,15 +414,17 @@ static int vc_sm_cma_vchi_send_msg(struct sm_instance *handle,
 		return -EINVAL;
 	}
 	if (!msg) {
-		pr_err("%s: invalid msg pointer", __func__);
+		dev_err(instance->vchiq_instance->state->dev,
+			"%s: invalid msg pointer", __func__);
 		return -EINVAL;
 	}
 
 	cmd_blk =
 	    vc_vchi_cmd_create(instance, msg_id, msg, msg_size, wait_reply);
 	if (!cmd_blk) {
-		pr_err("[%s]: failed to allocate global tracking resource",
-		       __func__);
+		dev_err(instance->vchiq_instance->state->dev,
+			"[%s]: failed to allocate global tracking resource",
+			__func__);
 		return -ENOMEM;
 	}
 
@@ -496,8 +492,6 @@ int vc_sm_cma_vchi_client_version(struct sm_instance *handle,
 				  u32 *cur_trans_id)
 {
 	return vc_sm_cma_vchi_send_msg(handle, VC_SM_MSG_TYPE_CLIENT_VERSION,
-				   //msg, sizeof(*msg), result, sizeof(*result),
-				   //cur_trans_id, 1);
 				   msg, sizeof(*msg), NULL, 0,
 				   cur_trans_id, 0);
 }
