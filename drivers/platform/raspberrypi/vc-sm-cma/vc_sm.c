@@ -41,6 +41,7 @@
 #include <linux/raspberrypi/vc_sm_knl.h>
 #include <linux/slab.h>
 #include <linux/seq_file.h>
+#include <linux/xarray.h>
 
 #include "vc_sm_cma_vchi.h"
 
@@ -80,8 +81,7 @@ struct sm_state_t {
 
 	struct sm_instance *sm_handle;	/* Handle for videocore service. */
 
-	struct mutex kernelid_map_lock;	/* Mutex protecting kernelid_map */
-	struct idr kernelid_map;
+	struct xarray kernelid_map;
 
 	struct mutex map_lock;          /* Global map lock. */
 	struct list_head buffer_list;	/* List of buffer. */
@@ -110,25 +110,22 @@ static int sm_inited;
 
 static int get_kernel_id(struct vc_sm_buffer *buffer)
 {
-	int handle;
+	int handle, ret;
 
-	mutex_lock(&sm_state->kernelid_map_lock);
-	handle = idr_alloc(&sm_state->kernelid_map, buffer, 0, 0, GFP_KERNEL);
-	mutex_unlock(&sm_state->kernelid_map_lock);
+	ret = xa_alloc(&sm_state->kernelid_map, &handle, buffer, xa_limit_31b,
+		       GFP_KERNEL);
 
-	return handle;
+	return ret < 0 ? ret : handle;
 }
 
 static struct vc_sm_buffer *lookup_kernel_id(int handle)
 {
-	return idr_find(&sm_state->kernelid_map, handle);
+	return xa_load(&sm_state->kernelid_map, handle);
 }
 
 static void free_kernel_id(int handle)
 {
-	mutex_lock(&sm_state->kernelid_map_lock);
-	idr_remove(&sm_state->kernelid_map, handle);
-	mutex_unlock(&sm_state->kernelid_map_lock);
+	xa_erase(&sm_state->kernelid_map, handle);
 }
 
 static int vc_sm_cma_seq_file_show(struct seq_file *s, void *v)
@@ -722,6 +719,10 @@ vc_sm_cma_import_dmabuf_internal(struct vc_sm_privdata_t *private,
 	import.size = sg_dma_len(sgt->sgl);
 	import.allocator = current->tgid;
 	import.kernel_id = get_kernel_id(buffer);
+	if (import.kernel_id < 0) {
+		ret = import.kernel_id;
+		goto error;
+	}
 
 	memcpy(import.name, VC_SM_RESOURCE_NAME_DEFAULT,
 	       sizeof(VC_SM_RESOURCE_NAME_DEFAULT));
@@ -895,6 +896,10 @@ static int vc_sm_cma_vpu_alloc(u32 size, u32 align, const char *name,
 	 * resource is being released.
 	 */
 	buffer->kernel_id = get_kernel_id(buffer);
+	if (buffer->kernel_id < 0) {
+		ret = buffer->kernel_id;
+		goto error;
+	}
 
 	vc_sm_add_resource(sm_state->vpu_allocs, buffer);
 
@@ -1103,6 +1108,10 @@ static int vc_sm_cma_ioctl_alloc(struct vc_sm_privdata_t *private,
 	import.addr = buffer->dma_addr;
 	import.size = aligned_size;
 	import.kernel_id = get_kernel_id(buffer);
+	if (import.kernel_id < 0) {
+		ret = import.kernel_id;
+		goto error;
+	}
 
 	/* Wrap it into a videocore buffer. */
 	status = vc_sm_cma_vchi_import(sm_state->sm_handle, &import, &result,
@@ -1440,8 +1449,7 @@ static int bcm2835_vc_sm_cma_probe(struct vchiq_device *device)
 	sm_state->device = device;
 	mutex_init(&sm_state->map_lock);
 
-	mutex_init(&sm_state->kernelid_map_lock);
-	idr_init_base(&sm_state->kernelid_map, 1);
+	xa_init_flags(&sm_state->kernelid_map, XA_FLAGS_ALLOC1);
 
 	device->dev.dma_parms = devm_kzalloc(&device->dev,
 					     sizeof(*device->dev.dma_parms),
@@ -1467,7 +1475,7 @@ static void bcm2835_vc_sm_cma_remove(struct vchiq_device *device)
 	}
 
 	if (sm_state) {
-		idr_destroy(&sm_state->kernelid_map);
+		xa_destroy(&sm_state->kernelid_map);
 
 		/* Free the memory for the state structure. */
 		mutex_destroy(&sm_state->map_lock);
