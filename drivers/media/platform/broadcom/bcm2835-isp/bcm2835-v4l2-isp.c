@@ -23,6 +23,7 @@
 
 #include "bcm2835-isp-ctrls.h"
 #include "bcm2835-isp-fmts.h"
+#include "bcm2835-isp-common.h"
 
 /*
  * We want to instantiate 2 independent instances allowing 2 simultaneous users
@@ -46,10 +47,14 @@ MODULE_PARM_DESC(video_nr, "base video device numbers");
 #define BCM2835_ISP_NUM_OUTPUTS 1
 #define BCM2835_ISP_NUM_CAPTURES 2
 #define BCM2835_ISP_NUM_METADATA 1
+#define BCM2835_ISP_NUM_PARAMS 1
 
 #define BCM2835_ISP_NUM_NODES						\
 		(BCM2835_ISP_NUM_OUTPUTS + BCM2835_ISP_NUM_CAPTURES +	\
 		 BCM2835_ISP_NUM_METADATA)
+#define BCM2835_ISP_PARAMS_PAD BCM2835_ISP_NUM_NODES
+#define BCM2835_ISP_NUM_ENTITY_PADS					\
+		(BCM2835_ISP_NUM_NODES + BCM2835_ISP_NUM_PARAMS)
 
 /* Default frame dimension of 1280 pixels. */
 #define DEFAULT_DIM 1280U
@@ -128,7 +133,7 @@ struct bcm2835_isp_dev {
 	struct completion frame_cmplt;
 
 	struct bcm2835_isp_node node[BCM2835_ISP_NUM_NODES];
-	struct media_pad pad[BCM2835_ISP_NUM_NODES];
+	struct media_pad pad[BCM2835_ISP_NUM_ENTITY_PADS];
 	atomic_t num_streaming;
 
 	/* Image pipeline controls. */
@@ -136,6 +141,9 @@ struct bcm2835_isp_dev {
 	int b_gain;
 	struct dma_buf *last_ls_dmabuf;
 	struct mmal_parameter_lens_shading_v2 ls;
+
+	/* Extensible params node */
+	struct bcm2835_isp_params *params;
 };
 
 struct bcm2835_isp_buffer {
@@ -654,13 +662,14 @@ static void bcm2835_isp_node_stop_streaming(struct vb2_queue *q)
 		 * dmabuf handle for the lens shading table.  Pass a null handle
 		 * to remove that reference now.
 		 */
-		memset(&dev->ls, 0, sizeof(dev->ls));
+		memset(&dev->params->ls, 0, sizeof(dev->params->ls));
 		/* Must set a valid grid size for the FW */
-		dev->ls.grid_cell_size = 16;
+		dev->params->ls.grid_cell_size = 16;
 		set_isp_param(&dev->node[0],
 			      MMAL_PARAMETER_LENS_SHADING_OVERRIDE,
-			      &dev->ls, sizeof(dev->ls));
-		dev->last_ls_dmabuf = NULL;
+			      &dev->params->ls,
+			      sizeof(dev->params->ls));
+		dev->params->last_ls_dmabuf = NULL;
 
 		ret = vchiq_mmal_component_disable(dev->mmal_instance,
 						   dev->component);
@@ -931,8 +940,8 @@ static int populate_qdata_fmt(struct v4l2_format *f,
 	return ret;
 }
 
-static int bcm2835_isp_node_querycap(struct file *file, void *priv,
-				     struct v4l2_capability *cap)
+int bcm2835_isp_node_querycap(struct file *file, void *priv, struct
+			      v4l2_capability *cap)
 {
 	strscpy(cap->driver, BCM2835_ISP_NAME, sizeof(cap->driver));
 	strscpy(cap->card, BCM2835_ISP_NAME, sizeof(cap->card));
@@ -1539,6 +1548,7 @@ static void media_controller_unregister(struct bcm2835_isp_dev *dev)
 
 static int media_controller_register(struct bcm2835_isp_dev *dev)
 {
+	struct media_entity *entity;
 	char *name;
 	unsigned int i;
 	int ret;
@@ -1559,8 +1569,9 @@ static int media_controller_register(struct bcm2835_isp_dev *dev)
 		dev->pad[i].flags = node_is_output(&dev->node[i]) ?
 					MEDIA_PAD_FL_SINK : MEDIA_PAD_FL_SOURCE;
 	}
+	dev->pad[BCM2835_ISP_PARAMS_PAD].flags = MEDIA_PAD_FL_SINK;
 
-	ret = media_entity_pads_init(&dev->entity, BCM2835_ISP_NUM_NODES,
+	ret = media_entity_pads_init(&dev->entity, BCM2835_ISP_NUM_ENTITY_PADS,
 				     dev->pad);
 	if (ret)
 		goto done;
@@ -1572,7 +1583,7 @@ static int media_controller_register(struct bcm2835_isp_dev *dev)
 	dev->media_entity_registered = true;
 
 	for (i = 0; i < BCM2835_ISP_NUM_NODES; i++) {
-		struct media_entity *entity = &dev->node[i].vfd.entity;
+		entity = &dev->node[i].vfd.entity;
 		int output = node_is_output(&dev->node[i]);
 
 		if (output)
@@ -1589,6 +1600,13 @@ static int media_controller_register(struct bcm2835_isp_dev *dev)
 			goto done;
 	}
 
+	entity = &dev->params->vdev.entity;
+	ret = media_create_pad_link(entity, 0, &dev->entity, BCM2835_ISP_PARAMS_PAD,
+				    MEDIA_LNK_FL_IMMUTABLE |
+				    MEDIA_LNK_FL_ENABLED);
+	if (ret)
+		goto done;
+
 	ret = media_device_register(&dev->mdev);
 	if (!ret)
 		dev->media_device_registered = true;
@@ -1599,6 +1617,8 @@ done:
 static void bcm2835_isp_remove_instance(struct bcm2835_isp_dev *dev)
 {
 	unsigned int i;
+
+	bcm2835_isp_params_unregister(dev->params);
 
 	for (i = 0; i < BCM2835_ISP_NUM_NODES; i++)
 		bcm2835_unregister_node(&dev->node[i]);
@@ -1675,6 +1695,14 @@ static int bcm2835_isp_probe_instance(struct vchiq_device *device,
 		if (ret)
 			return ret;
 	}
+
+	/* Register extensible params node */
+	dev->params = bcm2835_isp_params_register(&dev->v4l2_dev, dev->dev,
+						  dev->mmal_instance,
+						  &dev->component->input[0],
+						  video_nr[instance] + BCM2835_ISP_NUM_NODES);
+	if (IS_ERR(dev->params))
+		return PTR_ERR(dev->params);
 
 	ret = media_controller_register(dev);
 	if (ret)
