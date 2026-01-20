@@ -1239,7 +1239,8 @@ static long subdev_do_ioctl(struct file *file, unsigned int cmd, void *arg,
 
 		/* Filter out unsupported capabilities */
 		client_cap->capabilities &= (V4L2_SUBDEV_CLIENT_CAP_STREAMS |
-					     V4L2_SUBDEV_CLIENT_CAP_INTERVAL_USES_WHICH);
+					     V4L2_SUBDEV_CLIENT_CAP_INTERVAL_USES_WHICH |
+					     V4L2_SUBDEV_CLIENT_CAP_COMMON_RAW_SENSOR);
 
 		subdev_fh->ci.client_caps = client_cap->capabilities;
 
