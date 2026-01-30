@@ -738,7 +738,7 @@ static int dcmi_pipeline_s_fmt(struct stm32_dcmi *dcmi,
 			format->format.width, format->format.height);
 
 		fmt.pad = pad->index;
-		ret = v4l2_subdev_call(subdev, pad, set_fmt, NULL, &fmt);
+		ret = v4l2_subdev_call(subdev, pad, set_fmt, NULL, NULL, &fmt);
 		if (ret < 0) {
 			dev_err(dcmi->dev, "%s: Failed to set format 0x%x %ux%u on \"%s\":%d pad (%d)\n",
 				__func__, format->format.code,
@@ -1247,7 +1247,7 @@ static int dcmi_get_sensor_bounds(struct stm32_dcmi *dcmi,
 	/*
 	 * Get sensor bounds first
 	 */
-	ret = v4l2_subdev_call(dcmi->source, pad, get_selection,
+	ret = v4l2_subdev_call(dcmi->source, pad, get_selection, NULL,
 			       NULL, &bounds);
 	if (!ret)
 		*r = bounds.r;

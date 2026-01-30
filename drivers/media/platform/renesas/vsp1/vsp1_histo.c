@@ -185,6 +185,7 @@ static int histo_enum_frame_size(struct v4l2_subdev *subdev,
 }
 
 static int histo_get_selection(struct v4l2_subdev *subdev,
+			       const struct v4l2_subdev_client_info *ci,
 			       struct v4l2_subdev_state *sd_state,
 			       struct v4l2_subdev_selection *sel)
 {
@@ -237,6 +238,7 @@ static int histo_get_selection(struct v4l2_subdev *subdev,
 }
 
 static int histo_set_crop(struct v4l2_subdev *subdev,
+			  const struct v4l2_subdev_client_info *ci,
 			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_selection *sel)
 {
@@ -259,6 +261,7 @@ static int histo_set_crop(struct v4l2_subdev *subdev,
 }
 
 static int histo_set_compose(struct v4l2_subdev *subdev,
+			     const struct v4l2_subdev_client_info *ci,
 			     struct v4l2_subdev_state *sd_state,
 			     struct v4l2_subdev_selection *sel)
 {
@@ -306,6 +309,7 @@ static int histo_set_compose(struct v4l2_subdev *subdev,
 }
 
 static int histo_set_selection(struct v4l2_subdev *subdev,
+			       const struct v4l2_subdev_client_info *ci,
 			       struct v4l2_subdev_state *sd_state,
 			       struct v4l2_subdev_selection *sel)
 {
@@ -330,6 +334,7 @@ static int histo_set_selection(struct v4l2_subdev *subdev,
 }
 
 static int histo_set_format(struct v4l2_subdev *subdev,
+			    const struct v4l2_subdev_client_info *ci,
 			    struct v4l2_subdev_state *sd_state,
 			    struct v4l2_subdev_format *fmt)
 {
