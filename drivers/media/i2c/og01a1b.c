@@ -759,6 +759,7 @@ static int og01a1b_set_stream(struct v4l2_subdev *sd, int enable)
 }
 
 static int og01a1b_set_format(struct v4l2_subdev *sd,
+			      const struct v4l2_subdev_client_info *ci,
 			      struct v4l2_subdev_state *sd_state,
 			      struct v4l2_subdev_format *fmt)
 {

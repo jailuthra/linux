@@ -1876,6 +1876,7 @@ static int rcsi2_disable_streams(struct v4l2_subdev *sd,
 }
 
 static int rcsi2_set_pad_format(struct v4l2_subdev *sd,
+				const struct v4l2_subdev_client_info *ci,
 				struct v4l2_subdev_state *state,
 				struct v4l2_subdev_format *format)
 {

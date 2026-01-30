@@ -1139,6 +1139,7 @@ static int vd55g1_patch(struct vd55g1 *sensor)
 }
 
 static int vd55g1_get_selection(struct v4l2_subdev *sd,
+				const struct v4l2_subdev_client_info *ci,
 				struct v4l2_subdev_state *sd_state,
 				struct v4l2_subdev_selection *sel)
 {
@@ -1213,6 +1214,7 @@ static int vd55g1_new_format_change_controls(struct vd55g1 *sensor,
 }
 
 static int vd55g1_set_pad_fmt(struct v4l2_subdev *sd,
+			      const struct v4l2_subdev_client_info *ci,
 			      struct v4l2_subdev_state *sd_state,
 			      struct v4l2_subdev_format *sd_fmt)
 {
@@ -1278,7 +1280,7 @@ static int vd55g1_init_state(struct v4l2_subdev *sd,
 			      vd55g1_mbus_codes[VD55G1_MBUS_CODE_DEF].code,
 			      &fmt.format);
 
-	return vd55g1_set_pad_fmt(sd, sd_state, &fmt);
+	return vd55g1_set_pad_fmt(sd, NULL, sd_state, &fmt);
 }
 
 static int vd55g1_enum_frame_size(struct v4l2_subdev *sd,

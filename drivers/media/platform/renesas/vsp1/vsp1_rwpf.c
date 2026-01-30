@@ -57,6 +57,7 @@ static int vsp1_rwpf_enum_frame_size(struct v4l2_subdev *subdev,
 }
 
 static int vsp1_rwpf_set_format(struct v4l2_subdev *subdev,
+				const struct v4l2_subdev_client_info *ci,
 				struct v4l2_subdev_state *sd_state,
 				struct v4l2_subdev_format *fmt)
 {
@@ -166,6 +167,7 @@ done:
 }
 
 static int vsp1_rwpf_get_selection(struct v4l2_subdev *subdev,
+				   const struct v4l2_subdev_client_info *ci,
 				   struct v4l2_subdev_state *sd_state,
 				   struct v4l2_subdev_selection *sel)
 {
@@ -213,6 +215,7 @@ done:
 }
 
 static int vsp1_rwpf_set_selection(struct v4l2_subdev *subdev,
+				   const struct v4l2_subdev_client_info *ci,
 				   struct v4l2_subdev_state *sd_state,
 				   struct v4l2_subdev_selection *sel)
 {
