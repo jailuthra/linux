@@ -191,6 +191,7 @@ static int ipu7_isys_csi2_enable_stream(struct ipu7_isys_csi2 *csi2)
 }
 
 static int ipu7_isys_csi2_set_sel(struct v4l2_subdev *sd,
+				  const struct v4l2_subdev_client_info *ci,
 				  struct v4l2_subdev_state *state,
 				  struct v4l2_subdev_selection *sel)
 {
@@ -242,6 +243,7 @@ static int ipu7_isys_csi2_set_sel(struct v4l2_subdev *sd,
 }
 
 static int ipu7_isys_csi2_get_sel(struct v4l2_subdev *sd,
+				  const struct v4l2_subdev_client_info *ci,
 				  struct v4l2_subdev_state *state,
 				  struct v4l2_subdev_selection *sel)
 {

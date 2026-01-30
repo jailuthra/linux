@@ -797,7 +797,8 @@ static int fimc_pipeline_try_format(struct fimc_ctx *ctx,
 			sd = media_entity_to_v4l2_subdev(me);
 
 			sfmt.pad = 0;
-			ret = v4l2_subdev_call(sd, pad, set_fmt, NULL, &sfmt);
+			ret = v4l2_subdev_call(sd, pad, set_fmt, NULL, NULL,
+					       &sfmt);
 			if (ret)
 				return ret;
 
@@ -805,6 +806,7 @@ static int fimc_pipeline_try_format(struct fimc_ctx *ctx,
 				sfmt.pad = me->num_pads - 1;
 				mf->code = tfmt->code;
 				ret = v4l2_subdev_call(sd, pad, set_fmt, NULL,
+									NULL,
 									&sfmt);
 				if (ret)
 					return ret;
@@ -1519,6 +1521,7 @@ static int fimc_subdev_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int fimc_subdev_set_fmt(struct v4l2_subdev *sd,
+			       const struct v4l2_subdev_client_info *ci,
 			       struct v4l2_subdev_state *sd_state,
 			       struct v4l2_subdev_format *fmt)
 {
@@ -1585,6 +1588,7 @@ static int fimc_subdev_set_fmt(struct v4l2_subdev *sd,
 }
 
 static int fimc_subdev_get_selection(struct v4l2_subdev *sd,
+				     const struct v4l2_subdev_client_info *ci,
 				     struct v4l2_subdev_state *sd_state,
 				     struct v4l2_subdev_selection *sel)
 {
@@ -1641,6 +1645,7 @@ static int fimc_subdev_get_selection(struct v4l2_subdev *sd,
 }
 
 static int fimc_subdev_set_selection(struct v4l2_subdev *sd,
+				     const struct v4l2_subdev_client_info *ci,
 				     struct v4l2_subdev_state *sd_state,
 				     struct v4l2_subdev_selection *sel)
 {
