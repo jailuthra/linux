@@ -732,8 +732,8 @@ static int __subdev_set_format(struct unicam_device *dev,
 
 	sd_fmt.format = *fmt;
 
-	ret = v4l2_subdev_call(dev->sensor, pad, set_fmt, dev->sensor_state,
-			       &sd_fmt);
+	ret = v4l2_subdev_call(dev->sensor, pad, set_fmt, NULL,
+			       dev->sensor_state, &sd_fmt);
 	if (ret < 0)
 		return ret;
 
@@ -1290,8 +1290,8 @@ static int unicam_try_fmt_vid_cap(struct file *file, void *priv,
 	 */
 	mbus_fmt->field = V4L2_FIELD_NONE;
 
-	ret = v4l2_subdev_call(dev->sensor, pad, set_fmt, dev->sensor_state,
-			       &sd_fmt);
+	ret = v4l2_subdev_call(dev->sensor, pad, set_fmt, NULL,
+			       dev->sensor_state, &sd_fmt);
 	if (ret && ret != -ENOIOCTLCMD && ret != -ENODEV)
 		return ret;
 
@@ -1312,7 +1312,8 @@ static int unicam_try_fmt_vid_cap(struct file *file, void *priv,
 			mbus_fmt->code = fmt->code;
 
 			ret = v4l2_subdev_call(dev->sensor, pad, set_fmt,
-					       dev->sensor_state, &sd_fmt);
+					       NULL, dev->sensor_state,
+					       &sd_fmt);
 			if (ret && ret != -ENOIOCTLCMD && ret != -ENODEV)
 				return ret;
 
@@ -1595,7 +1596,8 @@ static int unicam_s_selection(struct file *file, void *priv,
 	if (sel->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 
-	return v4l2_subdev_call(dev->sensor, pad, set_selection, NULL, &sdsel);
+	return v4l2_subdev_call(dev->sensor, pad, set_selection, NULL, NULL,
+				&sdsel);
 }
 
 static int unicam_g_selection(struct file *file, void *priv,
@@ -1612,7 +1614,8 @@ static int unicam_g_selection(struct file *file, void *priv,
 	if (sel->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 
-	ret = v4l2_subdev_call(dev->sensor, pad, get_selection, NULL, &sdsel);
+	ret = v4l2_subdev_call(dev->sensor, pad, get_selection, NULL, NULL,
+			       &sdsel);
 	if (!ret)
 		sel->r = sdsel.r;
 

@@ -912,7 +912,7 @@ static void atomisp_init_sensor(struct atomisp_input_subdev *input)
 
 	sel.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	sel.target = V4L2_SEL_TGT_NATIVE_SIZE;
-	err = v4l2_subdev_call(input->sensor, pad, get_selection,
+	err = v4l2_subdev_call(input->sensor, pad, get_selection, NULL,
 			       act_sd_state, &sel);
 	if (err)
 		goto unlock_act_sd_state;
@@ -921,7 +921,7 @@ static void atomisp_init_sensor(struct atomisp_input_subdev *input)
 
 	sel.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	sel.target = V4L2_SEL_TGT_CROP_DEFAULT;
-	err = v4l2_subdev_call(input->sensor, pad, get_selection,
+	err = v4l2_subdev_call(input->sensor, pad, get_selection, NULL,
 			       act_sd_state, &sel);
 	if (err)
 		goto unlock_act_sd_state;
@@ -967,7 +967,7 @@ static void atomisp_init_sensor(struct atomisp_input_subdev *input)
 	if (!input->sensor->state_lock)
 		v4l2_subdev_lock_state(input->try_sd_state);
 
-	err = v4l2_subdev_call(input->sensor, pad, set_selection,
+	err = v4l2_subdev_call(input->sensor, pad, set_selection, NULL,
 			       input->try_sd_state, &sel);
 
 	if (!input->sensor->state_lock)
@@ -979,7 +979,7 @@ static void atomisp_init_sensor(struct atomisp_input_subdev *input)
 	sel.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	sel.target = V4L2_SEL_TGT_CROP;
 	sel.r = input->native_rect;
-	err = v4l2_subdev_call(input->sensor, pad, set_selection,
+	err = v4l2_subdev_call(input->sensor, pad, set_selection, NULL,
 			       act_sd_state, &sel);
 	if (err)
 		goto unlock_act_sd_state;

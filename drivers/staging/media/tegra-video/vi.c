@@ -481,7 +481,7 @@ static int __tegra_channel_try_format(struct tegra_vi_channel *chan,
 			try_crop->height = 0;
 		} else {
 			ret = v4l2_subdev_call(subdev, pad, get_selection,
-					       NULL, &sdsel);
+					       NULL, NULL, &sdsel);
 			if (ret) {
 				ret = -EINVAL;
 				goto out_free;
@@ -495,7 +495,7 @@ static int __tegra_channel_try_format(struct tegra_vi_channel *chan,
 		try_crop->height = fse.max_height;
 	}
 
-	ret = v4l2_subdev_call(subdev, pad, set_fmt, sd_state, &fmt);
+	ret = v4l2_subdev_call(subdev, pad, set_fmt, NULL, sd_state, &fmt);
 	if (ret < 0)
 		goto out_free;
 
@@ -549,7 +549,7 @@ static int tegra_channel_set_format(struct file *file, void *fh,
 	fmt.pad = 0;
 	v4l2_fill_mbus_format(&fmt.format, pix, fmtinfo->code);
 	subdev = tegra_channel_get_remote_source_subdev(chan);
-	ret = v4l2_subdev_call(subdev, pad, set_fmt, NULL, &fmt);
+	ret = v4l2_subdev_call(subdev, pad, set_fmt, NULL, NULL, &fmt);
 	if (ret < 0)
 		return ret;
 
@@ -632,7 +632,7 @@ static int tegra_channel_g_selection(struct file *file, void *priv,
 	 * Try the get selection operation and fallback to get format if not
 	 * implemented.
 	 */
-	ret = v4l2_subdev_call(subdev, pad, get_selection, NULL, &sdsel);
+	ret = v4l2_subdev_call(subdev, pad, get_selection, NULL, NULL, &sdsel);
 	if (!ret)
 		sel->r = sdsel.r;
 	if (ret != -ENOIOCTLCMD)
@@ -673,7 +673,7 @@ static int tegra_channel_s_selection(struct file *file, void *fh,
 	if (vb2_is_busy(&chan->queue))
 		return -EBUSY;
 
-	ret = v4l2_subdev_call(subdev, pad, set_selection, NULL, &sdsel);
+	ret = v4l2_subdev_call(subdev, pad, set_selection, NULL, NULL, &sdsel);
 	if (!ret) {
 		sel->r = sdsel.r;
 		/*
