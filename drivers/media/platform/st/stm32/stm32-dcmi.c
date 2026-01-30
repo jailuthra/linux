@@ -1224,7 +1224,8 @@ static int dcmi_set_sensor_format(struct stm32_dcmi *dcmi,
 	}
 
 	v4l2_fill_mbus_format(&format.format, pix, sd_fmt->mbus_code);
-	ret = v4l2_subdev_call_state_try(dcmi->source, pad, set_fmt, &format);
+	ret = v4l2_subdev_call_state_try(dcmi->source, pad, set_fmt, NULL,
+					 &format);
 	if (ret < 0)
 		return ret;
 
