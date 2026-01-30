@@ -763,7 +763,7 @@ static int og01a1b_init_state(struct v4l2_subdev *sd,
 		},
 	};
 
-	og01a1b_set_format(sd, state, &fmt);
+	og01a1b_set_format(sd, NULL, state, &fmt);
 
 	return 0;
 }
