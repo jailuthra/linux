@@ -93,8 +93,6 @@ struct bcm2835_isp_node {
 	struct vchiq_mmal_port *port;
 	struct video_device vfd;
 	struct media_pad pad;
-	struct media_intf_devnode *intf_devnode;
-	struct media_link *intf_link;
 	struct mutex lock; /* top level device node lock */
 	struct mutex queue_lock;
 
@@ -111,7 +109,6 @@ struct bcm2835_isp_node {
 	struct bcm2835_isp_dev *dev;
 
 	bool registered;
-	bool media_node_registered;
 };
 
 /*
@@ -1463,6 +1460,11 @@ static int bcm2835_isp_register_node(struct bcm2835_isp_dev *dev,
 	snprintf(vfd->name, sizeof(node->vfd.name), "%s-%s%d", BCM2835_ISP_NAME,
 		 node->name, node->id);
 
+	node->pad.flags = node_is_output(node) ? MEDIA_PAD_FL_SOURCE : MEDIA_PAD_FL_SINK;
+	ret = media_entity_pads_init(&node->vfd.entity, 1, &node->pad);
+	if (ret)
+		goto ctrl_cleanup;
+
 	ret = video_register_device(vfd, VFL_TYPE_VIDEO, video_nr[instance]);
 	if (ret) {
 		v4l2_err(&dev->v4l2_dev,
@@ -1516,8 +1518,6 @@ static void bcm2835_unregister_node(struct bcm2835_isp_node *node)
 
 static void media_controller_unregister(struct bcm2835_isp_dev *dev)
 {
-	unsigned int i;
-
 	v4l2_info(&dev->v4l2_dev, "Unregister from media controller\n");
 
 	if (dev->media_device_registered) {
@@ -1534,99 +1534,7 @@ static void media_controller_unregister(struct bcm2835_isp_dev *dev)
 		dev->media_entity_registered = false;
 	}
 
-	for (i = 0; i < BCM2835_ISP_NUM_NODES; i++) {
-		struct bcm2835_isp_node *node = &dev->node[i];
-
-		if (node->media_node_registered) {
-			media_remove_intf_links(node->intf_link->intf);
-			media_entity_remove_links(&dev->node[i].vfd.entity);
-			media_devnode_remove(node->intf_devnode);
-			media_device_unregister_entity(&node->vfd.entity);
-			kfree(node->vfd.entity.name);
-		}
-		node->media_node_registered = false;
-	}
-
 	dev->v4l2_dev.mdev = NULL;
-}
-
-static int media_controller_register_node(struct bcm2835_isp_dev *dev, int num)
-{
-	struct bcm2835_isp_node *node = &dev->node[num];
-	struct media_entity *entity = &node->vfd.entity;
-	int output = node_is_output(node);
-	char *name;
-	int ret;
-
-	v4l2_info(&dev->v4l2_dev,
-		  "Register %s node %d with media controller\n",
-		  output ? "output" : "capture", num);
-	entity->obj_type = MEDIA_ENTITY_TYPE_VIDEO_DEVICE;
-	entity->function = MEDIA_ENT_F_IO_V4L;
-	entity->info.dev.major = VIDEO_MAJOR;
-	entity->info.dev.minor = node->vfd.minor;
-	name = kmalloc(BCM2835_ISP_ENTITY_NAME_LEN, GFP_KERNEL);
-	if (!name) {
-		ret = -ENOMEM;
-		goto error_no_mem;
-	}
-	snprintf(name, BCM2835_ISP_ENTITY_NAME_LEN, "%s0-%s%d",
-		 BCM2835_ISP_NAME, output ? "output" : "capture", num);
-	entity->name = name;
-	node->pad.flags = output ? MEDIA_PAD_FL_SOURCE : MEDIA_PAD_FL_SINK;
-	ret = media_entity_pads_init(entity, 1, &node->pad);
-	if (ret)
-		goto error_pads_init;
-	ret = media_device_register_entity(&dev->mdev, entity);
-	if (ret)
-		goto error_register_entity;
-
-	node->intf_devnode = media_devnode_create(&dev->mdev,
-						  MEDIA_INTF_T_V4L_VIDEO, 0,
-						  VIDEO_MAJOR, node->vfd.minor);
-	if (!node->intf_devnode) {
-		ret = -ENOMEM;
-		goto error_devnode_create;
-	}
-
-	node->intf_link = media_create_intf_link(entity,
-						 &node->intf_devnode->intf,
-						 MEDIA_LNK_FL_IMMUTABLE |
-						 MEDIA_LNK_FL_ENABLED);
-	if (!node->intf_link) {
-		ret = -ENOMEM;
-		goto error_create_intf_link;
-	}
-
-	if (output)
-		ret = media_create_pad_link(entity, 0, &dev->entity, num,
-					    MEDIA_LNK_FL_IMMUTABLE |
-						    MEDIA_LNK_FL_ENABLED);
-	else
-		ret = media_create_pad_link(&dev->entity, num, entity, 0,
-					    MEDIA_LNK_FL_IMMUTABLE |
-					    MEDIA_LNK_FL_ENABLED);
-	if (ret)
-		goto error_create_pad_link;
-
-	dev->node[num].media_node_registered = true;
-	return 0;
-
-error_create_pad_link:
-	media_remove_intf_links(&node->intf_devnode->intf);
-error_create_intf_link:
-	media_devnode_remove(node->intf_devnode);
-error_devnode_create:
-	media_device_unregister_entity(&node->vfd.entity);
-error_register_entity:
-error_pads_init:
-	kfree(entity->name);
-	entity->name = NULL;
-error_no_mem:
-	if (ret)
-		v4l2_info(&dev->v4l2_dev, "Error registering node\n");
-
-	return ret;
 }
 
 static int media_controller_register(struct bcm2835_isp_dev *dev)
@@ -1636,25 +1544,16 @@ static int media_controller_register(struct bcm2835_isp_dev *dev)
 	int ret;
 
 	v4l2_dbg(2, debug, &dev->v4l2_dev, "Registering with media controller\n");
-	dev->mdev.dev = dev->dev;
-	strscpy(dev->mdev.model, "bcm2835-isp",
-		sizeof(dev->mdev.model));
-	strscpy(dev->mdev.bus_info, "platform:bcm2835-isp",
-		sizeof(dev->mdev.bus_info));
-	media_device_init(&dev->mdev);
-	dev->v4l2_dev.mdev = &dev->mdev;
-
-	v4l2_dbg(2, debug, &dev->v4l2_dev, "Register entity for nodes\n");
 
 	name = kmalloc(BCM2835_ISP_ENTITY_NAME_LEN, GFP_KERNEL);
 	if (!name) {
 		ret = -ENOMEM;
 		goto done;
 	}
-	snprintf(name, BCM2835_ISP_ENTITY_NAME_LEN, "bcm2835_isp0");
+	snprintf(name, BCM2835_ISP_ENTITY_NAME_LEN, "bcm2835-isp");
 	dev->entity.name = name;
 	dev->entity.obj_type = MEDIA_ENTITY_TYPE_BASE;
-	dev->entity.function = MEDIA_ENT_F_PROC_VIDEO_SCALER;
+	dev->entity.function = MEDIA_ENT_F_PROC_VIDEO_ISP;
 
 	for (i = 0; i < BCM2835_ISP_NUM_NODES; i++) {
 		dev->pad[i].flags = node_is_output(&dev->node[i]) ?
@@ -1671,8 +1570,21 @@ static int media_controller_register(struct bcm2835_isp_dev *dev)
 		goto done;
 
 	dev->media_entity_registered = true;
+
 	for (i = 0; i < BCM2835_ISP_NUM_NODES; i++) {
-		ret = media_controller_register_node(dev, i);
+		struct media_entity *entity = &dev->node[i].vfd.entity;
+		int output = node_is_output(&dev->node[i]);
+
+		if (output)
+			ret = media_create_pad_link(entity, 0,
+						    &dev->entity, i,
+						    MEDIA_LNK_FL_IMMUTABLE |
+						    MEDIA_LNK_FL_ENABLED);
+		else
+			ret = media_create_pad_link(&dev->entity, i,
+						    entity, 0,
+						    MEDIA_LNK_FL_IMMUTABLE |
+						    MEDIA_LNK_FL_ENABLED);
 		if (ret)
 			goto done;
 	}
@@ -1688,12 +1600,11 @@ static void bcm2835_isp_remove_instance(struct bcm2835_isp_dev *dev)
 {
 	unsigned int i;
 
-	media_controller_unregister(dev);
-
 	for (i = 0; i < BCM2835_ISP_NUM_NODES; i++)
 		bcm2835_unregister_node(&dev->node[i]);
 
 	v4l2_device_unregister(&dev->v4l2_dev);
+	media_controller_unregister(dev);
 
 	if (dev->component)
 		vchiq_mmal_component_finalise(dev->mmal_instance,
@@ -1716,6 +1627,14 @@ static int bcm2835_isp_probe_instance(struct vchiq_device *device,
 
 	*dev_int = dev;
 	dev->dev = &device->dev;
+	dev->mdev.dev = &device->dev;
+
+	strscpy(dev->mdev.model, BCM2835_ISP_NAME, sizeof(dev->mdev.model));
+	snprintf(dev->mdev.bus_info, sizeof(dev->mdev.bus_info), "platform:%s",
+		 BCM2835_ISP_NAME);
+	media_device_init(&dev->mdev);
+
+	dev->v4l2_dev.mdev = &dev->mdev;
 
 	ret = v4l2_device_register(&device->dev, &dev->v4l2_dev);
 	if (ret)
