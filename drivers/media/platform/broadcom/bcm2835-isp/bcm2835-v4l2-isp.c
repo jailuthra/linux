@@ -13,15 +13,11 @@
 #include <linux/raspberrypi/mmal-parameters.h>
 #include <linux/raspberrypi/mmal-vchiq.h>
 #include <linux/raspberrypi/vchiq_bus.h>
-#include <linux/raspberrypi/vc_sm_knl.h>
 
-#include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
-#include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf2-dma-contig.h>
 
-#include "bcm2835-isp-ctrls.h"
 #include "bcm2835-isp-fmts.h"
 #include "bcm2835-isp-common.h"
 
@@ -123,7 +119,6 @@ struct bcm2835_isp_node {
 struct bcm2835_isp_dev {
 	struct v4l2_device v4l2_dev;
 	struct device *dev;
-	struct v4l2_ctrl_handler ctrl_handler;
 	struct media_device mdev;
 	struct media_entity entity;
 	bool media_device_registered;
@@ -135,12 +130,6 @@ struct bcm2835_isp_dev {
 	struct bcm2835_isp_node node[BCM2835_ISP_NUM_NODES];
 	struct media_pad pad[BCM2835_ISP_NUM_ENTITY_PADS];
 	atomic_t num_streaming;
-
-	/* Image pipeline controls. */
-	int r_gain;
-	int b_gain;
-	struct dma_buf *last_ls_dmabuf;
-	struct mmal_parameter_lens_shading_v2 ls;
 
 	/* Extensible params node */
 	struct bcm2835_isp_params *params;
@@ -189,29 +178,6 @@ static int set_isp_param(struct bcm2835_isp_node *node, u32 parameter,
 
 	return vchiq_mmal_port_parameter_set(dev->mmal_instance, node->port,
 					     parameter, value, value_size);
-}
-
-static int set_wb_gains(struct bcm2835_isp_node *node)
-{
-	struct bcm2835_isp_dev *dev = node_get_dev(node);
-	struct mmal_parameter_awbgains gains = {
-		.r_gain = { dev->r_gain, 1000 },
-		.b_gain = { dev->b_gain, 1000 }
-	};
-
-	return set_isp_param(node, MMAL_PARAMETER_CUSTOM_AWB_GAINS,
-			     &gains, sizeof(gains));
-}
-
-static int set_digital_gain(struct bcm2835_isp_node *node, uint32_t gain)
-{
-	struct s32_fract digital_gain = {
-		.numerator = gain,
-		.denominator = 1000
-	};
-
-	return set_isp_param(node, MMAL_PARAMETER_DIGITAL_GAIN,
-			     &digital_gain, sizeof(digital_gain));
 }
 
 static const struct bcm2835_isp_fmt *get_fmt(u32 mmal_fmt)
@@ -720,148 +686,6 @@ static inline unsigned int get_sizeimage(int bpl, int width, int height,
 	return (bpl * height * fmt->size_multiplier_x2) >> 1;
 }
 
-static int map_ls_table(struct bcm2835_isp_dev *dev, struct dma_buf *dmabuf,
-			const struct bcm2835_isp_lens_shading *v4l2_ls)
-{
-	void *vcsm_handle;
-	int ret;
-
-	if (IS_ERR_OR_NULL(dmabuf))
-		return -EINVAL;
-
-	/*
-	 * struct bcm2835_isp_lens_shading and struct
-	 * mmal_parameter_lens_shading_v2 match so that we can do a
-	 * simple memcpy here.
-	 * Only the dmabuf to the actual table needs any manipulation.
-	 */
-	memcpy(&dev->ls, v4l2_ls, sizeof(dev->ls));
-	ret = vc_sm_cma_import_dmabuf(dmabuf, &vcsm_handle);
-	if (ret) {
-		dma_buf_put(dmabuf);
-		return ret;
-	}
-
-	dev->ls.mem_handle_table = vc_sm_cma_int_handle(vcsm_handle);
-	dev->last_ls_dmabuf = dmabuf;
-
-	vc_sm_cma_free(vcsm_handle);
-
-	return 0;
-}
-
-static int bcm2835_isp_s_ctrl(struct v4l2_ctrl *ctrl)
-{
-	struct bcm2835_isp_dev *dev =
-	      container_of(ctrl->handler, struct bcm2835_isp_dev, ctrl_handler);
-	struct bcm2835_isp_node *node = &dev->node[0];
-	int ret = 0;
-
-	/*
-	 * The ISP firmware driver will ensure these settings are applied on
-	 * a frame boundary, so we are safe to write them as they come in.
-	 *
-	 * Note that the bcm2835_isp_* param structures are identical to the
-	 * mmal-parameters.h definitions.  This avoids the need for unnecessary
-	 * field-by-field copying between structures.
-	 */
-	switch (ctrl->id) {
-	case V4L2_CID_RED_BALANCE:
-		dev->r_gain = ctrl->val;
-		ret = set_wb_gains(node);
-		break;
-	case V4L2_CID_BLUE_BALANCE:
-		dev->b_gain = ctrl->val;
-		ret = set_wb_gains(node);
-		break;
-	case V4L2_CID_DIGITAL_GAIN:
-		ret = set_digital_gain(node, ctrl->val);
-		break;
-	case V4L2_CID_USER_BCM2835_ISP_CC_MATRIX:
-		ret = set_isp_param(node, MMAL_PARAMETER_CUSTOM_CCM,
-				    ctrl->p_new.p_u8,
-				    sizeof(struct bcm2835_isp_custom_ccm));
-		break;
-	case V4L2_CID_USER_BCM2835_ISP_LENS_SHADING:
-	{
-		struct bcm2835_isp_lens_shading *v4l2_ls;
-
-		v4l2_ls = (struct bcm2835_isp_lens_shading *)ctrl->p_new.p_u8;
-		struct dma_buf *dmabuf = dma_buf_get(v4l2_ls->dmabuf);
-
-		if (dmabuf != dev->last_ls_dmabuf)
-			ret = map_ls_table(dev, dmabuf, v4l2_ls);
-
-		if (!ret && dev->ls.mem_handle_table)
-			/*
-			 * The VPU will take a reference on the vcsm handle,
-			 * which in turn will retain a reference on the dmabuf.
-			 * This code can therefore safely release all
-			 * references to the buffer.
-			 */
-			ret =
-			set_isp_param(node,
-				      MMAL_PARAMETER_LENS_SHADING_OVERRIDE,
-				      &dev->ls, sizeof(dev->ls));
-		else
-			ret = -EINVAL;
-
-		dma_buf_put(dmabuf);
-		break;
-	}
-	case V4L2_CID_USER_BCM2835_ISP_BLACK_LEVEL:
-		ret = set_isp_param(node, MMAL_PARAMETER_BLACK_LEVEL,
-				    ctrl->p_new.p_u8,
-				    sizeof(struct bcm2835_isp_black_level));
-		break;
-	case V4L2_CID_USER_BCM2835_ISP_GEQ:
-		ret = set_isp_param(node, MMAL_PARAMETER_GEQ,
-				    ctrl->p_new.p_u8,
-				    sizeof(struct bcm2835_isp_geq));
-		break;
-	case V4L2_CID_USER_BCM2835_ISP_GAMMA:
-		ret = set_isp_param(node, MMAL_PARAMETER_GAMMA,
-				    ctrl->p_new.p_u8,
-				    sizeof(struct bcm2835_isp_gamma));
-		break;
-	case V4L2_CID_USER_BCM2835_ISP_DENOISE:
-		ret = set_isp_param(node, MMAL_PARAMETER_DENOISE,
-				    ctrl->p_new.p_u8,
-				    sizeof(struct bcm2835_isp_denoise));
-		break;
-	case V4L2_CID_USER_BCM2835_ISP_CDN:
-		ret = set_isp_param(node, MMAL_PARAMETER_CDN,
-				    ctrl->p_new.p_u8,
-				    sizeof(struct bcm2835_isp_cdn));
-		break;
-	case V4L2_CID_USER_BCM2835_ISP_SHARPEN:
-		ret = set_isp_param(node, MMAL_PARAMETER_SHARPEN,
-				    ctrl->p_new.p_u8,
-				    sizeof(struct bcm2835_isp_sharpen));
-		break;
-	case V4L2_CID_USER_BCM2835_ISP_DPC:
-		ret = set_isp_param(node, MMAL_PARAMETER_DPC,
-				    ctrl->p_new.p_u8,
-				    sizeof(struct bcm2835_isp_dpc));
-		break;
-	default:
-		v4l2_info(&dev->v4l2_dev, "Unrecognised control\n");
-		ret = -EINVAL;
-	}
-
-	if (ret) {
-		v4l2_err(&dev->v4l2_dev, "%s: Failed setting ctrl \"%s\" (%08x), err %d\n",
-			 __func__, ctrl->name, ctrl->id, ret);
-		ret = -EIO;
-	}
-
-	return ret;
-}
-
-static const struct v4l2_ctrl_ops bcm2835_isp_ctrl_ops = {
-	.s_ctrl = bcm2835_isp_s_ctrl,
-};
-
 static const struct v4l2_file_operations bcm2835_isp_fops = {
 	.owner		= THIS_MODULE,
 	.open		= v4l2_fh_open,
@@ -1191,20 +1015,6 @@ static int bcm2835_isp_node_g_selection(struct file *file, void *fh,
 	return ret;
 }
 
-static int bcm3285_isp_subscribe_event(struct v4l2_fh *fh,
-				       const struct v4l2_event_subscription *s)
-{
-	switch (s->type) {
-	/* Cannot change source parameters dynamically at runtime. */
-	case V4L2_EVENT_SOURCE_CHANGE:
-		return -EINVAL;
-	case V4L2_EVENT_CTRL:
-		return v4l2_ctrl_subscribe_event(fh, s);
-	default:
-		return v4l2_event_subscribe(fh, s, 4, NULL);
-	}
-}
-
 static const struct v4l2_ioctl_ops bcm2835_isp_node_ioctl_ops = {
 	.vidioc_querycap		= bcm2835_isp_node_querycap,
 	.vidioc_g_fmt_vid_cap		= bcm2835_isp_node_g_fmt,
@@ -1234,9 +1044,6 @@ static const struct v4l2_ioctl_ops bcm2835_isp_node_ioctl_ops = {
 
 	.vidioc_streamon		= vb2_ioctl_streamon,
 	.vidioc_streamoff		= vb2_ioctl_streamoff,
-
-	.vidioc_subscribe_event		= bcm3285_isp_subscribe_event,
-	.vidioc_unsubscribe_event	= v4l2_event_unsubscribe,
 };
 
 /*
@@ -1409,62 +1216,6 @@ static int bcm2835_isp_register_node(struct bcm2835_isp_dev *dev,
 		return ret;
 	}
 
-	/* Set some controls and defaults, but only on the VIDEO_OUTPUT node. */
-	if (node_is_output(node)) {
-		unsigned int i;
-
-		/* Use this ctrl template to assign custom ISP ctrls. */
-		struct v4l2_ctrl_config ctrl_template = {
-			.ops		= &bcm2835_isp_ctrl_ops,
-			.type		= V4L2_CTRL_TYPE_U8,
-			.def		= 0,
-			.min		= 0x00,
-			.max		= 0xff,
-			.step		= 1,
-		};
-
-		/* 3 standard controls, and an array of custom controls */
-		ret = v4l2_ctrl_handler_init(&dev->ctrl_handler,
-					     3 + ARRAY_SIZE(custom_ctrls));
-		if (ret) {
-			v4l2_err(&dev->v4l2_dev, "ctrl_handler init failed (%d)\n",
-				 ret);
-			goto queue_cleanup;
-		}
-
-		dev->r_gain = 1000;
-		dev->b_gain = 1000;
-
-		v4l2_ctrl_new_std(&dev->ctrl_handler,  &bcm2835_isp_ctrl_ops,
-				  V4L2_CID_RED_BALANCE, 1, 0xffff, 1,
-				  dev->r_gain);
-
-		v4l2_ctrl_new_std(&dev->ctrl_handler, &bcm2835_isp_ctrl_ops,
-				  V4L2_CID_BLUE_BALANCE, 1, 0xffff, 1,
-				  dev->b_gain);
-
-		v4l2_ctrl_new_std(&dev->ctrl_handler, &bcm2835_isp_ctrl_ops,
-				  V4L2_CID_DIGITAL_GAIN, 1, 0xffff, 1, 1000);
-
-		for (i = 0; i < ARRAY_SIZE(custom_ctrls); i++) {
-			ctrl_template.name = custom_ctrls[i].name;
-			ctrl_template.id = custom_ctrls[i].id;
-			ctrl_template.dims[0] = custom_ctrls[i].size;
-			ctrl_template.flags = custom_ctrls[i].flags;
-			v4l2_ctrl_new_custom(&dev->ctrl_handler,
-					     &ctrl_template, NULL);
-		}
-
-		node->vfd.ctrl_handler = &dev->ctrl_handler;
-		if (dev->ctrl_handler.error) {
-			ret = dev->ctrl_handler.error;
-			v4l2_err(&dev->v4l2_dev, "controls init failed (%d)\n",
-				 ret);
-			v4l2_ctrl_handler_free(&dev->ctrl_handler);
-			goto ctrl_cleanup;
-		}
-	}
-
 	/* Define the device names */
 	snprintf(vfd->name, sizeof(node->vfd.name), "%s-%s%d", BCM2835_ISP_NAME,
 		 node->name, node->id);
@@ -1472,14 +1223,14 @@ static int bcm2835_isp_register_node(struct bcm2835_isp_dev *dev,
 	node->pad.flags = node_is_output(node) ? MEDIA_PAD_FL_SOURCE : MEDIA_PAD_FL_SINK;
 	ret = media_entity_pads_init(&node->vfd.entity, 1, &node->pad);
 	if (ret)
-		goto ctrl_cleanup;
+		goto queue_cleanup;
 
 	ret = video_register_device(vfd, VFL_TYPE_VIDEO, video_nr[instance]);
 	if (ret) {
 		v4l2_err(&dev->v4l2_dev,
 			 "Failed to register video %s[%d] device node\n",
 			 node->name, node->id);
-		goto ctrl_cleanup;
+		goto queue_cleanup;
 	}
 
 	node->registered = true;
@@ -1491,9 +1242,6 @@ static int bcm2835_isp_register_node(struct bcm2835_isp_dev *dev,
 
 	return 0;
 
-ctrl_cleanup:
-	if (node_is_output(node))
-		v4l2_ctrl_handler_free(&dev->ctrl_handler);
 queue_cleanup:
 	vb2_queue_release(&node->queue);
 	return ret;
@@ -1510,8 +1258,6 @@ static void bcm2835_unregister_node(struct bcm2835_isp_node *node)
 
 	if (node->registered) {
 		video_unregister_device(&node->vfd);
-		if (node_is_output(node))
-			v4l2_ctrl_handler_free(&dev->ctrl_handler);
 		vb2_queue_release(&node->queue);
 	}
 
@@ -1521,7 +1267,6 @@ static void bcm2835_unregister_node(struct bcm2835_isp_node *node)
 	 */
 	node->supported_fmts = NULL;
 	node->num_supported_fmts = 0;
-	node->vfd.ctrl_handler = NULL;
 	node->registered = false;
 }
 
