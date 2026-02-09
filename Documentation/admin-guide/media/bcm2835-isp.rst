@@ -1,127 +1,82 @@
 .. SPDX-License-Identifier: GPL-2.0
 
-BCM2835 ISP Driver
-==================
+=============================================
+Broadcom BCM2835 Image Signal Processor (ISP)
+=============================================
 
-Introduction
-------------
+The BCM2835 ISP
+===============
 
-The BCM2835 Image Sensor Pipeline (ISP) is a fixed function hardware pipeline
-for performing image processing operations.  Images are fed to the input
-of the ISP through memory frame buffers.  These images may be in various YUV,
-RGB, or Bayer formats.  A typical use case would have Bayer images obtained from
-an image sensor by the BCM2835 Unicam peripheral, written to a memory
-frame buffer, and finally fed into the input of the ISP.  Two concurrent output
-images may be generated in YUV or RGB format at different resolutions.
-Statistics output is also generated for Bayer input images.
+The BCM2835 Image Signal Processor (ISP) is a fixed function hardware pipeline
+that performs image processing on frames stored in memory. Frames can be Bayer,
+RGB, or YUV and are submitted to the ISP through a V4L2 output node. The ISP
+produces two processed image outputs at different resolutions and can generate
+statistics for Bayer inputs.
 
-The bcm2835-isp driver exposes the following media pads as V4L2 device nodes:
+The bcm2835-isp driver
+======================
 
-.. tabularcolumns:: |l|l|l|l|
+The bcm2835-isp driver lives under
+`drivers/media/platform/broadcom/bcm2835-isp` and registers a set of V4L2 video
+nodes connected through a media graph. The pipeline is configured through the
+V4L2 extensible parameters framework using a dedicated params node.
 
-.. cssclass: longtable
+The media topology registered by the driver is represented below:
 
-.. flat-table::
+.. _bcm2835-isp-topology:
 
-    * - *Pad*
-      - *Direction*
-      - *Purpose*
-      - *Formats*
+.. kernel-figure:: bcm2835-isp.dot
+    :alt:   Diagram of the default media pipeline topology
+    :align: center
 
-    * - "bcm2835-isp0-output0"
-      - sink
-      - Accepts Bayer, RGB or YUV format frame buffers as input to the ISP HW
-        pipeline.
-      - :ref:`RAW8 <V4L2-PIX-FMT-SRGGB8>`,
-        :ref:`RAW10P <V4L2-PIX-FMT-SRGGB10P>`,
-        :ref:`RAW12P <V4L2-PIX-FMT-SRGGB12P>`,
-        :ref:`RAW14P <V4L2-PIX-FMT-SRGGB14P>`,
-        :ref:`RAW16 <V4L2-PIX-FMT-SRGGB16>`,
-        :ref:`RGB24/BGR24 <V4L2-PIX-FMT-RGB24>`,
-        :ref:`YUYV <V4L2-PIX-FMT-YUYV>`,
-        :ref:`YVYU <V4L2-PIX-FMT-YVYU>`,
-        :ref:`UYVY <V4L2-PIX-FMT-UYVY>`,
-        :ref:`VYUY <V4L2-PIX-FMT-VYUY>`,
-        :ref:`YUV420/YVU420 <V4L2-PIX-FMT-YUV420>`
+The media graph registers the following video device nodes:
 
-    * - "bcm2835-isp0-capture1"
-      - source
-      - High resolution YUV or RGB processed output from the ISP.
-      - :ref:`RGB565 <V4L2-PIX-FMT-RGB565>`,
-        :ref:`RGB24/BGR24 <V4L2-PIX-FMT-RGB24>`,
-        :ref:`ABGR32 <V4L2-PIX-FMT-ABGR32>`,
-        :ref:`YUYV <V4L2-PIX-FMT-YUYV>`,
-        :ref:`YVYU <V4L2-PIX-FMT-YVYU>`,
-        :ref:`UYVY <V4L2-PIX-FMT-UYVY>`,
-        :ref:`VYUY <V4L2-PIX-FMT-VYUY>`.
-        :ref:`YUV420/YVU420 <V4L2-PIX-FMT-YUV420>`,
-        :ref:`NV12/NV21 <V4L2-PIX-FMT-NV12>`,
+- bcm2835-isp-output0: output device that queues frames to the ISP input.
+- bcm2835-isp-capture0: capture device for the main processed output.
+- bcm2835-isp-capture1: capture device for the secondary processed output.
+- bcm2835-isp-stats2: metadata capture device for ISP statistics.
+- bcm2835-isp-params: metadata output device for ISP configuration parameters.
 
-    * - "bcm2835-isp0-capture2"
-      - source
-      - Low resolution YUV processed output from the ISP. The output of
-        this pad cannot have a resolution larger than the "bcm2835-isp0-capture1" pad in any dimension.
-      - :ref:`YUYV <V4L2-PIX-FMT-YUYV>`,
-        :ref:`YVYU <V4L2-PIX-FMT-YVYU>`,
-        :ref:`UYVY <V4L2-PIX-FMT-UYVY>`,
-        :ref:`VYUY <V4L2-PIX-FMT-VYUY>`.
-        :ref:`YUV420/YVU420 <V4L2-PIX-FMT-YUV420>`,
-        :ref:`NV12/NV21 <V4L2-PIX-FMT-NV12>`,
+bcm2835-isp-output0
+-------------------
 
-    * - "bcm2835-isp0-capture3"
-      - source
-      - Image statistics calculated from the input image provided on the
-        "bcm2835-isp0-output0" pad.  Statistics are only available for Bayer
-        format input images.
-      - :ref:`v4l2-meta-fmt-bcm2835-isp-stats`.
+Frames to be processed by the ISP are queued to `bcm2835-isp-output0`. Supported
+input formats include Bayer, RGB, and YUV. See the V4L2 pixel format
+documentation for the exact list of formats supported by the driver.
 
-Pipeline Configuration
-----------------------
+bcm2835-isp-capture0, bcm2835-isp-capture1
+------------------------------------------
 
-The ISP pipeline can be configure through user-space by calling
-:ref:`VIDIOC_S_EXT_CTRLS <VIDIOC_G_EXT_CTRLS>` on the “bcm2835-isp0-output0”
-node with the appropriate parameters as shown in the table below.
+The two capture devices return processed images in YUV or RGB formats. The
+secondary output is typically used for a lower-resolution stream.
 
-.. tabularcolumns:: |p{2cm}|p{5.0cm}|
+bcm2835-isp-stats2
+------------------
 
-.. cssclass: longtable
+The `bcm2835-isp-stats2` node provides per-frame statistics for Bayer inputs as
+metadata buffers. The metadata format is
+:ref:`v4l2-meta-fmt-bcm2835-isp-stats`.
 
-.. flat-table::
+bcm2835-isp-params
+------------------
 
-    * - *id*
-      - *Parameter*
+The `bcm2835-isp-params` node accepts configuration buffers that define the ISP
+processing parameters to apply on the next frame boundary. The metadata format
+is :ref:`v4l2-meta-fmt-bcm2835-isp-params`.
 
-    * - ``V4L2_CID_USER_BCM2835_ISP_CC_MATRIX``
-      - struct :c:type:`bcm2835_isp_custom_ccm`
+ISP configuration
+=================
 
-    * - ``V4L2_CID_USER_BCM2835_ISP_LENS_SHADING``
-      - struct :c:type:`bcm2835_isp_lens_shading`
+The ISP configuration is described solely by the contents of the parameters
+buffer queued to `bcm2835-isp-params`. Each buffer uses the V4L2 extensible
+parameters format described in :ref:`v4l2-isp`, with block types defined in
+``include/uapi/linux/bcm2835-isp.h``.
 
-    * - ``V4L2_CID_USER_BCM2835_ISP_BLACK_LEVEL``
-      - struct :c:type:`bcm2835_isp_black_level`
+Userspace must populate a :c:type:`v4l2_isp_params_buffer` and append one or
+more block structs, each of which embeds a
+:c:type:`v4l2_isp_params_block_header` as its first member. The driver applies
+those parameters on a frame boundary once the buffer is queued.
 
-    * - ``V4L2_CID_USER_BCM2835_ISP_GEQ``
-      - struct :c:type:`bcm2835_isp_geq`
-
-    * - ``V4L2_CID_USER_BCM2835_ISP_GAMMA``
-      - struct :c:type:`bcm2835_isp_gamma`
-
-    * - ``V4L2_CID_USER_BCM2835_ISP_DENOISE``
-      - struct :c:type:`bcm2835_isp_denoise`
-
-    * - ``V4L2_CID_USER_BCM2835_ISP_SHARPEN``
-      - struct :c:type:`bcm2835_isp_sharpen`
-
-    * - ``V4L2_CID_USER_BCM2835_ISP_DPC``
-      - struct :c:type:`bcm2835_isp_dpc`
-
-++++++++++++++++++++++++
-Configuration Parameters
-++++++++++++++++++++++++
-
-.. kernel-doc:: include/uapi/linux/bcm2835-isp.h
-   :functions: bcm2835_isp_rational bcm2835_isp_ccm bcm2835_isp_custom_ccm
-                bcm2835_isp_gain_format bcm2835_isp_lens_shading
-                bcm2835_isp_black_level bcm2835_isp_geq bcm2835_isp_gamma
-                bcm2835_isp_denoise bcm2835_isp_sharpen
-                bcm2835_isp_dpc_mode bcm2835_isp_dpc
+For statistics and parameters metadata formats, see
+:ref:`v4l2-meta-fmt-bcm2835-isp-stats` and
+:ref:`v4l2-meta-fmt-bcm2835-isp-params`.

@@ -9,6 +9,7 @@ Video4Linux (V4L) driver-specific documentation
 .. toctree::
 	:maxdepth: 2
 
+	bcm2835-isp
 	bttv
 	c3-isp
 	cafe_ccic
