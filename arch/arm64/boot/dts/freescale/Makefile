@@ -232,6 +232,8 @@ imx8mp-debix-model-a-io-imx219-dtbs		:= imx8mp-debix-model-a.dtb imx8mp-debix-mo
 
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-debix-model-a-io-imx219.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-debix-som-a-bmb-08.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-debix-som-a-csi0-imx283.dtbo
+imx8mp-debix-som-a-csi0-imx283-dtbs		:= imx8mp-debix-som-a-bmb-08.dtb imx8mp-debix-som-a-csi0-imx283.dtbo
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-dhcom-drc02.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-dhcom-pdk2.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8mp-dhcom-pdk3.dtb
