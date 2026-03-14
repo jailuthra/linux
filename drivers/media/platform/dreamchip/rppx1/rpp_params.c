@@ -19,6 +19,7 @@ rppx1_ext_params_blocks_info[] = {
 	RPPX1_PARAMS_BLOCK_INFO(BLS, bls),
 	RPPX1_PARAMS_BLOCK_INFO(AWB_GAIN, awb_gain),
 	RPPX1_PARAMS_BLOCK_INFO(CTK, ctk),
+	RPPX1_PARAMS_BLOCK_INFO(LSC, lsc),
 	RPPX1_PARAMS_BLOCK_INFO(AWB_MEAS, awb_meas),
 	RPPX1_PARAMS_BLOCK_INFO(HST_MEAS, hst),
 	RPPX1_PARAMS_BLOCK_INFO(AEC_MEAS, aec),
@@ -64,6 +65,9 @@ int rppx1_params(struct rppx1 *rpp, struct vb2_buffer *vb, size_t max_size,
 			break;
 		case RPPX1_PARAMS_BLOCK_TYPE_CTK:
 			module = &rpp->post.ccor;
+			break;
+		case RPPX1_PARAMS_BLOCK_TYPE_LSC:
+			module = &rpp->pre1.lsc;
 			break;
 		case RPPX1_PARAMS_BLOCK_TYPE_AWB_MEAS:
 			module = &rpp->post.wbmeas;
