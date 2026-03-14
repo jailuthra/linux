@@ -22,6 +22,8 @@ rppx1_ext_params_blocks_info[] = {
 	RPPX1_PARAMS_BLOCK_INFO(BDM, bdm),
 	RPPX1_PARAMS_BLOCK_INFO(CTK, ctk),
 	RPPX1_PARAMS_BLOCK_INFO(GOC, goc),
+	RPPX1_PARAMS_BLOCK_INFO(DPF, dpf),
+	RPPX1_PARAMS_BLOCK_INFO(DPF_STRENGTH, dpf_strength),
 	RPPX1_PARAMS_BLOCK_INFO(LSC, lsc),
 	RPPX1_PARAMS_BLOCK_INFO(AWB_MEAS, awb_meas),
 	RPPX1_PARAMS_BLOCK_INFO(HST_MEAS, hst),
@@ -76,6 +78,11 @@ int rppx1_params(struct rppx1 *rpp, struct vb2_buffer *vb, size_t max_size,
 			break;
 		case RPPX1_PARAMS_BLOCK_TYPE_GOC:
 			module = &rpp->hv.ga;
+			break;
+		case RPPX1_PARAMS_BLOCK_TYPE_DPF:
+		case RPPX1_PARAMS_BLOCK_TYPE_DPF_STRENGTH:
+			/* Both types handled by the same block. */
+			module = &rpp->pre1.bd;
 			break;
 		case RPPX1_PARAMS_BLOCK_TYPE_LSC:
 			module = &rpp->pre1.lsc;
