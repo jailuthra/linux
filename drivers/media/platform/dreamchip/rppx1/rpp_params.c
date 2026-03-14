@@ -18,6 +18,8 @@ static const struct v4l2_isp_params_block_type_info
 rppx1_ext_params_blocks_info[] = {
 	RPPX1_PARAMS_BLOCK_INFO(BLS, bls),
 	RPPX1_PARAMS_BLOCK_INFO(AWB_GAIN, awb_gain),
+	RPPX1_PARAMS_BLOCK_INFO(FLT, flt),
+	RPPX1_PARAMS_BLOCK_INFO(BDM, bdm),
 	RPPX1_PARAMS_BLOCK_INFO(CTK, ctk),
 	RPPX1_PARAMS_BLOCK_INFO(GOC, goc),
 	RPPX1_PARAMS_BLOCK_INFO(LSC, lsc),
@@ -63,6 +65,11 @@ int rppx1_params(struct rppx1 *rpp, struct vb2_buffer *vb, size_t max_size,
 			break;
 		case RPPX1_PARAMS_BLOCK_TYPE_AWB_GAIN:
 			module = &rpp->pre1.awbg;
+			break;
+		case RPPX1_PARAMS_BLOCK_TYPE_FLT:
+		case RPPX1_PARAMS_BLOCK_TYPE_BDM:
+			/* Both types handled by the same block. */
+			module = &rpp->post.db;
 			break;
 		case RPPX1_PARAMS_BLOCK_TYPE_CTK:
 			module = &rpp->post.ccor;
