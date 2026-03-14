@@ -5,6 +5,7 @@
  */
 
 #include "rpp_module.h"
+#include "rppx1.h"
 
 #define BLS_VERSION_REG				0x0000
 
@@ -54,6 +55,115 @@ static int rppx1_bls_probe(struct rpp_module *mod)
 	return 0;
 }
 
+static void
+rppx1_bls_swap_regs(struct rpp_module *mod, const u32 input[4], u32 output[4])
+{
+	static const unsigned int swap[4][4] = {
+		[RPP_RGGB] = { 0, 1, 2, 3 },
+		[RPP_GRBG] = { 1, 0, 3, 2 },
+		[RPP_GBRG] = { 2, 3, 0, 1 },
+		[RPP_BGGR] = { 3, 2, 1, 0 },
+	};
+
+	/* Swap to pattern used in our path, PRE1 or PRE2. */
+	struct rpp_module *acq = mod == &mod->rpp->pre1.bls ?
+		&mod->rpp->pre1.acq : &mod->rpp->pre2.bls;
+	enum rpp_raw_pattern pattern = acq->info.acq.raw_pattern;
+
+	for (unsigned int i = 0; i < 4; ++i)
+		output[i] = input[swap[pattern][i]];
+}
+
+static int
+rppx1_bls_fill_params(struct rpp_module *mod,
+		      const union rppx1_params_block *block,
+		      rppx1_reg_write write, void *priv)
+{
+	const struct rppx1_params_bls_config *cfg = &block->bls;
+
+	/* If the modules is disabled, simply bypass it. */
+	if (cfg->header.flags & V4L2_ISP_PARAMS_FL_BLOCK_DISABLE) {
+		write(priv, mod->base + BLS_CTRL_REG, 0);
+		return 0;
+	}
+
+	u32 ctrl = BLS_CTRL_BLS_EN;
+
+	if (!cfg->enable_auto) {
+		static const u32 regs[] = {
+			BLS_A_FIXED_REG,
+			BLS_B_FIXED_REG,
+			BLS_C_FIXED_REG,
+			BLS_D_FIXED_REG,
+		};
+		u32 swapped[4];
+
+		rppx1_bls_swap_regs(mod, regs, swapped);
+
+		/*
+		 * The native params are 24-bit + 1 signed bit, while the RPP
+		 * can be 12, 20 or 24 bit + 1 signed bit. Figure out how much
+		 * we need to adjust the input parameters.
+		 */
+		const unsigned int shift = 24 - mod->info.bls.colorbits;
+
+		write(priv, mod->base + swapped[0], cfg->fixed_val.r >> shift);
+		write(priv, mod->base + swapped[1], cfg->fixed_val.gr >> shift);
+		write(priv, mod->base + swapped[2], cfg->fixed_val.gb >> shift);
+		write(priv, mod->base + swapped[3], cfg->fixed_val.b >> shift);
+	} else {
+		write(priv, mod->base + BLS_SAMPLES_REG, cfg->bls_samples);
+
+		if (cfg->en_windows & BIT(0)) {
+			write(priv, mod->base + BLS_H1_START_REG, cfg->bls_window1.h_offs);
+			write(priv, mod->base + BLS_H1_STOP_REG, cfg->bls_window1.h_size);
+			write(priv, mod->base + BLS_V1_START_REG, cfg->bls_window1.v_offs);
+			write(priv, mod->base + BLS_V1_STOP_REG, cfg->bls_window1.v_size);
+			ctrl |= BLS_CTRL_BLS_WIN1;
+		}
+
+		if (cfg->en_windows & BIT(1)) {
+			write(priv, mod->base + BLS_H2_START_REG, cfg->bls_window2.h_offs);
+			write(priv, mod->base + BLS_H2_STOP_REG, cfg->bls_window2.h_size);
+			write(priv, mod->base + BLS_V2_START_REG, cfg->bls_window2.v_offs);
+			write(priv, mod->base + BLS_V2_STOP_REG, cfg->bls_window2.v_size);
+			ctrl |= BLS_CTRL_BLS_WIN2;
+		}
+
+		ctrl |= BLS_CTRL_BLS_MODE_MEASURED;
+	}
+
+	write(priv, mod->base + BLS_CTRL_REG, ctrl);
+
+	return 0;
+}
+
+static int rppx1_bls_fill_stats(struct rpp_module *mod,
+				struct rppx1_stat *stats)
+{
+	struct rppx1_bls_meas_val *bls = &stats->ae.bls_val;
+
+	static const u32 regs[] = {
+		BLS_A_MEASURED_REG,
+		BLS_B_MEASURED_REG,
+		BLS_C_MEASURED_REG,
+		BLS_D_MEASURED_REG,
+	};
+	u32 swapped[4];
+
+	rppx1_bls_swap_regs(mod, regs, swapped);
+
+	/* Return measurements at native hardware precision. */
+	bls->meas_r = rpp_module_read(mod, swapped[0]);
+	bls->meas_gr = rpp_module_read(mod, swapped[1]);
+	bls->meas_gb = rpp_module_read(mod, swapped[2]);
+	bls->meas_b = rpp_module_read(mod, swapped[3]);
+
+	return 0;
+}
+
 const struct rpp_module_ops rppx1_bls_ops = {
 	.probe = rppx1_bls_probe,
+	.fill_params = rppx1_bls_fill_params,
+	.fill_stats = rppx1_bls_fill_stats
 };

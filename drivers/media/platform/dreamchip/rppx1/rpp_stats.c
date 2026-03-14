@@ -20,8 +20,11 @@ void rppx1_stats_fill_isr(struct rppx1 *rpp, u32 isc, void *buf)
 		if (!rpp_module_call(&rpp->post.hist, fill_stats, &stats->params))
 			stats->meas_type |= RPPX1_STAT_HIST;
 
-	if (isc & RPPX1_IRQ_ID_PRE1_EXM)
+	if (isc & RPPX1_IRQ_ID_PRE1_EXM) {
 		if (!rpp_module_call(&rpp->pre1.exm, fill_stats, &stats->params))
 			stats->meas_type |= RPPX1_STAT_AUTOEXP;
+
+		rpp_module_call(&rpp->pre1.bls, fill_stats, &stats->params);
+	}
 }
 EXPORT_SYMBOL_GPL(rppx1_stats_fill_isr);
