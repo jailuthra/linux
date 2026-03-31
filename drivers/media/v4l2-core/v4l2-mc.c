@@ -14,9 +14,9 @@
 #include <linux/usb.h>
 #include <media/media-device.h>
 #include <media/media-entity.h>
+#include <media/v4l2-ctrls.h>
 #include <media/v4l2-fh.h>
 #include <media/v4l2-mc.h>
-#include <media/v4l2-subdev.h>
 #include <media/videobuf2-core.h>
 
 int v4l2_mc_create_media_graph(struct media_device *mdev)
