@@ -18,6 +18,7 @@
 /* We don't need to include pci.h or usb.h here */
 struct pci_dev;
 struct usb_device;
+struct v4l2_ctrl;
 
 #ifdef CONFIG_MEDIA_CONTROLLER
 /**
@@ -138,6 +139,13 @@ int v4l2_create_fwnode_links_to_pad(struct v4l2_subdev *src_sd,
  */
 int v4l2_create_fwnode_links(struct v4l2_subdev *src_sd,
 			     struct v4l2_subdev *sink_sd);
+
+int v4l2_subdev_sensor_fll_llp_set(struct v4l2_ctrl *fll, struct v4l2_ctrl *vblank,
+				   struct v4l2_ctrl *llp, struct v4l2_ctrl *hblank,
+				   struct v4l2_ctrl *exposure,
+				   const struct v4l2_mbus_framefmt *format,
+				   struct v4l2_ctrl *src, bool *setting_ctrl,
+				   int exposure_margin);
 
 /**
  * v4l2_pipeline_pm_get - Increase the use count of a pipeline
