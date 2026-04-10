@@ -94,8 +94,9 @@ static int rppx1_hist_fill_params(struct rpp_module *mod,
 		return 0;
 	}
 
-	/* Sample after demosaicing. */
-	write(priv, mod->base + HIST_CHANNEL_SEL_REG, 7);
+	/* Select sample point */
+	write(priv, mod->base + HIST_CHANNEL_SEL_REG,
+	      cfg->channel_sel & HIST_CHANNEL_SEL_CHANNEL_SELECT_MASK);
 
 	/*
 	 * The RkISP1 histogram_predivider setting controls the pixel spacing
