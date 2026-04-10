@@ -538,6 +538,36 @@ struct rppx1_params_awb_meas_config {
 };
 
 /**
+ * enum rppx1_pre_meas_chan - Measurement point for PRE1/2 modules
+ * @RPPX1_PRE_MEASURE_AFTER_ACQ: after input acquisition
+ * @RPPX1_PRE_MEASURE_AFTER_BLS: after black level subtraction
+ * @RPPX1_PRE_MEASURE_AFTER_LIN: after sensor gamma linearization
+ * @RPPX1_PRE_MEASURE_AFTER_LSC: after lens shading correction
+ * @RPPX1_PRE_MEASURE_AFTER_AWBG: after auto white balance gains
+ * @RPPX1_PRE_MEASURE_AFTER_DPCC: after defect pixel correction
+ * @RPPX1_PRE_MEASURE_AFTER_DPF: after denoise pre-filter
+ */
+enum rppx1_pre_meas_chan {
+	RPPX1_PRE_MEASURE_AFTER_ACQ,
+	RPPX1_PRE_MEASURE_AFTER_BLS,
+	RPPX1_PRE_MEASURE_AFTER_LIN,
+	RPPX1_PRE_MEASURE_AFTER_LSC,
+	RPPX1_PRE_MEASURE_AFTER_AWBG,
+	RPPX1_PRE_MEASURE_AFTER_DPCC,
+	RPPX1_PRE_MEASURE_AFTER_DPF,
+};
+
+/**
+ * enum rppx1_post_meas_chan - Measurement point for POST modules
+ * @RPPX1_PRE_MEASURE_AFTER_AWBG: after auto white balance gains
+ * @RPPX1_PRE_MEASURE_AFTER_DEMOSAIC: after demosaicing
+ */
+enum rppx1_post_meas_chan {
+	RPPX1_POST_MEASURE_AFTER_AWBG = 4,
+	RPPX1_POST_MEASURE_AFTER_DEMOSAIC = 7,
+};
+
+/**
  * enum rppx1_histogram_mode - Histogram measurement mode
  * @RPPX1_HISTOGRAM_MODE_DISABLE: histogram disabled
  * @RPPX1_HISTOGRAM_MODE_RGB_COMBINED: combined RGB histogram
@@ -575,13 +605,28 @@ struct rppx1_params_hst_config {
 };
 
 /**
+ * struct rppx1_aec_coeff - Coefficients for exposure measurement
+ *
+ * @red: Coefficient for weighting Red sample/channel (Q1.7)
+ * @green_r: Coefficient for weighting GreenRed bayer sample or Green channel (Q1.7)
+ * @green_b: Coefficient for weighting GreenBlue bayer sample (Q1.7)
+ * @blue: Coefficient for weighting Blue sample/channel (Q1.7)
+ */
+struct rppx1_aec_coeff {
+	__u8 red;
+	__u8 green_r;
+	__u8 green_b;
+	__u8 blue;
+};
+
+/**
  * enum rppx1_exp_meas_mode - Exposure measurement mode
- * @RPPX1_EXP_MEASURING_MODE_0: Y = 16 + 0.25R + 0.5G + 0.1094B
- * @RPPX1_EXP_MEASURING_MODE_1: Y = (R + G + B) x (85/256)
+ * @RPPX1_EXP_MEASURING_MODE_RGB: out_sample = coeff_r * R + coeff_gr * G + coeff_b * B
+ * @RPPX1_EXP_MEASURING_MODE_BAYER: out_sample = coeff_[r|gr|gb|b] * [R|Gr|Gb|B]
  */
 enum rppx1_exp_meas_mode {
-	RPPX1_EXP_MEASURING_MODE_0,
-	RPPX1_EXP_MEASURING_MODE_1,
+	RPPX1_EXP_MEASURING_MODE_RGB = 1,
+	RPPX1_EXP_MEASURING_MODE_BAYER,
 };
 
 /**
@@ -591,12 +636,16 @@ enum rppx1_exp_meas_mode {
  * @mode: exposure measure mode (from enum rppx1_exp_meas_mode)
  * @autostop: 0 = continuous, 1 = stop after one frame
  * @meas_window: measurement window coordinates
+ * @coeff: weighting coefficients for R/Gr/Gb/B
+ * @channel_sel: measurement point (see enum rppx1_[pre|post]_meas_chan)
  */
 struct rppx1_params_aec_config {
 	struct v4l2_isp_params_block_header header;
 	__u32 mode;
 	__u32 autostop;
 	struct rppx1_window meas_window;
+	struct rppx1_aec_coeff coeff;
+	__u8 channel_sel;
 };
 
 /**
