@@ -54,7 +54,38 @@ static int rppx1_lin_start(struct rpp_module *mod,
 	return 0;
 }
 
+static int rppx1_lin_fill_params(struct rpp_module *mod,
+				 const union rppx1_params_block *block,
+				 rppx1_reg_write write, void *priv)
+{
+	const struct rppx1_params_lin_config *cfg = &block->lin;
+	const unsigned int shift = 24 - mod->info.lin.colorbits;
+
+	if (cfg->header.flags & V4L2_ISP_PARAMS_FL_BLOCK_DISABLE) {
+		write(priv, mod->base + LIN_ENABLE_REG, 0);
+		return 0;
+	}
+
+	write(priv, mod->base + LIN_DX_LO_REG, cfg->xa_pnts.gamma_dx[0]);
+	write(priv, mod->base + LIN_DX_HI_REG, cfg->xa_pnts.gamma_dx[1]);
+
+	for (unsigned int i = 0; i < LIN_SAMPLES_NUM; i++) {
+		write(priv, mod->base + LIN_R_Y_REG(i),
+		      cfg->curve_r.gamma_y[i] >> shift);
+		write(priv, mod->base + LIN_G_Y_REG(i),
+		      cfg->curve_g.gamma_y[i] >> shift);
+		write(priv, mod->base + LIN_B_Y_REG(i),
+		      cfg->curve_b.gamma_y[i] >> shift);
+	}
+
+	if ((cfg->header.flags & V4L2_ISP_PARAMS_FL_BLOCK_ENABLE))
+		write(priv, mod->base + LIN_ENABLE_REG, LIN_ENABLE_GAMMA_IN_EN);
+
+	return 0;
+}
+
 const struct rpp_module_ops rppx1_lin_ops = {
 	.probe = rppx1_lin_probe,
 	.start = rppx1_lin_start,
+	.fill_params = rppx1_lin_fill_params,
 };

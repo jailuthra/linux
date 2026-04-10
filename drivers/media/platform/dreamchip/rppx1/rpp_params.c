@@ -17,6 +17,7 @@
 static const struct v4l2_isp_params_block_type_info
 rppx1_ext_params_blocks_info[] = {
 	RPPX1_PARAMS_BLOCK_INFO(BLS, bls),
+	RPPX1_PARAMS_BLOCK_INFO(LIN, lin),
 	RPPX1_PARAMS_BLOCK_INFO(AWB_GAIN, awb_gain),
 	RPPX1_PARAMS_BLOCK_INFO(FLT, flt),
 	RPPX1_PARAMS_BLOCK_INFO(BDM, bdm),
@@ -64,6 +65,9 @@ int rppx1_params(struct rppx1 *rpp, struct vb2_buffer *vb, size_t max_size,
 		switch (block->header.type) {
 		case RPPX1_PARAMS_BLOCK_TYPE_BLS:
 			module = &rpp->pre1.bls;
+			break;
+		case RPPX1_PARAMS_BLOCK_TYPE_LIN:
+			module = &rpp->pre1.lin;
 			break;
 		case RPPX1_PARAMS_BLOCK_TYPE_AWB_GAIN:
 			module = &rpp->pre1.awbg;
