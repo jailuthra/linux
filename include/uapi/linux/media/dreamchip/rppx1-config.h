@@ -593,6 +593,7 @@ enum rppx1_histogram_mode {
  * @header: block header (type = RPPX1_PARAMS_BLOCK_TYPE_HST_MEAS)
  * @mode: histogram mode (from enum rppx1_histogram_mode)
  * @histogram_predivider: process every Nth pixel
+ * @channel_sel: measurement point (see enum rppx1_[pre|post]_meas_chan)
  * @meas_window: measurement window coordinates
  * @hist_weight: weighting factors for sub-windows (5x5 grid)
  */
@@ -600,6 +601,7 @@ struct rppx1_params_hst_config {
 	struct v4l2_isp_params_block_header header;
 	__u32 mode;
 	__u8 histogram_predivider;
+	__u8 channel_sel;
 	struct rppx1_window meas_window;
 	__u8 hist_weight[RPPX1_HISTOGRAM_WEIGHT_GRIDS_SIZE];
 };
