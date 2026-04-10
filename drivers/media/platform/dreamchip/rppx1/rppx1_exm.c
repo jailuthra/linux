@@ -14,7 +14,10 @@
 #define EXM_CTRL_EXM_UPDATE_ENABLE	BIT(0)
 
 #define EXM_MODE_REG			0x000c
+
 #define EXM_CHANNEL_SEL_REG		0x0010
+#define EXM_CHANNEL_SEL_CHANNEL_SELECT_MASK	GENMASK(2, 0)
+
 #define EXM_LAST_MEAS_LINE_REG		0x0014
 #define EXM_COEFF_R_REG			0x0018
 #define EXM_COEFF_G_GR_REG		0x001c
@@ -61,37 +64,27 @@ rppx1_exm_fill_params(struct rpp_module *mod,
 		return 0;
 	}
 
-	/* RGB bayer exposure measurement */
-	write(priv, mod->base + EXM_MODE_REG, 2);
+	switch (cfg->mode) {
+	case RPPX1_EXP_MEASURING_MODE_RGB:
+	case RPPX1_EXP_MEASURING_MODE_BAYER:
+		write(priv, mod->base + EXM_MODE_REG, cfg->mode);
+		break;
+	default:
+		write(priv, mod->base + EXM_MODE_REG, 0);
+		return 0;
+	}
+
+	write(priv, mod->base + EXM_COEFF_R_REG, cfg->coeff.red);
+	write(priv, mod->base + EXM_COEFF_G_GR_REG, cfg->coeff.green_r);
+	write(priv, mod->base + EXM_COEFF_GB_REG, cfg->coeff.green_b);
+	write(priv, mod->base + EXM_COEFF_B_REG, cfg->coeff.blue);
 
 	write(priv, mod->base + EXM_CTRL_REG, EXM_CTRL_EXM_UPDATE_ENABLE |
 	      cfg->autostop ? EXM_CTRL_EXM_AUTOSTOP : 0);
 
-	/*
-	 * Select where to sample.
-	 * 0 - after input acquisition
-	 * 1 - after black level subtraction
-	 * 2 - after input linearization
-	 * 3 - after lens shade correction
-	 * 4 - after white balance gain stage
-	 * 5 - after defect pixel correction
-	 * 6 - after denoising
-	 */
-	write(priv, mod->base + EXM_CHANNEL_SEL_REG, 6);
-
-	if (cfg->mode == RPPX1_EXP_MEASURING_MODE_0) {
-		/* Coefficients for a BT.601 BAYER (from datasheet). */
-		write(priv, mod->base + EXM_COEFF_R_REG, 38);
-		write(priv, mod->base + EXM_COEFF_G_GR_REG, 75);
-		write(priv, mod->base + EXM_COEFF_B_REG, 15);
-		write(priv, mod->base + EXM_COEFF_GB_REG, 75);
-	} else {
-		/* Y = (R + Gr + B + Gb) / 4*/
-		write(priv, mod->base + EXM_COEFF_R_REG, 128);
-		write(priv, mod->base + EXM_COEFF_G_GR_REG, 128);
-		write(priv, mod->base + EXM_COEFF_B_REG, 128);
-		write(priv, mod->base + EXM_COEFF_GB_REG, 128);
-	}
+	/* Select sample point */
+	write(priv, mod->base + EXM_CHANNEL_SEL_REG,
+	      cfg->channel_sel & EXM_CHANNEL_SEL_CHANNEL_SELECT_MASK);
 
 	/*
 	 * Adjust and set measurement window to hardware limitations,
