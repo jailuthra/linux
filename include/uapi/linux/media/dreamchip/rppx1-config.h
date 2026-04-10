@@ -25,7 +25,7 @@
 #define RPPX1_GAMMA_OUT_MAX_SAMPLES			17
 
 /* Lens Shade Correction */
-#define RPPX1_LSC_SECTORS_TBL_SIZE			8
+#define RPPX1_LSC_SECTORS_TBL_SIZE			16
 #define RPPX1_LSC_SAMPLES_MAX				17
 
 /* Histogram */
