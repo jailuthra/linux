@@ -203,6 +203,7 @@ static long media_device_setup_link(struct media_device *mdev, void *arg)
 	struct media_link *link = NULL;
 	struct media_entity *source;
 	struct media_entity *sink;
+	int ret;
 
 	/* Find the source and sink entities and link.
 	 */
@@ -224,7 +225,13 @@ static long media_device_setup_link(struct media_device *mdev, void *arg)
 	memset(linkd->reserved, 0, sizeof(linkd->reserved));
 
 	/* Setup the link on both entities. */
-	return __media_entity_setup_link(link, linkd->flags);
+	ret = __media_entity_setup_link(link, linkd->flags);
+	if (ret)
+		return ret;
+
+	linkd->flags = link->flags;
+
+	return 0;
 }
 
 static long media_device_get_topology(struct media_device *mdev, void *arg)
