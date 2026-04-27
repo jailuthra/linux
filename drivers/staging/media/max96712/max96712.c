@@ -264,7 +264,7 @@ static const struct v4l2_subdev_internal_ops max96712_internal_ops = {
 
 static const struct v4l2_subdev_pad_ops max96712_pad_ops = {
 	.get_fmt = v4l2_subdev_get_fmt,
-	.set_fmt = v4l2_subdev_get_fmt,
+	.set_fmt = v4l2_subdev_get_fmt_ci,
 };
 
 static const struct v4l2_subdev_ops max96712_subdev_ops = {
