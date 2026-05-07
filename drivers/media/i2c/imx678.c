@@ -130,13 +130,21 @@
 
 #define IMX678_PIXEL_RATE               74250000
 
-/* imx678 native and active pixel array size. */
-#define IMX678_NATIVE_WIDTH         3856U
-#define IMX678_NATIVE_HEIGHT        2180U
-#define IMX678_PIXEL_ARRAY_LEFT     8U
-#define IMX678_PIXEL_ARRAY_TOP      8U
-#define IMX678_PIXEL_ARRAY_WIDTH    3840U
-#define IMX678_PIXEL_ARRAY_HEIGHT   2160U
+/* IMX678 native and active pixel array size. */
+static const struct v4l2_rect imx678_native_area = {
+	.top = 0,
+	.left = 0,
+	.width = 3857,
+	.height = 2201,
+};
+
+static const struct v4l2_rect imx678_active_area = {
+	.top = 20,
+	.left = 0,
+	.width = 3856,
+	.height = 2180,
+};
+
 
 /* Link frequency setup (DDR: lane rate = 2 x link freq) */
 enum {
@@ -424,12 +432,7 @@ struct imx678_mode supported_modes[] = {
 		.min_VMAX = IMX678_VMAX_DEFAULT,
 		.default_HMAX = 366,
 		.default_VMAX = IMX678_VMAX_DEFAULT,
-		.crop = {
-			.left = IMX678_PIXEL_ARRAY_LEFT,
-			.top = IMX678_PIXEL_ARRAY_TOP,
-			.width = IMX678_PIXEL_ARRAY_WIDTH,
-			.height = IMX678_PIXEL_ARRAY_HEIGHT,
-		},
+		.crop = imx678_active_area,
 		.reg_list = {
 			.num_of_regs = ARRAY_SIZE(mode_1080_regs_12bit),
 			.regs = mode_1080_regs_12bit,
@@ -444,12 +447,7 @@ struct imx678_mode supported_modes[] = {
 		.default_HMAX = 550,
 		.default_VMAX = IMX678_VMAX_DEFAULT,
 		.hmax_div = 1,
-		.crop = {
-			.left = IMX678_PIXEL_ARRAY_LEFT,
-			.top = IMX678_PIXEL_ARRAY_TOP,
-			.width = IMX678_PIXEL_ARRAY_WIDTH,
-			.height = IMX678_PIXEL_ARRAY_HEIGHT,
-		},
+		.crop = imx678_active_area,
 		.reg_list = {
 			.num_of_regs = ARRAY_SIZE(mode_4k_regs_12bit),
 			.regs = mode_4k_regs_12bit,
@@ -1016,18 +1014,12 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 		return 0;
 
 	case V4L2_SEL_TGT_NATIVE_SIZE:
-		sel->r.left = 0;
-		sel->r.top = 0;
-		sel->r.width = IMX678_NATIVE_WIDTH;
-		sel->r.height = IMX678_NATIVE_HEIGHT;
+		sel->r = imx678_native_area;
 		return 0;
 
 	case V4L2_SEL_TGT_CROP_DEFAULT:
 	case V4L2_SEL_TGT_CROP_BOUNDS:
-		sel->r.left = IMX678_PIXEL_ARRAY_LEFT;
-		sel->r.top = IMX678_PIXEL_ARRAY_TOP;
-		sel->r.width = IMX678_PIXEL_ARRAY_WIDTH;
-		sel->r.height = IMX678_PIXEL_ARRAY_HEIGHT;
+		sel->r = imx678_active_area;
 		return 0;
 	}
 
