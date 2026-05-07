@@ -737,7 +737,6 @@ struct imx678 {
 	struct v4l2_ctrl *hflip;
 	struct v4l2_ctrl *vblank;
 	struct v4l2_ctrl *hblank;
-	struct v4l2_ctrl *blacklevel;
 
 	/* Current mode */
 	const struct imx678_mode *mode;
@@ -1188,21 +1187,6 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 					    "Failed to write reg 0x%4.4x. error = %d\n",
 					    IMX678_FLIP_WINMODEV, ret);
 		break;
-	case V4L2_CID_BRIGHTNESS:
-		{
-		u16 blacklevel = ctrl->val;
-
-		dev_info(&client->dev, "V4L2_CID_BRIGHTNESS : %d\n", ctrl->val);
-
-		if (blacklevel > 4095)
-			blacklevel = 4095;
-		ret = imx678_write_reg_1byte(imx678, IMX678_REG_BLKLEVEL, blacklevel);
-		if (ret)
-			dev_err_ratelimited(&client->dev,
-					    "Failed to write reg 0x%4.4x. error = %d\n",
-					    IMX678_REG_BLKLEVEL, ret);
-		break;
-		}
 	default:
 		dev_info(&client->dev,
 			 "ctrl(id:0x%x,val:0x%x) is not handled\n",
@@ -1781,9 +1765,6 @@ static int imx678_init_controls(struct imx678 *imx678)
 					   V4L2_CID_VBLANK, 0, 0xfffff, 1, 0);
 	imx678->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
 					   V4L2_CID_HBLANK, 0, 0xffff, 1, 0);
-	imx678->blacklevel = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
-					       V4L2_CID_BRIGHTNESS, 0, 0xffff, 1,
-					       IMX678_BLKLEVEL_DEFAULT);
 
 	imx678->exposure = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
 					     V4L2_CID_EXPOSURE,
