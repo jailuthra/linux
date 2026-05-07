@@ -28,8 +28,6 @@
 #define MEDIA_BUS_FMT_SENSOR_DATA       0x7002
 #endif
 
-#define V4L2_CID_IMX585_HCG_GAIN         (V4L2_CID_USER_ASPEED_BASE + 6)
-
 /*
  * Initialisation delay between XCLR low->high and the moment when the sensor
  * can start capture (i.e. can leave software standby)
@@ -94,10 +92,7 @@
 
 /* Analog gain control */
 #define IMX678_REG_ANALOG_GAIN          0x3070
-#define IMX678_REG_FDG_SEL0             0x3030
 #define IMX678_ANA_GAIN_MIN_NORMAL      0
-#define IMX678_ANA_GAIN_MIN_HCG         34
-#define IMX678_ANA_GAIN_MAX_HDR         80
 #define IMX678_ANA_GAIN_MAX_NORMAL      240
 #define IMX678_ANA_GAIN_STEP            1
 #define IMX678_ANA_GAIN_DEFAULT         0
@@ -732,7 +727,6 @@ struct imx678 {
 	struct v4l2_ctrl *link_freq;
 	struct v4l2_ctrl *exposure;
 	struct v4l2_ctrl *gain;
-	struct v4l2_ctrl *hcg_ctrl;
 	struct v4l2_ctrl *vflip;
 	struct v4l2_ctrl *hflip;
 	struct v4l2_ctrl *vblank;
@@ -740,9 +734,6 @@ struct imx678 {
 
 	/* Current mode */
 	const struct imx678_mode *mode;
-
-	/* HCG enabled flag*/
-	bool hcg;
 
 	/* Sync Mode*/
 	/* 0 = Internal Sync Leader Mode
@@ -972,25 +963,6 @@ static int imx678_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	return 0;
 }
 
-/* For HDR mode, Gain is limited to 0~80 and HCG is disabled
- * For Normal mode, Gain is limited to 0~240
- */
-static void imx678_update_gain_limits(struct imx678 *imx678)
-{
-		bool hcg_on = imx678->hcg;
-		u32 min = hcg_on ? IMX678_ANA_GAIN_MIN_HCG : IMX678_ANA_GAIN_MIN_NORMAL;
-		u32 cur = imx678->gain->val;
-
-		__v4l2_ctrl_modify_range(imx678->gain,
-					 min, IMX678_ANA_GAIN_MAX_NORMAL,
-					 IMX678_ANA_GAIN_STEP,
-					 clamp(cur, min, IMX678_ANA_GAIN_MAX_NORMAL));
-
-		if (cur < min || cur > IMX678_ANA_GAIN_MAX_NORMAL)
-			__v4l2_ctrl_s_ctrl(imx678->gain,
-					   clamp(cur, min, IMX678_ANA_GAIN_MAX_NORMAL));
-}
-
 static void imx678_update_hmax(struct imx678 *imx678)
 {
 
@@ -1088,35 +1060,13 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 						    IMX678_REG_SHR, ret);
 		break;
 		}
-	case V4L2_CID_IMX585_HCG_GAIN:
-		{
-		if (ctrl->flags & V4L2_CTRL_FLAG_INACTIVE)
-			break;
-		imx678->hcg = ctrl->val;
-		imx678_update_gain_limits(imx678);
-
-		// Set HCG/LCG channel
-		ret = imx678_write_reg_1byte(imx678, IMX678_REG_FDG_SEL0, ctrl->val);
-		if (ret)
-			dev_err_ratelimited(&client->dev,
-					    "Failed to write reg 0x%4.4x. error = %d\n",
-					    IMX678_REG_FDG_SEL0, ret);
-		dev_info(&client->dev, "V4L2_CID_HCG_ENABLE: %d\n", ctrl->val);
-		break;
-		}
 	case V4L2_CID_ANALOGUE_GAIN:
-		{
-		u32 gain = ctrl->val;
-
-		dev_info(&client->dev, "analogue gain = %u (%s)\n",
-			 gain, imx678->hcg ? "HCG" : "LCG");
-
-		ret = imx678_write_reg_2byte(imx678, IMX678_REG_ANALOG_GAIN, gain);
+		ret = imx678_write_reg_2byte(imx678, IMX678_REG_ANALOG_GAIN,
+					     ctrl->val);
 		if (ret)
 			dev_err_ratelimited(&client->dev,
 					    "ANALOG_GAIN write failed (%d)\n", ret);
 		break;
-		}
 	case V4L2_CID_VBLANK:
 		{
 			u32 current_exposure = imx678->exposure->cur.val;
@@ -1201,17 +1151,6 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 
 static const struct v4l2_ctrl_ops imx678_ctrl_ops = {
 	.s_ctrl = imx678_set_ctrl,
-};
-
-static const struct v4l2_ctrl_config imx678_cfg_hcg = {
-	.ops = &imx678_ctrl_ops,
-	.id = V4L2_CID_IMX585_HCG_GAIN,
-	.name = "HCG Enable",
-	.type = V4L2_CTRL_TYPE_BOOLEAN,
-	.min  = 0,
-	.max  = 1,
-	.step = 1,
-	.def  = 0,
 };
 
 static int imx678_enum_mbus_code(struct v4l2_subdev *sd,
@@ -1779,8 +1718,6 @@ static int imx678_init_controls(struct imx678 *imx678)
 
 	imx678->hflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_HFLIP, 0, 1, 1, 0);
 	imx678->vflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_VFLIP, 0, 1, 1, 0);
-
-	imx678->hcg_ctrl = v4l2_ctrl_new_custom(ctrl_hdlr, &imx678_cfg_hcg, NULL);
 
 	if (ctrl_hdlr->error) {
 		ret = ctrl_hdlr->error;
