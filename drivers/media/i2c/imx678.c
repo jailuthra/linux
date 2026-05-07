@@ -421,6 +421,10 @@ static const struct cci_reg_sequence common_regs[] = {
 static const struct cci_reg_sequence mode_4k_regs_12bit[] = {
 	{IMX678_REG_ADDMODE, 0x00},
 	{IMX678_REG_WINMODE, 0x00},
+	{IMX678_REG_PIX_HST, 0},
+	{IMX678_REG_PIX_HWIDTH, 3856},
+	{IMX678_REG_PIX_VST, 0},
+	{IMX678_REG_PIX_VWIDTH, 2180},
 	{IMX678_REG_ADBIT, 0x01},
 };
 
@@ -438,6 +442,10 @@ static const struct cci_reg_sequence mode_1800_regs_12bit[] = {
 static const struct cci_reg_sequence mode_1080_regs_12bit[] = {
 	{IMX678_REG_ADDMODE, 0x01},
 	{IMX678_REG_WINMODE, 0x00},
+	{IMX678_REG_PIX_HST, 0},
+	{IMX678_REG_PIX_HWIDTH, 3856},
+	{IMX678_REG_PIX_VST, 0},
+	{IMX678_REG_PIX_VWIDTH, 2180},
 	{IMX678_REG_ADBIT, 0x00},
 };
 
