@@ -1292,13 +1292,14 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		return ret;
 	}
 
-	imx678_write_reg_1byte(imx678, IMX678_REG_XMSTA, 0x00);
-
 	/* Set stream on register */
 	ret = imx678_write_reg_1byte(imx678, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING);
 
 	dev_info(&client->dev, "Start Streaming\n");
 	usleep_range(IMX678_STREAM_DELAY_US, IMX678_STREAM_DELAY_US + IMX678_STREAM_DELAY_RANGE_US);
+
+	ret = imx678_write_reg_1byte(imx678, IMX678_REG_XMSTA, 0x00);
+
 	return ret;
 }
 
@@ -1309,6 +1310,8 @@ static void imx678_stop_streaming(struct imx678 *imx678)
 	int ret;
 
 	dev_info(&client->dev, "Stop Streaming\n");
+
+	ret = imx678_write_reg_1byte(imx678, IMX678_REG_XMSTA, 0x01);
 
 	/* set stream off register */
 	ret = imx678_write_reg_1byte(imx678, IMX678_REG_MODE_SELECT, IMX678_MODE_STANDBY);
