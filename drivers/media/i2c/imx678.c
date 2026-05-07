@@ -133,16 +133,16 @@
 #define IMX678_PIXEL_ARRAY_WIDTH    3840U
 #define IMX678_PIXEL_ARRAY_HEIGHT   2160U
 
-/* Link frequency setup */
+/* Link frequency setup (DDR: lane rate = 2 x link freq) */
 enum {
-	IMX678_LINK_FREQ_297MHZ,  // 594Mbps/lane
-	IMX678_LINK_FREQ_360MHZ,  // 720Mbps/lane
-	IMX678_LINK_FREQ_445MHZ,  // 891Mbps/lane
-	IMX678_LINK_FREQ_594MHZ,  // 1188Mbps/lane
-	IMX678_LINK_FREQ_720MHZ,  // 1440Mbps/lane
-	IMX678_LINK_FREQ_891MHZ,  // 1782Mbps/lane
-	IMX678_LINK_FREQ_1039MHZ, // 2079Mbps/lane
-	IMX678_LINK_FREQ_1188MHZ, // 2376Mbps/lane
+	IMX678_LINK_FREQ_297MHZ,
+	IMX678_LINK_FREQ_360MHZ,
+	IMX678_LINK_FREQ_445MHZ,
+	IMX678_LINK_FREQ_594MHZ,
+	IMX678_LINK_FREQ_720MHZ,
+	IMX678_LINK_FREQ_891MHZ,
+	IMX678_LINK_FREQ_1039MHZ,
+	IMX678_LINK_FREQ_1188MHZ,
 };
 
 static const u8 link_freqs_reg_value[] = {
@@ -167,7 +167,7 @@ static const u64 link_freqs[] = {
 	[IMX678_LINK_FREQ_1188MHZ] = 1188000000,
 };
 
-//min HMAX for 4-lane 4K full res mode, x2 for 2-lane, /2 for FHD
+/* Minimum HMAX for 4-lane 4K full res mode; x2 for 2-lane, /2 for FHD */
 static const u16 HMAX_table_4lane_4K[] = {
 	[IMX678_LINK_FREQ_297MHZ] = 1584,
 	[IMX678_LINK_FREQ_360MHZ] = 1320,
@@ -553,7 +553,7 @@ static inline void get_mode_table(struct imx678 *imx678, unsigned int code,
 	*num_modes = 0;
 
 
-	/* --- Color paths --- */
+	/* FIXME: Update this to match actual bayer patterns supported after flips */
 	switch (code) {
 	case MEDIA_BUS_FMT_SRGGB12_1X12:
 	case MEDIA_BUS_FMT_SGRBG12_1X12:
@@ -659,7 +659,6 @@ static void imx678_set_framing_limits(struct imx678 *imx678)
 	do_div(pixel_rate, mode->min_HMAX);
 	__v4l2_ctrl_modify_range(imx678->pixel_rate, pixel_rate, pixel_rate, 1, pixel_rate);
 
-	//int default_hblank = mode->default_HMAX*IMX678_PIXEL_RATE/72000000-IMX678_NATIVE_WIDTH;
 	default_hblank = mode->default_HMAX * pixel_rate;
 	do_div(default_hblank, IMX678_PIXEL_RATE);
 	default_hblank = default_hblank - mode->width;
@@ -840,7 +839,7 @@ static int imx678_get_pad_format(struct v4l2_subdev *sd,
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
 		struct v4l2_mbus_framefmt *try_fmt =
 			v4l2_subdev_state_get_format(sd_state, fmt->pad);
-		/* update the code which could change due to vflip or hflip: */
+		/* Update the code which could change due to vflip or hflip: */
 		try_fmt->code = imx678_get_format_code(imx678, try_fmt->code);
 		fmt->format = *try_fmt;
 	} else {
@@ -866,7 +865,7 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 
 	mutex_lock(&imx678->mutex);
 
-	/* Bayer order varies with flips */
+	/* FIXME: Bayer order is not actually varying with flips? */
 	fmt->format.code = imx678_get_format_code(imx678, fmt->format.code);
 	get_mode_table(imx678, fmt->format.code, &mode_list, &num_modes);
 	mode = v4l2_find_nearest_size(mode_list,
@@ -905,7 +904,6 @@ __imx678_get_pad_crop(struct imx678 *imx678,
 	return NULL;
 }
 
-/* Start streaming */
 static int imx678_start_streaming(struct imx678 *imx678)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
@@ -936,7 +934,7 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		imx678->common_regs_written = true;
 	}
 
-	/* Apply default values of current mode */
+	/* FIXME: Drop mode-specific tables */
 	reg_list = &imx678->mode->reg_list;
 	ret = cci_multi_reg_write(imx678->cci, reg_list->regs,
 				  reg_list->num_of_regs, NULL);
@@ -945,32 +943,30 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		return ret;
 	}
 
-	/* Apply customized values from user */
 	ret = __v4l2_ctrl_handler_setup(imx678->sd.ctrl_handler);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to apply user values\n", __func__);
 		return ret;
 	}
 
-	/* Set stream on register */
 	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING, NULL);
 
 	usleep_range(IMX678_STREAM_DELAY_US, IMX678_STREAM_DELAY_US + IMX678_STREAM_DELAY_RANGE_US);
 
+	/* Master mode enable */
 	ret = cci_write(imx678->cci, IMX678_REG_XMSTA, 0x00, NULL);
 
 	return ret;
 }
 
-/* Stop streaming */
 static void imx678_stop_streaming(struct imx678 *imx678)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	int ret;
 
+	/* Master mode disable */
 	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x01, NULL);
 
-	/* set stream off register */
 	ret = cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STANDBY, NULL);
 	if (ret)
 		dev_err(&client->dev, "%s failed to stop stream\n", __func__);
@@ -1025,7 +1021,6 @@ err_unlock:
 	return ret;
 }
 
-/* Power/clock management functions */
 static int imx678_power_on(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -1088,7 +1083,6 @@ static int imx678_get_regulators(struct imx678 *imx678)
 					   imx678->supplies);
 }
 
-/* Verify chip ID */
 static int imx678_check_module_exists(struct imx678 *imx678)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
@@ -1166,7 +1160,6 @@ static const struct v4l2_subdev_internal_ops imx678_internal_ops = {
 	.open = imx678_open,
 };
 
-/* Initialize control handlers */
 static int imx678_init_controls(struct imx678 *imx678)
 {
 	struct v4l2_ctrl_handler *ctrl_hdlr;
@@ -1346,11 +1339,9 @@ static int imx678_probe(struct i2c_client *client)
 	if (!match)
 		return -ENODEV;
 
-	/* Check the hardware configuration in device tree */
 	if (imx678_check_hwcfg(dev, imx678))
 		return -EINVAL;
 
-	/* Get system clock (xclk) */
 	imx678->xclk = devm_clk_get(dev, NULL);
 	if (IS_ERR(imx678->xclk)) {
 		dev_err(dev, "failed to get xclk\n");
@@ -1378,14 +1369,9 @@ static int imx678_probe(struct i2c_client *client)
 		return ret;
 	}
 
-	/* Request optional enable pin */
 	imx678->reset_gpio = devm_gpiod_get_optional(dev, "reset",
 							 GPIOD_OUT_HIGH);
 
-	/*
-	 * The sensor must be powered for imx678_check_module_exists()
-	 * to be able to read register
-	 */
 	ret = imx678_power_on(dev);
 	if (ret)
 		return ret;
@@ -1394,26 +1380,21 @@ static int imx678_probe(struct i2c_client *client)
 	if (ret)
 		goto error_power_off;
 
-	/* Initialize default format */
 	imx678_set_default_format(imx678);
 
-	/* Enable runtime PM and turn off the device */
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
 	pm_runtime_idle(dev);
 
-	/* This needs the pm runtime to be registered. */
 	ret = imx678_init_controls(imx678);
 	if (ret)
 		goto error_pm_runtime;
 
-	/* Initialize subdev */
 	imx678->sd.internal_ops = &imx678_internal_ops;
 	imx678->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
 				V4L2_SUBDEV_FL_HAS_EVENTS;
 	imx678->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
-	/* Initialize source pad */
 	imx678->pad.flags = MEDIA_PAD_FL_SOURCE;
 
 	ret = media_entity_pads_init(&imx678->sd.entity, 1, &imx678->pad);
