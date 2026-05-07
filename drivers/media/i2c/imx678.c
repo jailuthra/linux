@@ -37,16 +37,10 @@
 #define IMX678_STREAM_DELAY_US          25000
 #define IMX678_STREAM_DELAY_RANGE_US    1000
 
-/* Leader mode and XVS/XHS direction */
+/* XVS/XHS sync control */
 #define IMX678_REG_XMSTA     0x3002
 #define IMX678_REG_XXS_DRV   0x30A6
-#define IMX678_REG_EXTMODE   0x30CE
 #define IMX678_REG_XXS_OUTSEL 0x30A4
-
-/*XVS pulse length, 2^n H with n=0~3*/
-#define IMX678_REG_XVSLNG    0x30CC
-/*XHS pulse length, 16*(2^n) Clock with n=0~3*/
-#define IMX678_REG_XHSLNG    0x30CD
 
 /* Clk selection */
 #define IMX678_INCK_SEL                 0x3014
@@ -166,12 +160,6 @@ static const struct imx678_inck_cfg imx678_inck_table[] = {
 	{ 36000000, 0x05 },
 	{ 18000000, 0x06 },
 	{ 13500000, 0x07 },
-};
-
-static const char * const sync_mode_menu[] = {
-	"Internal Sync Leader Mode",
-	"External Sync Leader Mode",
-	"Follower Mode",
 };
 
 struct imx678_reg {
@@ -719,19 +707,6 @@ struct imx678 {
 
 	/* Current mode */
 	const struct imx678_mode *mode;
-
-	/* Sync Mode*/
-	/* 0 = Internal Sync Leader Mode
-	 * 1 = External Sync Leader Mode
-	 * 2 = Follower Mode
-	 * The datasheet wording is very confusing but basically:
-	 * Leader Mode = Sensor using internal clock to drive the sensor
-	 * But with external sync mode you can send a XVS input so the sensor
-	 * will try to align with it.
-	 * For Follower mode it is purely driven by external clock.
-	 * In this case you need to drive both XVS and XHS.
-	 */
-	u32 sync_mode;
 
 	/* Tracking sensor VMAX/HMAX value */
 	u16 HMAX;
@@ -1292,25 +1267,9 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		else
 			imx678_write_reg_1byte(imx678, IMX678_LANEMODE, 0x03);
 
-		if (imx678->sync_mode == 1) { //External Sync Leader Mode
-			dev_info(&client->dev, "External Sync Leader Mode, enable XVS input\n");
-			imx678_write_reg_1byte(imx678, IMX678_REG_EXTMODE, 0x01);
-			// Enable XHS output, but XVS is input
-			imx678_write_reg_1byte(imx678, IMX678_REG_XXS_DRV, 0x03);
-			// Disable XVS OUT
-			imx678_write_reg_1byte(imx678, IMX678_REG_XXS_OUTSEL, 0x08);
-		} else if (imx678->sync_mode == 0) { //Internal Sync Leader Mode
-			dev_info(&client->dev, "Internal Sync Leader Mode, enable output\n");
-			imx678_write_reg_1byte(imx678, IMX678_REG_EXTMODE, 0x00);
-			// Enable XHS and XVS output
-			imx678_write_reg_1byte(imx678, IMX678_REG_XXS_DRV, 0x00);
-			imx678_write_reg_1byte(imx678, IMX678_REG_XXS_OUTSEL, 0x0A);
-		} else {
-			dev_info(&client->dev, "Follower Mode, enable XVS/XHS input\n");
-			//For follower mode, switch both of them to input
-			imx678_write_reg_1byte(imx678, IMX678_REG_XXS_DRV, 0x0F);
-			imx678_write_reg_1byte(imx678, IMX678_REG_XXS_OUTSEL, 0x00);
-		}
+		/* Internal sync leader mode: enable XHS and XVS output */
+		imx678_write_reg_1byte(imx678, IMX678_REG_XXS_DRV, 0x00);
+		imx678_write_reg_1byte(imx678, IMX678_REG_XXS_OUTSEL, 0x0A);
 		imx678->common_regs_written = true;
 		dev_info(&client->dev, "common_regs_written\n");
 	}
@@ -1333,10 +1292,7 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		return ret;
 	}
 
-	if (imx678->sync_mode <= 1) {
-		dev_info(&client->dev, "imx678 Leader mode enabled\n");
-		imx678_write_reg_1byte(imx678, IMX678_REG_XMSTA, 0x00);
-	}
+	imx678_write_reg_1byte(imx678, IMX678_REG_XMSTA, 0x00);
 
 	/* Set stream on register */
 	ret = imx678_write_reg_1byte(imx678, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING);
@@ -1712,7 +1668,6 @@ static int imx678_probe(struct i2c_client *client)
 	struct imx678 *imx678;
 	const struct of_device_id *match;
 	int ret, i;
-	u32 sync_mode;
 
 	imx678 = devm_kzalloc(&client->dev, sizeof(*imx678), GFP_KERNEL);
 	if (!imx678)
@@ -1723,23 +1678,6 @@ static int imx678_probe(struct i2c_client *client)
 	match = of_match_device(imx678_dt_ids, dev);
 	if (!match)
 		return -ENODEV;
-
-	dev_info(dev, "Reading dtoverlay config:\n");
-
-	imx678->sync_mode = 0;
-	ret = of_property_read_u32(dev->of_node, "sync-mode", &sync_mode);
-	if (!ret) {
-		if (sync_mode > 2) {
-			dev_warn(dev, "sync-mode out of range, using 0\n");
-			sync_mode = 0;
-		}
-		imx678->sync_mode = sync_mode;
-	} else if (ret != -EINVAL) {          /* property present but bad */
-		dev_err(dev, "sync-mode malformed (%pe)\n",
-				ERR_PTR(ret));
-		return ret;
-	}
-	dev_info(dev, "Sync Mode: %s\n", sync_mode_menu[imx678->sync_mode]);
 
 	/* Check the hardware configuration in device tree */
 	if (imx678_check_hwcfg(dev, imx678))
