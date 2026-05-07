@@ -22,6 +22,7 @@
 #include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-mediabus.h>
+#include <media/v4l2-subdev.h>
 
 /*
  * Initialisation delay between XCLR low->high and the moment when the sensor
@@ -492,8 +493,6 @@ struct imx678 {
 	struct media_pad pad;
 	struct regmap *cci;
 
-	unsigned int fmt_code;
-
 	struct clk *xclk;
 	u32 xclk_freq;
 
@@ -525,15 +524,6 @@ struct imx678 {
 	/* Tracking sensor VMAX/HMAX value */
 	u16 HMAX;
 	u32 VMAX;
-
-	/*
-	 * Mutex for serialized access:
-	 * Protect sensor module set pad format and start/stop streaming safely.
-	 */
-	struct mutex mutex;
-
-	/* Streaming on/off */
-	bool streaming;
 
 	/* Rewrite common registers on stream on? */
 	bool common_regs_written;
@@ -580,8 +570,6 @@ static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 {
 	unsigned int i;
 
-	lockdep_assert_held(&imx678->mutex);
-
 	for (i = 0; i < ARRAY_SIZE(codes_normal); i++)
 		if (codes_normal[i] == code)
 			break;
@@ -599,34 +587,6 @@ static void imx678_set_default_format(struct imx678 *imx678)
 {
 	/* Set default mode to max resolution */
 	imx678->mode = &supported_modes[0];
-	imx678->fmt_code = MEDIA_BUS_FMT_SRGGB12_1X12;
-}
-
-static int imx678_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
-{
-	struct imx678 *imx678 = to_imx678(sd);
-	struct v4l2_mbus_framefmt *try_fmt =
-		v4l2_subdev_state_get_format(fh->state, 0);
-	struct v4l2_rect *try_crop;
-
-	mutex_lock(&imx678->mutex);
-
-	/* Initialize try_fmt for the image pad */
-	try_fmt->width = supported_modes[0].width;
-	try_fmt->height = supported_modes[0].height;
-	try_fmt->code = imx678_get_format_code(imx678, MEDIA_BUS_FMT_SRGGB12_1X12);
-	try_fmt->field = V4L2_FIELD_NONE;
-
-	/* Initialize try_crop */
-	try_crop = v4l2_subdev_state_get_crop(fh->state, 0);
-	try_crop->left = IMX678_PIXEL_ARRAY_LEFT;
-	try_crop->top = IMX678_PIXEL_ARRAY_TOP;
-	try_crop->width = IMX678_PIXEL_ARRAY_WIDTH;
-	try_crop->height = IMX678_PIXEL_ARRAY_HEIGHT;
-
-	mutex_unlock(&imx678->mutex);
-
-	return 0;
 }
 
 static void imx678_update_hmax(struct imx678 *imx678)
@@ -820,38 +780,13 @@ static void imx678_reset_colorspace(const struct imx678_mode *mode, struct v4l2_
 
 static void imx678_update_image_pad_format(struct imx678 *imx678,
 					   const struct imx678_mode *mode,
-					   struct v4l2_subdev_format *fmt)
+					   struct v4l2_mbus_framefmt *format)
 {
-	fmt->format.width = mode->width;
-	fmt->format.height = mode->height;
-	fmt->format.field = V4L2_FIELD_NONE;
-	imx678_reset_colorspace(mode, &fmt->format);
+	format->width = mode->width;
+	format->height = mode->height;
+	format->field = V4L2_FIELD_NONE;
+	imx678_reset_colorspace(mode, format);
 }
-
-static int imx678_get_pad_format(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_state *sd_state,
-				 struct v4l2_subdev_format *fmt)
-{
-	struct imx678 *imx678 = to_imx678(sd);
-
-	mutex_lock(&imx678->mutex);
-
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		struct v4l2_mbus_framefmt *try_fmt =
-			v4l2_subdev_state_get_format(sd_state, fmt->pad);
-		/* Update the code which could change due to vflip or hflip: */
-		try_fmt->code = imx678_get_format_code(imx678, try_fmt->code);
-		fmt->format = *try_fmt;
-	} else {
-		imx678_update_image_pad_format(imx678, imx678->mode, fmt);
-		fmt->format.code =
-			   imx678_get_format_code(imx678, imx678->fmt_code);
-	}
-
-	mutex_unlock(&imx678->mutex);
-	return 0;
-}
-
 
 static int imx678_set_pad_format(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
@@ -863,8 +798,6 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	unsigned int num_modes;
 	struct imx678 *imx678 = to_imx678(sd);
 
-	mutex_lock(&imx678->mutex);
-
 	/* FIXME: Bayer order is not actually varying with flips? */
 	fmt->format.code = imx678_get_format_code(imx678, fmt->format.code);
 	get_mode_table(imx678, fmt->format.code, &mode_list, &num_modes);
@@ -873,35 +806,35 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 					  width, height,
 					  fmt->format.width,
 					  fmt->format.height);
-	imx678_update_image_pad_format(imx678, mode, fmt);
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
-		*framefmt = fmt->format;
-	} else if (imx678->mode != mode ||
-		   imx678->fmt_code != fmt->format.code) {
+	imx678_update_image_pad_format(imx678, mode, &fmt->format);
+
+	framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
+	*framefmt = fmt->format;
+
+	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
 		imx678->mode = mode;
-		imx678->fmt_code = fmt->format.code;
 		imx678_set_framing_limits(imx678);
 	}
-
-	mutex_unlock(&imx678->mutex);
 
 	return 0;
 }
 
-static const struct v4l2_rect *
-__imx678_get_pad_crop(struct imx678 *imx678,
-			  struct v4l2_subdev_state *sd_state,
-			  unsigned int pad, enum v4l2_subdev_format_whence which)
+static int imx678_init_state(struct v4l2_subdev *sd,
+			     struct v4l2_subdev_state *state)
 {
-	switch (which) {
-	case V4L2_SUBDEV_FORMAT_TRY:
-		return v4l2_subdev_state_get_crop(sd_state, 0);
-	case V4L2_SUBDEV_FORMAT_ACTIVE:
-		return &imx678->mode->crop;
-	}
+	struct imx678 *imx678 = to_imx678(sd);
+	const struct imx678_mode *mode = &supported_modes[0];
+	struct v4l2_mbus_framefmt *format;
+	struct v4l2_rect *crop;
 
-	return NULL;
+	format = v4l2_subdev_state_get_format(state, 0);
+	format->code = imx678_get_format_code(imx678, MEDIA_BUS_FMT_SRGGB12_1X12);
+	imx678_update_image_pad_format(imx678, mode, format);
+
+	crop = v4l2_subdev_state_get_crop(state, 0);
+	*crop = mode->crop;
+
+	return 0;
 }
 
 static int imx678_start_streaming(struct imx678 *imx678)
@@ -975,14 +908,11 @@ static void imx678_stop_streaming(struct imx678 *imx678)
 static int imx678_set_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct imx678 *imx678 = to_imx678(sd);
+	struct v4l2_subdev_state *state;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	int ret = 0;
 
-	mutex_lock(&imx678->mutex);
-	if (imx678->streaming == enable) {
-		mutex_unlock(&imx678->mutex);
-		return 0;
-	}
+	state = v4l2_subdev_lock_and_get_active_state(sd);
 
 	if (enable) {
 		ret = pm_runtime_get_sync(&client->dev);
@@ -992,8 +922,7 @@ static int imx678_set_stream(struct v4l2_subdev *sd, int enable)
 		}
 
 		/*
-		 * Apply default & customized values
-		 * and then start streaming.
+		 * Apply default & customized values and then start streaming.
 		 */
 		ret = imx678_start_streaming(imx678);
 		if (ret)
@@ -1003,20 +932,17 @@ static int imx678_set_stream(struct v4l2_subdev *sd, int enable)
 		pm_runtime_put(&client->dev);
 	}
 
-	imx678->streaming = enable;
-
 	/* vflip/hflip and hdr mode cannot change during streaming */
 	__v4l2_ctrl_grab(imx678->vflip, enable);
 	__v4l2_ctrl_grab(imx678->hflip, enable);
 
-	mutex_unlock(&imx678->mutex);
-
+	v4l2_subdev_unlock_state(state);
 	return ret;
 
 err_rpm_put:
 	pm_runtime_put(&client->dev);
 err_unlock:
-	mutex_unlock(&imx678->mutex);
+	v4l2_subdev_unlock_state(state);
 
 	return ret;
 }
@@ -1103,16 +1029,15 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_state *sd_state,
 				struct v4l2_subdev_selection *sel)
 {
+	struct imx678 *imx678 = to_imx678(sd);
+
 	switch (sel->target) {
-	case V4L2_SEL_TGT_CROP: {
-		struct imx678 *imx678 = to_imx678(sd);
-
-		mutex_lock(&imx678->mutex);
-		sel->r = *__imx678_get_pad_crop(imx678, sd_state, sel->pad, sel->which);
-		mutex_unlock(&imx678->mutex);
-
+	case V4L2_SEL_TGT_CROP:
+		if (sd_state)
+			sel->r = *v4l2_subdev_state_get_crop(sd_state, sel->pad);
+		else
+			sel->r = imx678->mode->crop;
 		return 0;
-	}
 
 	case V4L2_SEL_TGT_NATIVE_SIZE:
 		sel->r.left = 0;
@@ -1144,7 +1069,7 @@ static const struct v4l2_subdev_video_ops imx678_video_ops = {
 
 static const struct v4l2_subdev_pad_ops imx678_pad_ops = {
 	.enum_mbus_code = imx678_enum_mbus_code,
-	.get_fmt = imx678_get_pad_format,
+	.get_fmt = v4l2_subdev_get_fmt,
 	.set_fmt = imx678_set_pad_format,
 	.get_selection = imx678_get_selection,
 	.enum_frame_size = imx678_enum_frame_size,
@@ -1157,7 +1082,7 @@ static const struct v4l2_subdev_ops imx678_subdev_ops = {
 };
 
 static const struct v4l2_subdev_internal_ops imx678_internal_ops = {
-	.open = imx678_open,
+	.init_state = imx678_init_state,
 };
 
 static int imx678_init_controls(struct imx678 *imx678)
@@ -1171,9 +1096,6 @@ static int imx678_init_controls(struct imx678 *imx678)
 	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 32);
 	if (ret)
 		return ret;
-
-	mutex_init(&imx678->mutex);
-	ctrl_hdlr->lock = &imx678->mutex;
 
 	/*
 	 * Create the controls here, but mode specific limits are setup
@@ -1245,7 +1167,6 @@ static int imx678_init_controls(struct imx678 *imx678)
 
 error:
 	v4l2_ctrl_handler_free(ctrl_hdlr);
-	mutex_destroy(&imx678->mutex);
 
 	return ret;
 }
@@ -1253,7 +1174,6 @@ error:
 static void imx678_free_controls(struct imx678 *imx678)
 {
 	v4l2_ctrl_handler_free(imx678->sd.ctrl_handler);
-	mutex_destroy(&imx678->mutex);
 }
 
 static const struct of_device_id imx678_dt_ids[] = {
@@ -1403,13 +1323,23 @@ static int imx678_probe(struct i2c_client *client)
 		goto error_handler_free;
 	}
 
-	ret = v4l2_async_register_subdev_sensor(&imx678->sd);
+	imx678->sd.state_lock = imx678->ctrl_handler.lock;
+	ret = v4l2_subdev_init_finalize(&imx678->sd);
 	if (ret < 0) {
-		dev_err(dev, "failed to register sensor sub-device: %d\n", ret);
+		dev_err(dev, "subdev init error\n");
 		goto error_media_entity;
 	}
 
+	ret = v4l2_async_register_subdev_sensor(&imx678->sd);
+	if (ret < 0) {
+		dev_err(dev, "failed to register sensor sub-device: %d\n", ret);
+		goto error_subdev_cleanup;
+	}
+
 	return 0;
+
+error_subdev_cleanup:
+	v4l2_subdev_cleanup(&imx678->sd);
 
 error_media_entity:
 	media_entity_cleanup(&imx678->sd.entity);
@@ -1433,6 +1363,7 @@ static void imx678_remove(struct i2c_client *client)
 	struct imx678 *imx678 = to_imx678(sd);
 
 	v4l2_async_unregister_subdev(sd);
+	v4l2_subdev_cleanup(sd);
 	media_entity_cleanup(&sd->entity);
 	imx678_free_controls(imx678);
 
