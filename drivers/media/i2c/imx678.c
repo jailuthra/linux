@@ -102,6 +102,27 @@
 #define IMX678_REG_MDBIT                CCI_REG8(0x3023)
 #define IMX678_REG_GAIN_PGC_FIDMD       CCI_REG8(0x3400)
 
+/* Test pattern generator */
+#define IMX678_REG_TPG_EN_DUOUT		CCI_REG8(0x30E0)
+#define IMX678_REG_TPG_PATSEL_DUOUT	CCI_REG8(0x30E2)
+#define IMX678_TPG_ALL_000		0
+#define IMX678_TPG_ALL_FFF		1
+#define IMX678_TPG_ALL_555		2
+#define IMX678_TPG_ALL_AAA		3
+#define IMX678_TPG_TOG_555_AAA		4
+#define IMX678_TPG_TOG_AAA_555		5
+#define IMX678_TPG_TOG_000_555		6
+#define IMX678_TPG_TOG_555_000		7
+#define IMX678_TPG_TOG_000_FFF		8
+#define IMX678_TPG_TOG_FFF_000		9
+#define IMX678_TPG_H_COLOR_BARS		10
+#define IMX678_TPG_V_COLOR_BARS		11
+#define IMX678_REG_TPG_COLORWIDTH	CCI_REG8(0x30E4)
+#define IMX678_TPG_COLORWIDTH_80PIX	0
+#define IMX678_TPG_COLORWIDTH_160PIX	1
+#define IMX678_TPG_COLORWIDTH_320PIX	2
+#define IMX678_TPG_COLORWIDTH_640PIX	3
+
 #define IMX678_PIXEL_RATE               74250000
 
 /* imx678 native and active pixel array size. */
@@ -173,6 +194,39 @@ static const struct imx678_inck_cfg imx678_inck_table[] = {
 	{ 18000000, 0x06 },
 	{ 13500000, 0x07 },
 };
+
+static const char * const imx678_tpg_menu[] = {
+	"Disabled",
+	"All 000h",
+	"All FFFh",
+	"All 555h",
+	"All AAAh",
+	"Toggle 555/AAAh",
+	"Toggle AAA/555h",
+	"Toggle 000/555h",
+	"Toggle 555/000h",
+	"Toggle 000/FFFh",
+	"Toggle FFF/000h",
+	"Horizontal color bars",
+	"Vertical color bars",
+};
+
+static const int imx678_tpg_val[] = {
+	IMX678_TPG_ALL_000,
+	IMX678_TPG_ALL_000,
+	IMX678_TPG_ALL_FFF,
+	IMX678_TPG_ALL_555,
+	IMX678_TPG_ALL_AAA,
+	IMX678_TPG_TOG_555_AAA,
+	IMX678_TPG_TOG_AAA_555,
+	IMX678_TPG_TOG_000_555,
+	IMX678_TPG_TOG_555_000,
+	IMX678_TPG_TOG_000_FFF,
+	IMX678_TPG_TOG_FFF_000,
+	IMX678_TPG_H_COLOR_BARS,
+	IMX678_TPG_V_COLOR_BARS,
+};
+
 
 struct imx678_reg_list {
 	unsigned int num_of_regs;
@@ -705,6 +759,15 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		ret = cci_write(imx678->cci, IMX678_REG_HMAX, hmax, NULL);
 		break;
 	}
+	case V4L2_CID_TEST_PATTERN: {
+		cci_write(imx678->cci, IMX678_REG_TPG_COLORWIDTH,
+			  IMX678_TPG_COLORWIDTH_160PIX, &ret);
+		cci_write(imx678->cci, IMX678_REG_TPG_PATSEL_DUOUT,
+			  imx678_tpg_val[ctrl->val], &ret);
+		cci_write(imx678->cci, IMX678_REG_TPG_EN_DUOUT, (ctrl->val) ? 1 : 0,
+			  &ret);
+		break;
+	}
 	case V4L2_CID_HFLIP:
 		ret = cci_write(imx678->cci, IMX678_REG_WINMODEH, ctrl->val, NULL);
 		break;
@@ -1190,6 +1253,10 @@ static int imx678_init_controls(struct imx678 *imx678)
 	imx678->vflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_VFLIP, 0, 1, 1, 0);
 	if (imx678->vflip)
 		imx678->vflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
+
+	v4l2_ctrl_new_std_menu_items(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_TEST_PATTERN,
+				     ARRAY_SIZE(imx678_tpg_menu) - 1, 0, 0,
+				     imx678_tpg_menu);
 
 	if (ctrl_hdlr->error) {
 		ret = ctrl_hdlr->error;
