@@ -35,9 +35,6 @@
 #define IMX678_STREAM_DELAY_US          25000
 #define IMX678_STREAM_DELAY_RANGE_US    1000
 
-/* Group hold */
-#define IMX678_REG_HOLD                 CCI_REG8(0x3001)
-
 /* XVS/XHS sync control */
 #define IMX678_REG_XMSTA                CCI_REG8(0x3002)
 #define IMX678_REG_XXS_DRV              CCI_REG8(0x30A6)
@@ -565,8 +562,6 @@ static const char * const imx678_supply_name[] = {
 	"VDDL",  /* IF (1.8V) supply */
 };
 
-#define imx678_NUM_SUPPLIES ARRAY_SIZE(imx678_supply_name)
-
 struct imx678 {
 	struct v4l2_subdev sd;
 	struct media_pad pad;
@@ -585,7 +580,7 @@ struct imx678 {
 	unsigned int link_freq_idx;
 
 	struct gpio_desc *reset_gpio;
-	struct regulator_bulk_data supplies[imx678_NUM_SUPPLIES];
+	struct regulator_bulk_data supplies[ARRAY_SIZE(imx678_supply_name)];
 
 	struct v4l2_ctrl_handler ctrl_handler;
 
@@ -638,12 +633,6 @@ static inline void get_mode_table(struct imx678 *imx678, unsigned int code,
 		*num_modes = 0;
 	}
 
-}
-
-/* Hold register values until hold is disabled */
-static inline void imx678_register_hold(struct imx678 *imx678, bool hold)
-{
-	cci_write(imx678->cci, IMX678_REG_HOLD, hold ? 1 : 0, NULL);
 }
 
 static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
@@ -1020,7 +1009,7 @@ static int imx678_power_on(struct device *dev)
 	struct imx678 *imx678 = to_imx678(sd);
 	int ret;
 
-	ret = regulator_bulk_enable(imx678_NUM_SUPPLIES, imx678->supplies);
+	ret = regulator_bulk_enable(ARRAY_SIZE(imx678_supply_name), imx678->supplies);
 	if (ret) {
 		dev_err(&client->dev, "%s: failed to enable regulators\n",
 			__func__);
@@ -1043,7 +1032,7 @@ static int imx678_power_on(struct device *dev)
 	return 0;
 
 reg_off:
-	regulator_bulk_disable(imx678_NUM_SUPPLIES, imx678->supplies);
+	regulator_bulk_disable(ARRAY_SIZE(imx678_supply_name), imx678->supplies);
 	return ret;
 }
 
@@ -1054,7 +1043,7 @@ static int imx678_power_off(struct device *dev)
 	struct imx678 *imx678 = to_imx678(sd);
 
 	gpiod_set_value_cansleep(imx678->reset_gpio, 0);
-	regulator_bulk_disable(imx678_NUM_SUPPLIES, imx678->supplies);
+	regulator_bulk_disable(ARRAY_SIZE(imx678_supply_name), imx678->supplies);
 	clk_disable_unprepare(imx678->xclk);
 
 	/* Force reprogramming of the common registers when powered up again. */
@@ -1068,12 +1057,11 @@ static int imx678_get_regulators(struct imx678 *imx678)
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	unsigned int i;
 
-	for (i = 0; i < imx678_NUM_SUPPLIES; i++)
+	for (i = 0; i < ARRAY_SIZE(imx678_supply_name); i++)
 		imx678->supplies[i].supply = imx678_supply_name[i];
 
-	return devm_regulator_bulk_get(&client->dev,
-					   imx678_NUM_SUPPLIES,
-					   imx678->supplies);
+	return devm_regulator_bulk_get(&client->dev, ARRAY_SIZE(imx678_supply_name),
+				       imx678->supplies);
 }
 
 static int imx678_detect(struct imx678 *imx678)
