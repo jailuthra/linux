@@ -78,7 +78,7 @@
 
 /* Black level control */
 #define IMX678_REG_BLKLEVEL             CCI_REG16_LE(0x30DC)
-#define IMX678_BLKLEVEL_DEFAULT         50
+#define IMX678_BLKLEVEL_DEFAULT         0x4032
 
 /* Digital Clamp */
 #define IMX678_REG_DIGITAL_CLAMP        CCI_REG8(0x3458)
@@ -123,6 +123,10 @@
 #define IMX678_TPG_COLORWIDTH_160PIX	1
 #define IMX678_TPG_COLORWIDTH_320PIX	2
 #define IMX678_TPG_COLORWIDTH_640PIX	3
+
+#define IMX678_REG_INTERFACE_SEL	CCI_REG8(0x4E3C)
+#define IMX678_INTERFACE_2L_4L		0x07
+#define IMX678_INTERFACE_8L_2x4L	0x7f
 
 #define IMX678_PIXEL_RATE               74250000
 
@@ -834,9 +838,12 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		else
 			cci_write(imx678->cci, IMX678_REG_LANEMODE, 0x03, NULL);
 
+		cci_write(imx678->cci, IMX678_REG_INTERFACE_SEL, IMX678_INTERFACE_2L_4L,
+			  NULL);
+
 		/* Internal sync leader mode: enable XHS and XVS output */
 		cci_write(imx678->cci, IMX678_REG_XXS_DRV, 0x00, NULL);
-		cci_write(imx678->cci, IMX678_REG_XXS_OUTSEL, 0x0A, NULL);
+		cci_write(imx678->cci, IMX678_REG_XXS_OUTSEL, 0xAA, NULL);
 		imx678->common_regs_written = true;
 	}
 
