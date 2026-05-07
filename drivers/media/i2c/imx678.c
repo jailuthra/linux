@@ -653,8 +653,8 @@ struct imx678_mode supported_modes[] = {
 /* 12bit Only */
 static const u32 codes_normal[] = {
 	MEDIA_BUS_FMT_SRGGB12_1X12,
-	MEDIA_BUS_FMT_SGRBG12_1X12,
-	MEDIA_BUS_FMT_SGBRG12_1X12,
+	MEDIA_BUS_FMT_SRGGB12_1X12,
+	MEDIA_BUS_FMT_SBGGR12_1X12,
 	MEDIA_BUS_FMT_SBGGR12_1X12,
 };
 
@@ -876,8 +876,14 @@ static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 	for (i = 0; i < ARRAY_SIZE(codes_normal); i++)
 		if (codes_normal[i] == code)
 			break;
-	return codes_normal[i];
 
+	if (i >= ARRAY_SIZE(codes_normal))
+		i = 0;
+
+	i = (i & ~3) | (imx678->vflip->val ? 2 : 0) |
+	    (imx678->hflip->val ? 1 : 0);
+
+	return codes_normal[i];
 }
 
 static void imx678_set_default_format(struct imx678 *imx678)
@@ -1564,7 +1570,11 @@ static int imx678_init_controls(struct imx678 *imx678)
 					 IMX678_ANA_GAIN_STEP, IMX678_ANA_GAIN_DEFAULT);
 
 	imx678->hflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_HFLIP, 0, 1, 1, 0);
+	if (imx678->hflip)
+		imx678->hflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
 	imx678->vflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_VFLIP, 0, 1, 1, 0);
+	if (imx678->vflip)
+		imx678->vflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
 
 	if (ctrl_hdlr->error) {
 		ret = ctrl_hdlr->error;
