@@ -454,22 +454,9 @@ struct imx678_mode supported_modes[] = {
 };
 
 
-/*
- * The supported formats.
- * This table MUST contain 4 entries per format, to cover the various flip
- * combinations in the order
- * - no flip
- * - h flip
- * - v flip
- * - h&v flips
- */
-
 /* 12bit Only */
 static const u32 codes_normal[] = {
 	MEDIA_BUS_FMT_SRGGB12_1X12,
-	MEDIA_BUS_FMT_SRGGB12_1X12,
-	MEDIA_BUS_FMT_SBGGR12_1X12,
-	MEDIA_BUS_FMT_SBGGR12_1X12,
 };
 
 /* Flip isn’t relevant for mono */
@@ -565,7 +552,6 @@ static inline void imx678_register_hold(struct imx678 *imx678, bool hold)
 	cci_write(imx678->cci, IMX678_REG_HOLD, hold ? 1 : 0, NULL);
 }
 
-/* Get bayer order based on flip setting. */
 static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 {
 	unsigned int i;
@@ -573,12 +559,6 @@ static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 	for (i = 0; i < ARRAY_SIZE(codes_normal); i++)
 		if (codes_normal[i] == code)
 			break;
-
-	if (i >= ARRAY_SIZE(codes_normal))
-		i = 0;
-
-	i = (i & ~3) | (imx678->vflip->val ? 2 : 0) |
-	    (imx678->hflip->val ? 1 : 0);
 
 	return codes_normal[i];
 }
@@ -729,17 +709,10 @@ static int imx678_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
-	struct imx678 *imx678 = to_imx678(sd);
-	unsigned int entries;
-	const u32 *tbl;
-
-	tbl     = codes_normal;
-	entries = ARRAY_SIZE(codes_normal) / 4;
-
-	if (code->index >= entries)
+	if (code->index >= ARRAY_SIZE(codes_normal))
 		return -EINVAL;
 
-	code->code = imx678_get_format_code(imx678, tbl[code->index * 4]);
+	code->code = codes_normal[code->index];
 	return 0;
 }
 
@@ -931,10 +904,6 @@ static int imx678_set_stream(struct v4l2_subdev *sd, int enable)
 		imx678_stop_streaming(imx678);
 		pm_runtime_put(&client->dev);
 	}
-
-	/* vflip/hflip and hdr mode cannot change during streaming */
-	__v4l2_ctrl_grab(imx678->vflip, enable);
-	__v4l2_ctrl_grab(imx678->hflip, enable);
 
 	v4l2_subdev_unlock_state(state);
 	return ret;
@@ -1133,11 +1102,7 @@ static int imx678_init_controls(struct imx678 *imx678)
 					 IMX678_ANA_GAIN_STEP, IMX678_ANA_GAIN_DEFAULT);
 
 	imx678->hflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_HFLIP, 0, 1, 1, 0);
-	if (imx678->hflip)
-		imx678->hflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
 	imx678->vflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_VFLIP, 0, 1, 1, 0);
-	if (imx678->vflip)
-		imx678->vflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
 
 	v4l2_ctrl_new_std_menu_items(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_TEST_PATTERN,
 				     ARRAY_SIZE(imx678_tpg_menu) - 1, 0, 0,
