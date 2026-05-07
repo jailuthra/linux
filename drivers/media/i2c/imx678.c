@@ -907,9 +907,6 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		return ret;
 	}
 
-	/* Disable digital clamp */
-	cci_write(imx678->cci, IMX678_REG_DIGITAL_CLAMP, 0, NULL);
-
 	/* Apply customized values from user */
 	ret = __v4l2_ctrl_handler_setup(imx678->sd.ctrl_handler);
 	if (ret) {
