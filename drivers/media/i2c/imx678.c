@@ -28,13 +28,6 @@
 #include <media/v4l2-mediabus.h>
 #include <media/v4l2-subdev.h>
 
-/*
- * Initialisation delay between XCLR low->high and the moment when the sensor
- * can start capture (i.e. can leave software standby)
- */
-#define IMX678_XCLR_MIN_DELAY_US    500000
-#define IMX678_XCLR_DELAY_RANGE_US  1000
-
 /* Standby or streaming mode */
 #define IMX678_REG_MODE_SELECT          CCI_REG8(0x3000)
 #define IMX678_MODE_STANDBY             0x01
@@ -105,6 +98,14 @@
 #define IMX678_REG_WINMODEH             CCI_REG8(0x3020)
 #define IMX678_REG_WINMODEV             CCI_REG8(0x3021)
 
+/* Sensor Identification */
+#define IMX678_REG_MONOCHROME		CCI_REG8(0x4D18)
+#define IMX678_TYPE			BIT(0)
+#define IMX678_REG_MODULE_ID		CCI_REG16_LE(0x4D1C)
+#define IMX678_ID			0x02a6
+#define IMX678_MODULE_ID_DELAY		80000
+#define IMX678_MODULE_ID_DELAY_RANGE	1000
+
 /* Common configuration registers */
 #define IMX678_REG_WDMODE               CCI_REG8(0x301A)
 #define IMX678_REG_ADDMODE              CCI_REG8(0x301B)
@@ -140,6 +141,11 @@
 #define IMX678_INTERFACE_8L_2x4L	0x7f
 
 #define IMX678_PIXEL_RATE               74250000
+
+enum imx678_type {
+	IMX678_COLOR = 0,
+	IMX678_MONOCHROME = 1,
+};
 
 /* IMX678 native and active pixel array size. */
 static const struct v4l2_rect imx678_native_area = {
@@ -565,6 +571,8 @@ struct imx678 {
 	struct v4l2_subdev sd;
 	struct media_pad pad;
 	struct regmap *cci;
+
+	enum imx678_type type;
 
 	struct clk *xclk;
 	u32 xclk_freq;
@@ -1012,13 +1020,16 @@ static int imx678_power_on(struct device *dev)
 	struct imx678 *imx678 = to_imx678(sd);
 	int ret;
 
-	ret = regulator_bulk_enable(imx678_NUM_SUPPLIES,
-					imx678->supplies);
+	ret = regulator_bulk_enable(imx678_NUM_SUPPLIES, imx678->supplies);
 	if (ret) {
 		dev_err(&client->dev, "%s: failed to enable regulators\n",
 			__func__);
 		return ret;
 	}
+
+	usleep_range(500, 550); /* Tlow */
+
+	gpiod_set_value_cansleep(imx678->reset_gpio, 1);
 
 	ret = clk_prepare_enable(imx678->xclk);
 	if (ret) {
@@ -1027,9 +1038,7 @@ static int imx678_power_on(struct device *dev)
 		goto reg_off;
 	}
 
-	gpiod_set_value_cansleep(imx678->reset_gpio, 1);
-	usleep_range(IMX678_XCLR_MIN_DELAY_US,
-			 IMX678_XCLR_MIN_DELAY_US + IMX678_XCLR_DELAY_RANGE_US);
+	usleep_range(20, 22); /* T4 */
 
 	return 0;
 
@@ -1067,16 +1076,35 @@ static int imx678_get_regulators(struct imx678 *imx678)
 					   imx678->supplies);
 }
 
-static int imx678_check_module_exists(struct imx678 *imx678)
+static int imx678_detect(struct imx678 *imx678)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
-	int ret;
-	u64 val;
+	int ret = 0;
+	u64 val = 0;
 
-	/* We don't actually have a CHIP ID register so we try to read from BLKLEVEL instead */
-	ret = cci_read(imx678->cci, IMX678_REG_BLKLEVEL, &val, NULL);
+	/*
+	 * This sensor's ID registers become accessible 80ms after coming out
+	 * of STANDBY mode.
+	 */
+	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, 0, &ret);
+	usleep_range(IMX678_MODULE_ID_DELAY, IMX678_MODULE_ID_DELAY +
+		     IMX678_MODULE_ID_DELAY_RANGE);
+
+	cci_read(imx678->cci, IMX678_REG_MODULE_ID, &val, &ret);
+
+	if (val != IMX678_ID) {
+		dev_err(&client->dev,
+			"Chip ID mismatch: %x!=%llx\n", IMX678_ID, val);
+		return -ENXIO;
+	}
+
+	cci_read(imx678->cci, IMX678_REG_MONOCHROME, &val, &ret);
+
+	imx678->type = val & IMX678_TYPE;
+
 	if (ret) {
-		dev_err(&client->dev, "failed to read chip reg, with error %d\n", ret);
+		dev_err(&client->dev,
+			"I2C transaction failed ret = %d\n", ret);
 		return ret;
 	}
 
@@ -1341,7 +1369,7 @@ static int imx678_probe(struct i2c_client *client)
 	if (ret)
 		return ret;
 
-	ret = imx678_check_module_exists(imx678);
+	ret = imx678_detect(imx678);
 	if (ret)
 		goto error_power_off;
 
