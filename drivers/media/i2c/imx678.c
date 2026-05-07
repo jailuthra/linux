@@ -543,14 +543,11 @@ struct imx678_mode supported_modes[] = {
 };
 
 
-/* 12bit Only */
 static const u32 codes_normal[] = {
 	MEDIA_BUS_FMT_SRGGB12_1X12,
 };
 
-/* Flip isn’t relevant for mono */
 static const u32 mono_codes[] = {
-	MEDIA_BUS_FMT_Y16_1X16,   /* 16-bit mono */
 	MEDIA_BUS_FMT_Y12_1X12,   /* 12-bit mono */
 };
 
@@ -611,20 +608,49 @@ static inline struct imx678 *to_imx678(struct v4l2_subdev *_sd)
 	return container_of(_sd, struct imx678, sd);
 }
 
-static inline void get_mode_table(struct imx678 *imx678, unsigned int code,
+static const u32 *imx678_mbus_codes(struct imx678 *imx678,
+				    unsigned int *num_codes)
+{
+	if (imx678->type == IMX678_MONOCHROME) {
+		*num_codes = ARRAY_SIZE(mono_codes);
+		return mono_codes;
+	}
+
+	*num_codes = ARRAY_SIZE(codes_normal);
+	return codes_normal;
+}
+
+static u32 imx678_default_mbus_code(struct imx678 *imx678)
+{
+	unsigned int num_codes;
+	const u32 *codes = imx678_mbus_codes(imx678, &num_codes);
+
+	return codes[0];
+}
+
+static bool imx678_mbus_code_supported(struct imx678 *imx678, u32 code)
+{
+	unsigned int i, num_codes;
+	const u32 *codes = imx678_mbus_codes(imx678, &num_codes);
+
+	for (i = 0; i < num_codes; i++) {
+		if (codes[i] == code)
+			return true;
+	}
+
+	return false;
+}
+
+static inline void get_mode_table(unsigned int code,
 				  const struct imx678_mode **mode_list,
 				  unsigned int *num_modes)
 {
 	*mode_list = NULL;
 	*num_modes = 0;
 
-
-	/* FIXME: Update this to match actual bayer patterns supported after flips */
 	switch (code) {
 	case MEDIA_BUS_FMT_SRGGB12_1X12:
-	case MEDIA_BUS_FMT_SGRBG12_1X12:
-	case MEDIA_BUS_FMT_SGBRG12_1X12:
-	case MEDIA_BUS_FMT_SBGGR12_1X12:
+	case MEDIA_BUS_FMT_Y12_1X12:
 		*mode_list = supported_modes;
 		*num_modes = ARRAY_SIZE(supported_modes);
 		break;
@@ -632,18 +658,14 @@ static inline void get_mode_table(struct imx678 *imx678, unsigned int code,
 		*mode_list = NULL;
 		*num_modes = 0;
 	}
-
 }
 
 static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 {
-	unsigned int i;
+	if (imx678_mbus_code_supported(imx678, code))
+		return code;
 
-	for (i = 0; i < ARRAY_SIZE(codes_normal); i++)
-		if (codes_normal[i] == code)
-			break;
-
-	return codes_normal[i];
+	return imx678_default_mbus_code(imx678);
 }
 
 static void imx678_set_default_format(struct imx678 *imx678)
@@ -792,10 +814,14 @@ static int imx678_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
-	if (code->index >= ARRAY_SIZE(codes_normal))
+	struct imx678 *imx678 = to_imx678(sd);
+	unsigned int num_codes;
+	const u32 *codes = imx678_mbus_codes(imx678, &num_codes);
+
+	if (code->index >= num_codes)
 		return -EINVAL;
 
-	code->code = codes_normal[code->index];
+	code->code = codes[code->index];
 	return 0;
 }
 
@@ -808,7 +834,7 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 	const struct imx678_mode *mode_list;
 	unsigned int num_modes;
 
-	get_mode_table(imx678, fse->code, &mode_list, &num_modes);
+	get_mode_table(fse->code, &mode_list, &num_modes);
 
 	if (fse->index >= num_modes)
 		return -EINVAL;
@@ -856,7 +882,7 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 
 	/* FIXME: Bayer order is not actually varying with flips? */
 	fmt->format.code = imx678_get_format_code(imx678, fmt->format.code);
-	get_mode_table(imx678, fmt->format.code, &mode_list, &num_modes);
+	get_mode_table(fmt->format.code, &mode_list, &num_modes);
 	mode = v4l2_find_nearest_size(mode_list,
 					  num_modes,
 					  width, height,
@@ -884,7 +910,7 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 	struct v4l2_rect *crop;
 
 	format = v4l2_subdev_state_get_format(state, 0);
-	format->code = imx678_get_format_code(imx678, MEDIA_BUS_FMT_SRGGB12_1X12);
+	format->code = imx678_default_mbus_code(imx678);
 	imx678_update_image_pad_format(imx678, mode, format);
 
 	crop = v4l2_subdev_state_get_crop(state, 0);
