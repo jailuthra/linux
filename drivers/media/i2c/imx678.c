@@ -434,6 +434,16 @@ static const struct cci_reg_sequence mode_1080_regs_12bit[] = {
 	{IMX678_REG_WINMODE, 0x00},
 };
 
+/* 2x2 binned 720p60. 12-bit */
+static const struct cci_reg_sequence mode_720_regs_12bit[] = {
+	{IMX678_REG_ADDMODE, 0x01},
+	{IMX678_REG_WINMODE, 0x04},
+	{IMX678_REG_PIX_HST, 648},
+	{IMX678_REG_PIX_HWIDTH, 2560},
+	{IMX678_REG_PIX_VST, 368},
+	{IMX678_REG_PIX_VWIDTH, 1440},
+};
+
 /* For Mode List:
  * Default:
  *   12Bit - FHD, 4K
@@ -469,6 +479,26 @@ struct imx678_mode supported_modes[] = {
 		.reg_list = {
 			.num_of_regs = ARRAY_SIZE(mode_4k_regs_12bit),
 			.regs = mode_4k_regs_12bit,
+		},
+	},
+	{
+		/* 720p60 2x2 binning */
+		.width = 1280,
+		.height = 720,
+		.hmax_div = 1,
+		.min_HMAX = 366,
+		.min_VMAX = IMX678_VMAX_DEFAULT,
+		.default_HMAX = 366,
+		.default_VMAX = IMX678_VMAX_DEFAULT,
+		.crop = {
+			.top = 388,
+			.left = 648,
+			.width = 2560,
+			.height = 1440,
+		},
+		.reg_list = {
+			.num_of_regs = ARRAY_SIZE(mode_720_regs_12bit),
+			.regs = mode_720_regs_12bit,
 		},
 	},
 	{
