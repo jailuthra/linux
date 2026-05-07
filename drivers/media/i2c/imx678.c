@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * A V4L2 driver for Sony imx678 cameras.
+ * V4L2 driver for Sony IMX678
+ *
+ * Diagonal 8.86 mm (Type 1/1.8) CMOS image sensor with 8.40 M effective pixels.
+ *
+ * Copyright (C) 2026 Ideas On Board Oy.
+ *
+ * Based on Sony IMX678 driver prepared by Will Whang & Soho Enterprise Ltd.
  *
  * Based on Sony imx477 camera driver
  * Copyright (C) 2019-2020 Raspberry Pi (Trading) Ltd
- * Modified by Will WHANG
- * Modified by sohonomura2020 in Soho Enterprise Ltd.
  */
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -1422,5 +1426,6 @@ module_i2c_driver(imx678_i2c_driver);
 
 MODULE_AUTHOR("Will Whang <will@willwhang.com>");
 MODULE_AUTHOR("Tetsuya NOMURA <tetsuya.nomura@soho-enterprise.com>");
+MODULE_AUTHOR("Jai Luthra <jai.luthra@ideasonboard.com>");
 MODULE_DESCRIPTION("Sony imx678 sensor driver");
 MODULE_LICENSE("GPL");
