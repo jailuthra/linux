@@ -414,13 +414,14 @@ static const struct cci_reg_sequence common_regs[] = {
 	{CCI_REG8(0x47B4), 0x3F}, {CCI_REG8(0x47B6), 0x49}, {CCI_REG8(0x47BC), 0xFB},
 	{CCI_REG8(0x47BE), 0x0C}, {CCI_REG8(0x47C0), 0x32}, {CCI_REG8(0x47C1), 0x01},
 	{CCI_REG8(0x47C2), 0x3E}, {CCI_REG8(0x47C3), 0x01}, {IMX678_REG_WDMODE, 0x00},
-	{IMX678_REG_ADBIT, 0x01}, {IMX678_REG_MDBIT, 0x01},
+	{IMX678_REG_MDBIT, 0x01},
 };
 
 /* All pixel 4K60. 12-bit */
 static const struct cci_reg_sequence mode_4k_regs_12bit[] = {
 	{IMX678_REG_ADDMODE, 0x00},
 	{IMX678_REG_WINMODE, 0x00},
+	{IMX678_REG_ADBIT, 0x01},
 };
 
 static const struct cci_reg_sequence mode_1800_regs_12bit[] = {
@@ -430,12 +431,14 @@ static const struct cci_reg_sequence mode_1800_regs_12bit[] = {
 	{IMX678_REG_PIX_HWIDTH, 3200},
 	{IMX678_REG_PIX_VST, 100},
 	{IMX678_REG_PIX_VWIDTH, 1800},
+	{IMX678_REG_ADBIT, 0x01},
 };
 
 /* 2x2 binned 1080p60. 12-bit */
 static const struct cci_reg_sequence mode_1080_regs_12bit[] = {
 	{IMX678_REG_ADDMODE, 0x01},
 	{IMX678_REG_WINMODE, 0x00},
+	{IMX678_REG_ADBIT, 0x00},
 };
 
 /* 2x2 binned 720p60. 12-bit */
@@ -446,6 +449,7 @@ static const struct cci_reg_sequence mode_720_regs_12bit[] = {
 	{IMX678_REG_PIX_HWIDTH, 2560},
 	{IMX678_REG_PIX_VST, 368},
 	{IMX678_REG_PIX_VWIDTH, 1440},
+	{IMX678_REG_ADBIT, 0x00},
 };
 
 /* For Mode List:
