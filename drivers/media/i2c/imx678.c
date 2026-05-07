@@ -90,6 +90,13 @@
 #define IMX678_ANA_GAIN_STEP            1
 #define IMX678_ANA_GAIN_DEFAULT         0
 
+/* Crop */
+#define IMX678_REG_WINMODE		CCI_REG8(0x3018)
+#define IMX678_REG_PIX_HST		CCI_REG16_LE(0x303c)
+#define IMX678_REG_PIX_HWIDTH		CCI_REG16_LE(0x303e)
+#define IMX678_REG_PIX_VST		CCI_REG16_LE(0x3044)
+#define IMX678_REG_PIX_VWIDTH		CCI_REG16_LE(0x3046)
+
 /* Flip */
 #define IMX678_REG_WINMODEH             CCI_REG8(0x3020)
 #define IMX678_REG_WINMODEV             CCI_REG8(0x3021)
@@ -409,11 +416,22 @@ static const struct cci_reg_sequence common_regs[] = {
 /* All pixel 4K60. 12-bit */
 static const struct cci_reg_sequence mode_4k_regs_12bit[] = {
 	{IMX678_REG_ADDMODE, 0x00},
+	{IMX678_REG_WINMODE, 0x00},
+};
+
+static const struct cci_reg_sequence mode_1800_regs_12bit[] = {
+	{IMX678_REG_ADDMODE, 0x00},
+	{IMX678_REG_WINMODE, 0x04},
+	{IMX678_REG_PIX_HST, 328},
+	{IMX678_REG_PIX_HWIDTH, 3200},
+	{IMX678_REG_PIX_VST, 100},
+	{IMX678_REG_PIX_VWIDTH, 1800},
 };
 
 /* 2x2 binned 1080p60. 12-bit */
 static const struct cci_reg_sequence mode_1080_regs_12bit[] = {
 	{IMX678_REG_ADDMODE, 0x01},
+	{IMX678_REG_WINMODE, 0x00},
 };
 
 /* For Mode List:
@@ -451,6 +469,26 @@ struct imx678_mode supported_modes[] = {
 		.reg_list = {
 			.num_of_regs = ARRAY_SIZE(mode_4k_regs_12bit),
 			.regs = mode_4k_regs_12bit,
+		},
+	},
+	{
+		/* 3200x1800 */
+		.width = 3200,
+		.height = 1800,
+		.min_HMAX = 550,
+		.min_VMAX = IMX678_VMAX_DEFAULT,
+		.default_HMAX = 550,
+		.default_VMAX = IMX678_VMAX_DEFAULT,
+		.hmax_div = 1,
+		.crop = {
+			.top = 120,
+			.left = 328,
+			.width = 3200,
+			.height = 1600,
+		},
+		.reg_list = {
+			.num_of_regs = ARRAY_SIZE(mode_1800_regs_12bit),
+			.regs = mode_1800_regs_12bit,
 		},
 	},
 };
@@ -1007,10 +1045,7 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP:
-		if (sd_state)
-			sel->r = *v4l2_subdev_state_get_crop(sd_state, sel->pad);
-		else
-			sel->r = imx678->mode->crop;
+		sel->r = imx678->mode->crop;
 		return 0;
 
 	case V4L2_SEL_TGT_NATIVE_SIZE:
