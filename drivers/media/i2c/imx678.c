@@ -1459,39 +1459,6 @@ static int imx678_power_off(struct device *dev)
 	return 0;
 }
 
-static int __maybe_unused imx678_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct imx678 *imx678 = to_imx678(sd);
-
-	if (imx678->streaming)
-		imx678_stop_streaming(imx678);
-
-	return 0;
-}
-
-static int __maybe_unused imx678_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct imx678 *imx678 = to_imx678(sd);
-	int ret;
-
-	if (imx678->streaming) {
-		ret = imx678_start_streaming(imx678);
-		if (ret)
-			goto error;
-	}
-
-	return 0;
-
-error:
-	imx678_stop_streaming(imx678);
-	imx678->streaming = 0;
-	return ret;
-}
-
 static int imx678_get_regulators(struct imx678 *imx678)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
@@ -1895,7 +1862,6 @@ static void imx678_remove(struct i2c_client *client)
 MODULE_DEVICE_TABLE(of, imx678_dt_ids);
 
 static const struct dev_pm_ops imx678_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(imx678_suspend, imx678_resume)
 	SET_RUNTIME_PM_OPS(imx678_power_off, imx678_power_on, NULL)
 };
 
