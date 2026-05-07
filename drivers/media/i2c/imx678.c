@@ -632,16 +632,9 @@ static int imx678_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 static void imx678_update_hmax(struct imx678 *imx678)
 {
 
-	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
-
 	const u32 base_4lane = HMAX_table_4lane_4K[imx678->link_freq_idx];
 	const u32 lane_scale = (imx678->lane_count == 2) ? 2 : 1;
 	const u32 factor     = base_4lane * lane_scale;
-
-	dev_info(&client->dev, "Upadte minimum HMAX\n");
-	dev_info(&client->dev, "\tbase_4lane: %d\n", base_4lane);
-	dev_info(&client->dev, "\tlane_scale: %d\n", lane_scale);
-	dev_info(&client->dev, "\tfactor: %d\n", factor);
 
 	for (unsigned int i = 0; i < ARRAY_SIZE(supported_modes); ++i) {
 		u32 h = factor / supported_modes[i].hmax_div;
@@ -653,14 +646,11 @@ static void imx678_update_hmax(struct imx678 *imx678)
 
 static void imx678_set_framing_limits(struct imx678 *imx678)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	const struct imx678_mode *mode = imx678->mode;
 	u64 default_hblank, max_hblank;
 	u64 pixel_rate;
 
 	imx678_update_hmax(imx678);
-
-	dev_info(&client->dev, "mode: %d x %d\n", mode->width, mode->height);
 
 	imx678->VMAX = mode->default_VMAX;
 	imx678->HMAX = mode->default_HMAX;
@@ -690,9 +680,6 @@ static void imx678_set_framing_limits(struct imx678 *imx678)
 	__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
 			 imx678->VMAX - IMX678_SHR_MIN_CLEARHDR, 1,
 				IMX678_EXPOSURE_DEFAULT);
-	dev_info(&client->dev, "default vmax: %lld x hmax: %d\n", mode->min_VMAX, mode->min_HMAX);
-	dev_info(&client->dev, "Setting default HBLANK : %llu, VBLANK : %llu PixelRate: %lld\n",
-		 default_hblank, mode->default_VMAX - mode->height, pixel_rate);
 
 }
 
@@ -711,12 +698,7 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_EXPOSURE: {
-		u32 shr;
-
-		shr = (imx678->VMAX - ctrl->val) & ~1u;
-		dev_info(&client->dev, "V4L2_CID_EXPOSURE : %d\n", ctrl->val);
-		dev_info(&client->dev, "\tVMAX:%d, HMAX:%d\n", imx678->VMAX, imx678->HMAX);
-		dev_info(&client->dev, "\tSHR:%d\n", shr);
+		u32 shr = (imx678->VMAX - ctrl->val) & ~1u;
 
 		ret = cci_write(imx678->cci, IMX678_REG_SHR, shr, NULL);
 		break;
@@ -737,9 +719,6 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 					 imx678->VMAX - minSHR, 1,
 					 current_exposure);
 
-		dev_info(&client->dev, "V4L2_CID_VBLANK : %d\n", ctrl->val);
-		dev_info(&client->dev, "\tVMAX:%d, HMAX:%d\n", imx678->VMAX, imx678->HMAX);
-
 		ret = cci_write(imx678->cci, IMX678_REG_VMAX, imx678->VMAX, NULL);
 		break;
 	}
@@ -752,9 +731,6 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		hmax = (u64)(mode->width + ctrl->val) * IMX678_PIXEL_RATE;
 		do_div(hmax, pixel_rate);
 		imx678->HMAX = hmax;
-
-		dev_info(&client->dev, "V4L2_CID_HBLANK : %d\n", ctrl->val);
-		dev_info(&client->dev, "\tHMAX : %d\n", imx678->HMAX);
 
 		ret = cci_write(imx678->cci, IMX678_REG_HMAX, hmax, NULL);
 		break;
@@ -775,7 +751,7 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		ret = cci_write(imx678->cci, IMX678_REG_WINMODEV, ctrl->val, NULL);
 		break;
 	default:
-		dev_info(&client->dev,
+		dev_warn(&client->dev,
 			 "ctrl(id:0x%x,val:0x%x) is not handled\n",
 			 ctrl->id, ctrl->val);
 		break;
@@ -958,7 +934,6 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		cci_write(imx678->cci, IMX678_REG_XXS_DRV, 0x00, NULL);
 		cci_write(imx678->cci, IMX678_REG_XXS_OUTSEL, 0x0A, NULL);
 		imx678->common_regs_written = true;
-		dev_info(&client->dev, "common_regs_written\n");
 	}
 
 	/* Apply default values of current mode */
@@ -980,7 +955,6 @@ static int imx678_start_streaming(struct imx678 *imx678)
 	/* Set stream on register */
 	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING, NULL);
 
-	dev_info(&client->dev, "Start Streaming\n");
 	usleep_range(IMX678_STREAM_DELAY_US, IMX678_STREAM_DELAY_US + IMX678_STREAM_DELAY_RANGE_US);
 
 	ret = cci_write(imx678->cci, IMX678_REG_XMSTA, 0x00, NULL);
@@ -993,8 +967,6 @@ static void imx678_stop_streaming(struct imx678 *imx678)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	int ret;
-
-	dev_info(&client->dev, "Stop Streaming\n");
 
 	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x01, NULL);
 
@@ -1129,8 +1101,6 @@ static int imx678_check_module_exists(struct imx678 *imx678)
 		dev_err(&client->dev, "failed to read chip reg, with error %d\n", ret);
 		return ret;
 	}
-
-	dev_info(&client->dev, "Reg read success, Device found\n");
 
 	return 0;
 }
@@ -1324,7 +1294,6 @@ static int imx678_check_hwcfg(struct device *dev, struct imx678 *imx678)
 		goto error_out;
 	}
 	imx678->lane_count = ep_cfg.bus.mipi_csi2.num_data_lanes;
-	dev_info(dev, "Data lanes: %d\n", imx678->lane_count);
 
 	/* Check the link frequency set in device tree */
 	if (!ep_cfg.nr_of_link_frequencies) {
@@ -1345,8 +1314,6 @@ static int imx678_check_hwcfg(struct device *dev, struct imx678 *imx678)
 			ret = -EINVAL;
 			goto error_out;
 	}
-
-	dev_info(dev, "Link Speed: %lld Mhz\n", ep_cfg.link_frequencies[0]);
 
 	ret = 0;
 
@@ -1404,9 +1371,6 @@ static int imx678_probe(struct i2c_client *client)
 			imx678->xclk_freq);
 		return -EINVAL;
 	}
-
-	dev_info(dev, "XCLK %u Hz → INCK_SEL 0x%02x\n",
-		 imx678->xclk_freq, imx678->inck_sel_val);
 
 	ret = imx678_get_regulators(imx678);
 	if (ret) {
