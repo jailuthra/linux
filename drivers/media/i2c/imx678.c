@@ -20,6 +20,7 @@
 #include <linux/of_graph.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
+#include <linux/units.h>
 #include <media/v4l2-cci.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
@@ -137,8 +138,6 @@
 #define IMX678_INTERFACE_2L_4L		0x07
 #define IMX678_INTERFACE_8L_2x4L	0x7f
 
-#define IMX678_PIXEL_RATE               74250000
-
 enum imx678_type {
 	IMX678_COLOR = 0,
 	IMX678_MONOCHROME = 1,
@@ -194,16 +193,15 @@ static const u64 link_freqs[] = {
 	[IMX678_LINK_FREQ_1188MHZ] = 1188000000,
 };
 
-/* Minimum HMAX for 4-lane 4K full res mode; x2 for 2-lane, /2 for FHD */
-static const u16 HMAX_table_4lane_4K[] = {
+static const u16 min_hmax_4lane[] = {
 	[IMX678_LINK_FREQ_297MHZ] = 1584,
 	[IMX678_LINK_FREQ_360MHZ] = 1320,
 	[IMX678_LINK_FREQ_445MHZ] = 1100,
 	[IMX678_LINK_FREQ_594MHZ] =  792,
 	[IMX678_LINK_FREQ_720MHZ] =  660,
 	[IMX678_LINK_FREQ_891MHZ] =  550,
-	[IMX678_LINK_FREQ_1039MHZ] = 458,
-	[IMX678_LINK_FREQ_1188MHZ] = 458,
+	[IMX678_LINK_FREQ_1039MHZ] = 550,
+	[IMX678_LINK_FREQ_1188MHZ] = 550,
 };
 
 struct imx678_inck_cfg {
@@ -268,9 +266,6 @@ struct imx678_mode {
 	/* Frame height */
 	unsigned int height;
 
-	/* mode HMAX Scaling */
-	u8   hmax_div;
-
 	/* minimum H-timing */
 	u16 min_HMAX;
 
@@ -282,6 +277,9 @@ struct imx678_mode {
 
 	/* default V-timing */
 	u64 default_VMAX;
+
+	/* AD bits per pixel */
+	u8 ad_bpp;
 
 	/* Analog crop rectangle. */
 	struct v4l2_rect crop;
@@ -469,16 +467,16 @@ static const struct cci_reg_sequence mode_720_regs_12bit[] = {
  */
 
 /* Mode configs */
-struct imx678_mode supported_modes[] = {
+struct imx678_mode modes[] = {
 	{
 		/* 1080p60 2x2 binning */
 		.width = 1928,
 		.height = 1090,
-		.hmax_div = 1,
-		.min_HMAX = 366,
+		.min_HMAX = 550,
 		.min_VMAX = IMX678_VMAX_DEFAULT,
-		.default_HMAX = 366,
+		.default_HMAX = 660,
 		.default_VMAX = IMX678_VMAX_DEFAULT,
+		.ad_bpp = 10,
 		.crop = imx678_active_area,
 		.reg_list = {
 			.num_of_regs = ARRAY_SIZE(mode_1080_regs_12bit),
@@ -489,11 +487,11 @@ struct imx678_mode supported_modes[] = {
 		/* 4K60 All pixel */
 		.width = 3856,
 		.height = 2180,
-		.min_HMAX = 550,
+		.min_HMAX = 660,
 		.min_VMAX = IMX678_VMAX_DEFAULT,
-		.default_HMAX = 550,
+		.default_HMAX = 660,
 		.default_VMAX = IMX678_VMAX_DEFAULT,
-		.hmax_div = 1,
+		.ad_bpp = 12,
 		.crop = imx678_active_area,
 		.reg_list = {
 			.num_of_regs = ARRAY_SIZE(mode_4k_regs_12bit),
@@ -504,11 +502,11 @@ struct imx678_mode supported_modes[] = {
 		/* 720p60 2x2 binning */
 		.width = 1280,
 		.height = 720,
-		.hmax_div = 1,
-		.min_HMAX = 366,
+		.min_HMAX = 550,
 		.min_VMAX = IMX678_VMAX_DEFAULT,
-		.default_HMAX = 366,
+		.default_HMAX = 660,
 		.default_VMAX = IMX678_VMAX_DEFAULT,
+		.ad_bpp = 10,
 		.crop = {
 			.top = 388,
 			.left = 648,
@@ -524,11 +522,11 @@ struct imx678_mode supported_modes[] = {
 		/* 3200x1800 */
 		.width = 3200,
 		.height = 1800,
-		.min_HMAX = 550,
+		.min_HMAX = 660,
 		.min_VMAX = IMX678_VMAX_DEFAULT,
-		.default_HMAX = 550,
+		.default_HMAX = 660,
 		.default_VMAX = IMX678_VMAX_DEFAULT,
-		.hmax_div = 1,
+		.ad_bpp = 12,
 		.crop = {
 			.top = 120,
 			.left = 328,
@@ -651,8 +649,8 @@ static inline void get_mode_table(unsigned int code,
 	switch (code) {
 	case MEDIA_BUS_FMT_SRGGB12_1X12:
 	case MEDIA_BUS_FMT_Y12_1X12:
-		*mode_list = supported_modes;
-		*num_modes = ARRAY_SIZE(supported_modes);
+		*mode_list = modes;
+		*num_modes = ARRAY_SIZE(modes);
 		break;
 	default:
 		*mode_list = NULL;
@@ -671,20 +669,59 @@ static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 static void imx678_set_default_format(struct imx678 *imx678)
 {
 	/* Set default mode to max resolution */
-	imx678->mode = &supported_modes[0];
+	imx678->mode = &modes[0];
 }
 
-static void imx678_update_hmax(struct imx678 *imx678)
+static u64 imx678_output_pixel_rate(struct imx678 *imx678)
+{
+	const u32 lane_count = imx678->lane_count;
+	const u64 link_freq = link_freqs[imx678->link_freq_idx];
+	const u8 bpp = 12;
+	u64 numerator = link_freq * 2 * lane_count;
+
+	do_div(numerator, bpp);
+
+	return numerator;
+}
+
+/*
+ * Sensor HMAX is in internal clock cycles @ 74.25 Mhz
+ * Convert to the output pixel rate
+ */
+static u64 imx678_iclk_to_pix(u32 pixel_rate, u32 cycles)
+{
+	const u32 iclk = 74250;
+	const u32 pixclk = pixel_rate / HZ_PER_KHZ;
+	u64 numerator = cycles * pixclk;
+
+	return DIV_ROUND_CLOSEST_ULL(numerator, iclk);
+}
+
+/*
+ * HBLANK control is in units of pixels
+ * Convert to HMAX register units (@ internal 74.25 Mhz)
+ */
+static u64 imx678_pix_to_iclk(u32 pixel_rate, u32 pixels)
+{
+	const u32 iclk = 74250;
+	const u32 pixclk = pixel_rate / HZ_PER_KHZ;
+	u64 numerator = pixels * iclk;
+
+	return DIV_ROUND_CLOSEST_ULL(numerator, pixclk);
+}
+
+static void imx678_scale_hmax(struct imx678 *imx678)
 {
 
-	const u32 base_4lane = HMAX_table_4lane_4K[imx678->link_freq_idx];
+	const u32 base_4lane = min_hmax_4lane[imx678->link_freq_idx];
 	const u32 lane_scale = (imx678->lane_count == 2) ? 2 : 1;
-	const u32 factor     = base_4lane * lane_scale;
 
-	for (unsigned int i = 0; i < ARRAY_SIZE(supported_modes); ++i) {
-		u32 h = factor / supported_modes[i].hmax_div;
-		supported_modes[i].min_HMAX     = h;
-		supported_modes[i].default_HMAX = h;
+	/* Minimum can be lower when using 10-bit AD for binned modes */
+	for (unsigned int i = 0; i < ARRAY_SIZE(modes); ++i) {
+		const u32 bpp = modes[i].ad_bpp;
+
+		modes[i].default_HMAX = base_4lane * lane_scale;
+		modes[i].min_HMAX = (base_4lane * lane_scale * bpp) / 12;
 	}
 
 }
@@ -692,27 +729,24 @@ static void imx678_update_hmax(struct imx678 *imx678)
 static void imx678_set_framing_limits(struct imx678 *imx678)
 {
 	const struct imx678_mode *mode = imx678->mode;
-	u64 default_hblank, max_hblank;
+	u64 min_hblank, default_hblank, max_hblank;
 	u64 pixel_rate;
 
-	imx678_update_hmax(imx678);
+	imx678_scale_hmax(imx678);
 
 	imx678->VMAX = mode->default_VMAX;
 	imx678->HMAX = mode->default_HMAX;
 
-	pixel_rate = (u64)mode->width * IMX678_PIXEL_RATE;
-	do_div(pixel_rate, mode->min_HMAX);
-	__v4l2_ctrl_modify_range(imx678->pixel_rate, pixel_rate, pixel_rate, 1, pixel_rate);
+	pixel_rate = imx678_output_pixel_rate(imx678);
+	__v4l2_ctrl_modify_range(imx678->pixel_rate, pixel_rate, pixel_rate, 1,
+				 pixel_rate);
 
-	default_hblank = mode->default_HMAX * pixel_rate;
-	do_div(default_hblank, IMX678_PIXEL_RATE);
-	default_hblank = default_hblank - mode->width;
+	min_hblank = imx678_iclk_to_pix(pixel_rate, mode->min_HMAX) - mode->width;
+	default_hblank = imx678_iclk_to_pix(pixel_rate, mode->default_HMAX) - mode->width;
+	max_hblank = imx678_iclk_to_pix(pixel_rate, IMX678_HMAX_MAX) - mode->width;
 
-	max_hblank = IMX678_HMAX_MAX * pixel_rate;
-	do_div(max_hblank, IMX678_PIXEL_RATE);
-	max_hblank = max_hblank - mode->width;
-
-	__v4l2_ctrl_modify_range(imx678->hblank, 0, max_hblank, 1, default_hblank);
+	__v4l2_ctrl_modify_range(imx678->hblank, min_hblank, max_hblank, 1,
+				 default_hblank);
 	__v4l2_ctrl_s_ctrl(imx678->hblank, default_hblank);
 
 	/* Update limits and set FPS to default */
@@ -767,13 +801,11 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	}
 	case V4L2_CID_HBLANK: {
-		u64 pixel_rate;
-		u64 hmax;
+		u64 pixel_rate = imx678_output_pixel_rate(imx678);
+		u32 hmax = mode->width + ctrl->val;
 
-		pixel_rate = (u64)mode->width * IMX678_PIXEL_RATE;
-		do_div(pixel_rate, mode->min_HMAX);
-		hmax = (u64)(mode->width + ctrl->val) * IMX678_PIXEL_RATE;
-		do_div(hmax, pixel_rate);
+		hmax = imx678_pix_to_iclk(pixel_rate, hmax);
+
 		imx678->HMAX = hmax;
 
 		ret = cci_write(imx678->cci, IMX678_REG_HMAX, hmax, NULL);
@@ -905,7 +937,7 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_state *state)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	const struct imx678_mode *mode = &supported_modes[0];
+	const struct imx678_mode *mode = &modes[0];
 	struct v4l2_mbus_framefmt *format;
 	struct v4l2_rect *crop;
 
