@@ -767,6 +767,20 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 	const struct imx678_mode *mode = imx678->mode;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	int ret = 0;
+
+	if (ctrl->id == V4L2_CID_VBLANK) {
+		u32 current_exposure = imx678->exposure->cur.val;
+		u32 minSHR = IMX678_SHR_MIN;
+
+		imx678->VMAX = (mode->height + ctrl->val) & ~1u;
+
+		current_exposure = clamp_t(u32, current_exposure, IMX678_EXPOSURE_MIN,
+					   imx678->VMAX - minSHR);
+		__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
+					 imx678->VMAX - minSHR, 1,
+					 current_exposure);
+	}
+
 	/*
 	 * Applying V4L2 control value only happens
 	 * when power is up for streaming
@@ -786,17 +800,6 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 				ctrl->val, NULL);
 		break;
 	case V4L2_CID_VBLANK: {
-		u32 current_exposure = imx678->exposure->cur.val;
-		u32 minSHR = IMX678_SHR_MIN;
-
-		imx678->VMAX = (mode->height + ctrl->val) & ~1u;
-
-		current_exposure = clamp_t(u32, current_exposure, IMX678_EXPOSURE_MIN,
-					   imx678->VMAX - minSHR);
-		__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
-					 imx678->VMAX - minSHR, 1,
-					 current_exposure);
-
 		ret = cci_write(imx678->cci, IMX678_REG_VMAX, imx678->VMAX, NULL);
 		break;
 	}
