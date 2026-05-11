@@ -266,18 +266,6 @@ struct imx678_mode {
 	/* Frame height */
 	unsigned int height;
 
-	/* minimum H-timing */
-	u16 min_HMAX;
-
-	/* minimum V-timing */
-	u64 min_VMAX;
-
-	/* default H-timing */
-	u16 default_HMAX;
-
-	/* default V-timing */
-	u64 default_VMAX;
-
 	/* AD bits per pixel */
 	u8 ad_bpp;
 
@@ -467,15 +455,11 @@ static const struct cci_reg_sequence mode_720_regs_12bit[] = {
  */
 
 /* Mode configs */
-struct imx678_mode modes[] = {
+static const struct imx678_mode modes[] = {
 	{
 		/* 1080p60 2x2 binning */
 		.width = 1928,
 		.height = 1090,
-		.min_HMAX = 550,
-		.min_VMAX = IMX678_VMAX_DEFAULT,
-		.default_HMAX = 660,
-		.default_VMAX = IMX678_VMAX_DEFAULT,
 		.ad_bpp = 10,
 		.crop = imx678_active_area,
 		.reg_list = {
@@ -487,10 +471,6 @@ struct imx678_mode modes[] = {
 		/* 4K60 All pixel */
 		.width = 3856,
 		.height = 2180,
-		.min_HMAX = 660,
-		.min_VMAX = IMX678_VMAX_DEFAULT,
-		.default_HMAX = 660,
-		.default_VMAX = IMX678_VMAX_DEFAULT,
 		.ad_bpp = 12,
 		.crop = imx678_active_area,
 		.reg_list = {
@@ -502,10 +482,6 @@ struct imx678_mode modes[] = {
 		/* 720p60 2x2 binning */
 		.width = 1280,
 		.height = 720,
-		.min_HMAX = 550,
-		.min_VMAX = IMX678_VMAX_DEFAULT,
-		.default_HMAX = 660,
-		.default_VMAX = IMX678_VMAX_DEFAULT,
 		.ad_bpp = 10,
 		.crop = {
 			.top = 388,
@@ -522,10 +498,6 @@ struct imx678_mode modes[] = {
 		/* 3200x1800 */
 		.width = 3200,
 		.height = 1800,
-		.min_HMAX = 660,
-		.min_VMAX = IMX678_VMAX_DEFAULT,
-		.default_HMAX = 660,
-		.default_VMAX = IMX678_VMAX_DEFAULT,
 		.ad_bpp = 12,
 		.crop = {
 			.top = 120,
@@ -595,6 +567,10 @@ struct imx678 {
 	/* Tracking sensor VMAX/HMAX value */
 	u16 HMAX;
 	u32 VMAX;
+
+	/* Per-mode HMAX limits (internal clock units), recomputed on mode change */
+	u32 min_HMAX;
+	u32 default_HMAX;
 
 	/* Rewrite common registers on stream on? */
 	bool common_regs_written;
@@ -712,18 +688,13 @@ static u64 imx678_pix_to_iclk(u32 pixel_rate, u32 pixels)
 
 static void imx678_scale_hmax(struct imx678 *imx678)
 {
-
 	const u32 base_4lane = min_hmax_4lane[imx678->link_freq_idx];
 	const u32 lane_scale = (imx678->lane_count == 2) ? 2 : 1;
+	const u32 bpp = imx678->mode->ad_bpp;
 
+	imx678->default_HMAX = base_4lane * lane_scale;
 	/* Minimum can be lower when using 10-bit AD for binned modes */
-	for (unsigned int i = 0; i < ARRAY_SIZE(modes); ++i) {
-		const u32 bpp = modes[i].ad_bpp;
-
-		modes[i].default_HMAX = base_4lane * lane_scale;
-		modes[i].min_HMAX = (base_4lane * lane_scale * bpp) / 12;
-	}
-
+	imx678->min_HMAX = (base_4lane * lane_scale * bpp) / 12;
 }
 
 static void imx678_set_framing_limits(struct imx678 *imx678)
@@ -734,15 +705,15 @@ static void imx678_set_framing_limits(struct imx678 *imx678)
 
 	imx678_scale_hmax(imx678);
 
-	imx678->VMAX = mode->default_VMAX;
-	imx678->HMAX = mode->default_HMAX;
+	imx678->VMAX = IMX678_VMAX_DEFAULT;
+	imx678->HMAX = imx678->default_HMAX;
 
 	pixel_rate = imx678_output_pixel_rate(imx678);
 	__v4l2_ctrl_modify_range(imx678->pixel_rate, pixel_rate, pixel_rate, 1,
 				 pixel_rate);
 
-	min_hblank = imx678_iclk_to_pix(pixel_rate, mode->min_HMAX) - mode->width;
-	default_hblank = imx678_iclk_to_pix(pixel_rate, mode->default_HMAX) - mode->width;
+	min_hblank = imx678_iclk_to_pix(pixel_rate, imx678->min_HMAX) - mode->width;
+	default_hblank = imx678_iclk_to_pix(pixel_rate, imx678->default_HMAX) - mode->width;
 	max_hblank = imx678_iclk_to_pix(pixel_rate, IMX678_HMAX_MAX) - mode->width;
 
 	__v4l2_ctrl_modify_range(imx678->hblank, min_hblank, max_hblank, 1,
@@ -750,15 +721,14 @@ static void imx678_set_framing_limits(struct imx678 *imx678)
 	__v4l2_ctrl_s_ctrl(imx678->hblank, default_hblank);
 
 	/* Update limits and set FPS to default */
-	__v4l2_ctrl_modify_range(imx678->vblank, mode->min_VMAX - mode->height,
+	__v4l2_ctrl_modify_range(imx678->vblank, IMX678_VMAX_DEFAULT - mode->height,
 				 IMX678_VMAX_MAX - mode->height,
-				 1, mode->default_VMAX - mode->height);
-	__v4l2_ctrl_s_ctrl(imx678->vblank, mode->default_VMAX - mode->height);
+				 1, IMX678_VMAX_DEFAULT - mode->height);
+	__v4l2_ctrl_s_ctrl(imx678->vblank, IMX678_VMAX_DEFAULT - mode->height);
 
 	__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
 			 imx678->VMAX - IMX678_SHR_MIN_CLEARHDR, 1,
 				IMX678_EXPOSURE_DEFAULT);
-
 }
 
 static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
