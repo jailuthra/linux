@@ -27,6 +27,7 @@
 #include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-mediabus.h>
+#include <media/v4l2-rect.h>
 #include <media/v4l2-subdev.h>
 
 /* Standby or streaming mode */
@@ -253,11 +254,6 @@ static const int imx678_tpg_val[] = {
 };
 
 
-struct imx678_reg_list {
-	unsigned int num_of_regs;
-	const struct cci_reg_sequence *regs;
-};
-
 /* Mode : resolution and related config&values */
 struct imx678_mode {
 	/* Frame width */
@@ -271,9 +267,6 @@ struct imx678_mode {
 
 	/* Analog crop rectangle. */
 	struct v4l2_rect crop;
-
-	/* Default register values */
-	struct imx678_reg_list reg_list;
 };
 
 /* IMX678 Register List */
@@ -406,54 +399,6 @@ static const struct cci_reg_sequence common_regs[] = {
 	{IMX678_REG_MDBIT, 0x01},
 };
 
-/* All pixel 4K60. 12-bit */
-static const struct cci_reg_sequence mode_4k_regs_12bit[] = {
-	{IMX678_REG_ADDMODE, 0x00},
-	{IMX678_REG_WINMODE, 0x00},
-	{IMX678_REG_PIX_HST, 0},
-	{IMX678_REG_PIX_HWIDTH, 3856},
-	{IMX678_REG_PIX_VST, 0},
-	{IMX678_REG_PIX_VWIDTH, 2180},
-	{IMX678_REG_ADBIT, 0x01},
-};
-
-static const struct cci_reg_sequence mode_1800_regs_12bit[] = {
-	{IMX678_REG_ADDMODE, 0x00},
-	{IMX678_REG_WINMODE, 0x04},
-	{IMX678_REG_PIX_HST, 328},
-	{IMX678_REG_PIX_HWIDTH, 3200},
-	{IMX678_REG_PIX_VST, 100},
-	{IMX678_REG_PIX_VWIDTH, 1800},
-	{IMX678_REG_ADBIT, 0x01},
-};
-
-/* 2x2 binned 1080p60. 12-bit */
-static const struct cci_reg_sequence mode_1080_regs_12bit[] = {
-	{IMX678_REG_ADDMODE, 0x01},
-	{IMX678_REG_WINMODE, 0x00},
-	{IMX678_REG_PIX_HST, 0},
-	{IMX678_REG_PIX_HWIDTH, 3856},
-	{IMX678_REG_PIX_VST, 0},
-	{IMX678_REG_PIX_VWIDTH, 2180},
-	{IMX678_REG_ADBIT, 0x00},
-};
-
-/* 2x2 binned 720p60. 12-bit */
-static const struct cci_reg_sequence mode_720_regs_12bit[] = {
-	{IMX678_REG_ADDMODE, 0x01},
-	{IMX678_REG_WINMODE, 0x04},
-	{IMX678_REG_PIX_HST, 648},
-	{IMX678_REG_PIX_HWIDTH, 2560},
-	{IMX678_REG_PIX_VST, 368},
-	{IMX678_REG_PIX_VWIDTH, 1440},
-	{IMX678_REG_ADBIT, 0x00},
-};
-
-/* For Mode List:
- * Default:
- *   12Bit - FHD, 4K
- */
-
 /* Mode configs */
 static const struct imx678_mode modes[] = {
 	{
@@ -462,10 +407,6 @@ static const struct imx678_mode modes[] = {
 		.height = 1090,
 		.ad_bpp = 10,
 		.crop = imx678_active_area,
-		.reg_list = {
-			.num_of_regs = ARRAY_SIZE(mode_1080_regs_12bit),
-			.regs = mode_1080_regs_12bit,
-		},
 	},
 	{
 		/* 4K60 All pixel */
@@ -473,10 +414,6 @@ static const struct imx678_mode modes[] = {
 		.height = 2180,
 		.ad_bpp = 12,
 		.crop = imx678_active_area,
-		.reg_list = {
-			.num_of_regs = ARRAY_SIZE(mode_4k_regs_12bit),
-			.regs = mode_4k_regs_12bit,
-		},
 	},
 	{
 		/* 720p60 2x2 binning */
@@ -489,10 +426,6 @@ static const struct imx678_mode modes[] = {
 			.width = 2560,
 			.height = 1440,
 		},
-		.reg_list = {
-			.num_of_regs = ARRAY_SIZE(mode_720_regs_12bit),
-			.regs = mode_720_regs_12bit,
-		},
 	},
 	{
 		/* 3200x1800 */
@@ -503,11 +436,7 @@ static const struct imx678_mode modes[] = {
 			.top = 120,
 			.left = 328,
 			.width = 3200,
-			.height = 1600,
-		},
-		.reg_list = {
-			.num_of_regs = ARRAY_SIZE(mode_1800_regs_12bit),
-			.regs = mode_1800_regs_12bit,
+			.height = 1800,
 		},
 	},
 };
@@ -924,10 +853,29 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int imx678_program_window(struct imx678 *imx678,
+				 const struct v4l2_rect *crop, bool binning)
+{
+	int ret = 0;
+
+	cci_write(imx678->cci, IMX678_REG_ADDMODE, binning ? 0x01 : 0x00, &ret);
+	cci_write(imx678->cci, IMX678_REG_WINMODE,
+		  v4l2_rect_equal(crop, &imx678_active_area) ? 0x00 : 0x04,
+		  &ret);
+	cci_write(imx678->cci, IMX678_REG_PIX_HST,
+		  crop->left - imx678_active_area.left, &ret);
+	cci_write(imx678->cci, IMX678_REG_PIX_HWIDTH, crop->width, &ret);
+	cci_write(imx678->cci, IMX678_REG_PIX_VST,
+		  crop->top - imx678_active_area.top, &ret);
+	cci_write(imx678->cci, IMX678_REG_PIX_VWIDTH, crop->height, &ret);
+	cci_write(imx678->cci, IMX678_REG_ADBIT, binning ? 0x00 : 0x01, &ret);
+
+	return ret;
+}
+
 static int imx678_start_streaming(struct imx678 *imx678)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
-	const struct imx678_reg_list *reg_list;
 	int ret;
 
 	if (!imx678->common_regs_written) {
@@ -957,10 +905,8 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		imx678->common_regs_written = true;
 	}
 
-	/* FIXME: Drop mode-specific tables */
-	reg_list = &imx678->mode->reg_list;
-	ret = cci_multi_reg_write(imx678->cci, reg_list->regs,
-				  reg_list->num_of_regs, NULL);
+	ret = imx678_program_window(imx678, &imx678->mode->crop,
+				    imx678->mode->ad_bpp == 10);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
 		return ret;
