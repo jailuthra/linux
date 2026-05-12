@@ -169,9 +169,9 @@ static const struct v4l2_rect imx678_active_area = {
 #define IMX678_CROP_HST_ALIGN		4
 #define IMX678_CROP_VST_ALIGN		4
 
-/* Default output resolution (1080p with 2x2 binning over the full active area) */
-#define IMX678_DEFAULT_WIDTH		1928
-#define IMX678_DEFAULT_HEIGHT		1090
+/* Default output resolution (full active area) */
+#define IMX678_DEFAULT_WIDTH		3856
+#define IMX678_DEFAULT_HEIGHT		2180
 
 
 /* Link frequency setup (DDR: lane rate = 2 x link freq) */
@@ -446,16 +446,6 @@ struct imx678 {
 	struct v4l2_ctrl *vblank;
 	struct v4l2_ctrl *hblank;
 
-	/* Active output dimensions */
-	u32 width;
-	u32 height;
-
-	/* Active analog crop rectangle */
-	struct v4l2_rect crop;
-
-	/* True if 2x2 analog binning is enabled (crop = 2 * output) */
-	bool binning;
-
 	/* Tracking sensor VMAX/HMAX value */
 	u16 HMAX;
 	u32 VMAX;
@@ -468,6 +458,26 @@ struct imx678 {
 static inline struct imx678 *to_imx678(struct v4l2_subdev *_sd)
 {
 	return container_of(_sd, struct imx678, sd);
+}
+
+static inline struct v4l2_mbus_framefmt *
+imx678_state_format(struct v4l2_subdev_state *state)
+{
+	return v4l2_subdev_state_get_format(state, 0);
+}
+
+static inline struct v4l2_rect *imx678_state_crop(struct v4l2_subdev_state *state)
+{
+	return v4l2_subdev_state_get_crop(state, 0);
+}
+
+static bool imx678_state_binning(struct v4l2_subdev_state *state)
+{
+	const struct v4l2_mbus_framefmt *format = imx678_state_format(state);
+	const struct v4l2_rect *crop = imx678_state_crop(state);
+
+	return crop->width == 2 * format->width &&
+	       crop->height == 2 * format->height;
 }
 
 static const u32 *imx678_mbus_codes(struct imx678 *imx678,
@@ -556,20 +566,6 @@ static void imx678_default_crop_for_format(u32 width, u32 height, bool binning,
 			       IMX678_CROP_VST_ALIGN);
 }
 
-static void imx678_set_default_format(struct imx678 *imx678)
-{
-	u32 width = IMX678_DEFAULT_WIDTH;
-	u32 height = IMX678_DEFAULT_HEIGHT;
-	bool binning = imx678_pick_binning(width, height);
-
-	imx678_snap_format(&width, &height, binning);
-
-	imx678->width = width;
-	imx678->height = height;
-	imx678->binning = binning;
-	imx678_default_crop_for_format(width, height, binning, &imx678->crop);
-}
-
 static u64 imx678_output_pixel_rate(struct imx678 *imx678)
 {
 	const u32 lane_count = imx678->lane_count;
@@ -608,11 +604,14 @@ static u64 imx678_pix_to_iclk(u32 pixel_rate, u32 pixels)
 	return DIV_ROUND_CLOSEST_ULL(numerator, pixclk);
 }
 
-static void imx678_set_framing_limits(struct imx678 *imx678)
+static void imx678_set_framing_limits(struct imx678 *imx678,
+				      struct v4l2_subdev_state *state)
 {
+	const struct v4l2_mbus_framefmt *format = imx678_state_format(state);
 	u64 min_hblank, default_hblank, max_hblank, vblank, pixel_rate;
 	const u32 hmax_4lane = min_hmax_4lane[imx678->link_freq_idx];
 	const u32 lane_scale = imx678->lane_count == 2 ? 2 : 1;
+	const bool binning = imx678_state_binning(state);
 	u32 bpp, min_hmax;
 
 	imx678->VMAX = IMX678_VMAX_DEFAULT;
@@ -623,37 +622,42 @@ static void imx678_set_framing_limits(struct imx678 *imx678)
 				 pixel_rate);
 
 	/* HMAX can go lower when using 10bit AD for binning */
-	bpp = imx678->binning ? 10 : 12;
+	bpp = binning ? 10 : 12;
 	min_hmax = (imx678->HMAX * bpp) / 12;
-	min_hblank = imx678_iclk_to_pix(pixel_rate, min_hmax) - imx678->width;
-	default_hblank = imx678_iclk_to_pix(pixel_rate, imx678->HMAX) - imx678->width;
-	max_hblank = imx678_iclk_to_pix(pixel_rate, IMX678_HMAX_MAX) - imx678->width;
+	min_hblank = imx678_iclk_to_pix(pixel_rate, min_hmax) - format->width;
+	default_hblank = imx678_iclk_to_pix(pixel_rate, imx678->HMAX) - format->width;
+	max_hblank = imx678_iclk_to_pix(pixel_rate, IMX678_HMAX_MAX) - format->width;
 
 	__v4l2_ctrl_modify_range(imx678->hblank, min_hblank, max_hblank, 1,
 				 default_hblank);
 	__v4l2_ctrl_s_ctrl(imx678->hblank, default_hblank);
 
-	vblank = imx678->VMAX - imx678->height;
-	__v4l2_ctrl_modify_range(imx678->vblank, vblank, IMX678_VMAX_MAX - imx678->height,
-				 1, vblank);
-	__v4l2_ctrl_s_ctrl(imx678->vblank, IMX678_VMAX_DEFAULT - imx678->height);
+	vblank = imx678->VMAX - format->height;
+	__v4l2_ctrl_modify_range(imx678->vblank, vblank,
+				 IMX678_VMAX_MAX - format->height, 1, vblank);
+	__v4l2_ctrl_s_ctrl(imx678->vblank, IMX678_VMAX_DEFAULT - format->height);
 
 	__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
-			 imx678->VMAX - IMX678_SHR_MIN_CLEARHDR, 1,
-				IMX678_EXPOSURE_DEFAULT);
+				 imx678->VMAX - IMX678_SHR_MIN_CLEARHDR, 1,
+				 IMX678_EXPOSURE_DEFAULT);
 }
 
 static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx678 *imx678 = container_of(ctrl->handler, struct imx678, ctrl_handler);
+	struct v4l2_subdev_state *state;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
+	const struct v4l2_mbus_framefmt *format;
 	int ret = 0;
+
+	state = v4l2_subdev_get_locked_active_state(&imx678->sd);
+	format = imx678_state_format(state);
 
 	if (ctrl->id == V4L2_CID_VBLANK) {
 		u32 current_exposure = imx678->exposure->cur.val;
 		u32 minSHR = IMX678_SHR_MIN;
 
-		imx678->VMAX = (imx678->height + ctrl->val) & ~1u;
+		imx678->VMAX = (format->height + ctrl->val) & ~1u;
 
 		current_exposure = clamp_t(u32, current_exposure, IMX678_EXPOSURE_MIN,
 					   imx678->VMAX - minSHR);
@@ -686,7 +690,7 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 	}
 	case V4L2_CID_HBLANK: {
 		u64 pixel_rate = imx678_output_pixel_rate(imx678);
-		u32 hmax = imx678->width + ctrl->val;
+		u32 hmax = format->width + ctrl->val;
 
 		hmax = imx678_pix_to_iclk(pixel_rate, hmax);
 
@@ -794,16 +798,11 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 	*framefmt = fmt->format;
 
-	crop = v4l2_subdev_state_get_crop(sd_state, fmt->pad);
+	crop = imx678_state_crop(sd_state);
 	imx678_default_crop_for_format(width, height, binning, crop);
 
-	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
-		imx678->width = width;
-		imx678->height = height;
-		imx678->crop = *crop;
-		imx678->binning = binning;
-		imx678_set_framing_limits(imx678);
-	}
+	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+		imx678_set_framing_limits(imx678, sd_state);
 
 	return 0;
 }
@@ -812,23 +811,17 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_state *state)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	struct v4l2_mbus_framefmt *format;
-	struct v4l2_rect *crop;
-	u32 width = IMX678_DEFAULT_WIDTH;
-	u32 height = IMX678_DEFAULT_HEIGHT;
-	bool binning = imx678_pick_binning(width, height);
+	struct v4l2_subdev_format fmt = {
+		.which = V4L2_SUBDEV_FORMAT_TRY,
+		.pad = 0,
+		.format = {
+			.code = imx678_default_mbus_code(imx678),
+			.width = IMX678_DEFAULT_WIDTH,
+			.height = IMX678_DEFAULT_HEIGHT,
+		},
+	};
 
-	imx678_snap_format(&width, &height, binning);
-
-	format = v4l2_subdev_state_get_format(state, 0);
-	format->code = imx678_default_mbus_code(imx678);
-	format->width = width;
-	format->height = height;
-	format->field = V4L2_FIELD_NONE;
-	imx678_reset_colorspace(format);
-
-	crop = v4l2_subdev_state_get_crop(state, 0);
-	imx678_default_crop_for_format(width, height, binning, crop);
+	imx678_set_pad_format(sd, state, &fmt);
 
 	return 0;
 }
@@ -853,9 +846,12 @@ static int imx678_program_window(struct imx678 *imx678,
 	return ret;
 }
 
-static int imx678_start_streaming(struct imx678 *imx678)
+static int imx678_start_streaming(struct imx678 *imx678,
+				  struct v4l2_subdev_state *state)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
+	const struct v4l2_rect *crop = imx678_state_crop(state);
+	const bool binning = imx678_state_binning(state);
 	int ret;
 
 	if (!imx678->common_regs_written) {
@@ -885,7 +881,7 @@ static int imx678_start_streaming(struct imx678 *imx678)
 		imx678->common_regs_written = true;
 	}
 
-	ret = imx678_program_window(imx678, &imx678->crop, imx678->binning);
+	ret = imx678_program_window(imx678, crop, binning);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
 		return ret;
@@ -939,7 +935,7 @@ static int imx678_set_stream(struct v4l2_subdev *sd, int enable)
 		/*
 		 * Apply default & customized values and then start streaming.
 		 */
-		ret = imx678_start_streaming(imx678);
+		ret = imx678_start_streaming(imx678, state);
 		if (ret)
 			goto err_rpm_put;
 	} else {
@@ -1059,11 +1055,9 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_state *sd_state,
 				struct v4l2_subdev_selection *sel)
 {
-	struct imx678 *imx678 = to_imx678(sd);
-
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP:
-		sel->r = imx678->crop;
+		sel->r = *imx678_state_crop(sd_state);
 		return 0;
 
 	case V4L2_SEL_TGT_NATIVE_SIZE:
@@ -1109,8 +1103,11 @@ static const struct v4l2_subdev_internal_ops imx678_internal_ops = {
 static int imx678_init_controls(struct imx678 *imx678)
 {
 	struct v4l2_ctrl_handler *ctrl_hdlr;
+	const u32 hmax_4lane = min_hmax_4lane[imx678->link_freq_idx];
+	const u32 lane_scale = imx678->lane_count == 2 ? 2 : 1;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	struct v4l2_fwnode_device_properties props;
+	u32 pixel_rate, hblank, max_hblank;
 	int ret;
 
 	ctrl_hdlr = &imx678->ctrl_handler;
@@ -1118,16 +1115,17 @@ static int imx678_init_controls(struct imx678 *imx678)
 	if (ret)
 		return ret;
 
-	/*
-	 * Create the controls here, but mode specific limits are setup
-	 * in the imx678_set_framing_limits() call below.
-	 */
+	imx678->VMAX = IMX678_VMAX_DEFAULT;
+	imx678->HMAX = hmax_4lane * lane_scale;
+
+	pixel_rate = imx678_output_pixel_rate(imx678);
+
 	/* By default, PIXEL_RATE is read only */
 	imx678->pixel_rate = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
 					       V4L2_CID_PIXEL_RATE,
-					       0xffff,
-					       0xffff, 1,
-					       0xffff);
+					       pixel_rate,
+					       pixel_rate, 1,
+					       pixel_rate);
 
 	/* LINK_FREQ is also read only */
 	imx678->link_freq =
@@ -1137,15 +1135,21 @@ static int imx678_init_controls(struct imx678 *imx678)
 	if (imx678->link_freq)
 		imx678->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
-	imx678->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
-					   V4L2_CID_VBLANK, 0, 0xfffff, 1, 0);
-	imx678->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
-					   V4L2_CID_HBLANK, 0, 0xffff, 1, 0);
+	imx678->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_VBLANK,
+					   imx678->VMAX - IMX678_DEFAULT_HEIGHT,
+					   IMX678_VMAX_MAX - IMX678_DEFAULT_HEIGHT, 1,
+					   imx678->VMAX - IMX678_DEFAULT_HEIGHT);
+
+	hblank = imx678_iclk_to_pix(pixel_rate, imx678->HMAX) - IMX678_DEFAULT_WIDTH;
+	max_hblank = imx678_iclk_to_pix(pixel_rate, IMX678_HMAX_MAX) - IMX678_DEFAULT_WIDTH;
+	imx678->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_HBLANK,
+					   hblank, max_hblank, 1, hblank);
 
 	imx678->exposure = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
 					     V4L2_CID_EXPOSURE,
 					     IMX678_EXPOSURE_MIN,
-					     IMX678_EXPOSURE_MAX,
+					     IMX678_VMAX_DEFAULT -
+					     IMX678_SHR_MIN_CLEARHDR,
 					     IMX678_EXPOSURE_STEP,
 					     IMX678_EXPOSURE_DEFAULT);
 
@@ -1176,9 +1180,6 @@ static int imx678_init_controls(struct imx678 *imx678)
 		goto error;
 
 	imx678->sd.ctrl_handler = ctrl_hdlr;
-
-	/* Setup exposure and frame/line length limits. */
-	imx678_set_framing_limits(imx678);
 
 	return 0;
 
@@ -1316,8 +1317,6 @@ static int imx678_probe(struct i2c_client *client)
 	ret = imx678_detect(imx678);
 	if (ret)
 		goto error_power_off;
-
-	imx678_set_default_format(imx678);
 
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
