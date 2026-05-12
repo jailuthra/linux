@@ -460,10 +460,6 @@ struct imx678 {
 	u16 HMAX;
 	u32 VMAX;
 
-	/* HMAX limits (internal clock units) */
-	u32 min_HMAX;
-	u32 default_HMAX;
-
 	/* Rewrite common registers on stream on? */
 	bool common_regs_written;
 };
@@ -612,44 +608,34 @@ static u64 imx678_pix_to_iclk(u32 pixel_rate, u32 pixels)
 	return DIV_ROUND_CLOSEST_ULL(numerator, pixclk);
 }
 
-static void imx678_scale_hmax(struct imx678 *imx678)
-{
-	const u32 base_4lane = min_hmax_4lane[imx678->link_freq_idx];
-	const u32 lane_scale = (imx678->lane_count == 2) ? 2 : 1;
-	/* Binned modes use 10-bit AD, full-resolution modes use 12-bit */
-	const u32 bpp = imx678->binning ? 10 : 12;
-
-	imx678->default_HMAX = base_4lane * lane_scale;
-	/* Minimum can be lower when using 10-bit AD for binned modes */
-	imx678->min_HMAX = (base_4lane * lane_scale * bpp) / 12;
-}
-
 static void imx678_set_framing_limits(struct imx678 *imx678)
 {
-	u64 min_hblank, default_hblank, max_hblank;
-	u64 pixel_rate;
-
-	imx678_scale_hmax(imx678);
+	u64 min_hblank, default_hblank, max_hblank, vblank, pixel_rate;
+	const u32 hmax_4lane = min_hmax_4lane[imx678->link_freq_idx];
+	const u32 lane_scale = imx678->lane_count == 2 ? 2 : 1;
+	u32 bpp, min_hmax;
 
 	imx678->VMAX = IMX678_VMAX_DEFAULT;
-	imx678->HMAX = imx678->default_HMAX;
+	imx678->HMAX = hmax_4lane * lane_scale;
 
 	pixel_rate = imx678_output_pixel_rate(imx678);
 	__v4l2_ctrl_modify_range(imx678->pixel_rate, pixel_rate, pixel_rate, 1,
 				 pixel_rate);
 
-	min_hblank = imx678_iclk_to_pix(pixel_rate, imx678->min_HMAX) - imx678->width;
-	default_hblank = imx678_iclk_to_pix(pixel_rate, imx678->default_HMAX) - imx678->width;
+	/* HMAX can go lower when using 10bit AD for binning */
+	bpp = imx678->binning ? 10 : 12;
+	min_hmax = (imx678->HMAX * bpp) / 12;
+	min_hblank = imx678_iclk_to_pix(pixel_rate, min_hmax) - imx678->width;
+	default_hblank = imx678_iclk_to_pix(pixel_rate, imx678->HMAX) - imx678->width;
 	max_hblank = imx678_iclk_to_pix(pixel_rate, IMX678_HMAX_MAX) - imx678->width;
 
 	__v4l2_ctrl_modify_range(imx678->hblank, min_hblank, max_hblank, 1,
 				 default_hblank);
 	__v4l2_ctrl_s_ctrl(imx678->hblank, default_hblank);
 
-	/* Update limits and set FPS to default */
-	__v4l2_ctrl_modify_range(imx678->vblank, IMX678_VMAX_DEFAULT - imx678->height,
-				 IMX678_VMAX_MAX - imx678->height,
-				 1, IMX678_VMAX_DEFAULT - imx678->height);
+	vblank = imx678->VMAX - imx678->height;
+	__v4l2_ctrl_modify_range(imx678->vblank, vblank, IMX678_VMAX_MAX - imx678->height,
+				 1, vblank);
 	__v4l2_ctrl_s_ctrl(imx678->vblank, IMX678_VMAX_DEFAULT - imx678->height);
 
 	__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
