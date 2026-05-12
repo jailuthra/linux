@@ -139,10 +139,17 @@
 #define IMX678_INTERFACE_2L_4L		0x07
 #define IMX678_INTERFACE_8L_2x4L	0x7f
 
-enum imx678_type {
-	IMX678_COLOR = 0,
-	IMX678_MONOCHROME = 1,
-};
+#define IMX678_PIXEL_RATE               74250000
+
+/* Minimum output resolution */
+#define IMX678_PIXEL_ARRAY_MIN_WIDTH	128
+#define IMX678_PIXEL_ARRAY_MIN_HEIGHT	96
+
+/* Sensor windowing register alignment (datasheet) */
+#define IMX678_CROP_HWIDTH_ALIGN	16
+#define IMX678_CROP_VWIDTH_ALIGN	4
+#define IMX678_CROP_HST_ALIGN		4
+#define IMX678_CROP_VST_ALIGN		4
 
 /* IMX678 native and active pixel array size. */
 static const struct v4l2_rect imx678_native_area = {
@@ -159,20 +166,10 @@ static const struct v4l2_rect imx678_active_area = {
 	.height = 2180,
 };
 
-/* Minimum output resolution */
-#define IMX678_PIXEL_ARRAY_MIN_WIDTH	128
-#define IMX678_PIXEL_ARRAY_MIN_HEIGHT	96
-
-/* Sensor windowing register alignment (datasheet) */
-#define IMX678_CROP_HWIDTH_ALIGN	16
-#define IMX678_CROP_VWIDTH_ALIGN	4
-#define IMX678_CROP_HST_ALIGN		4
-#define IMX678_CROP_VST_ALIGN		4
-
-/* Default output resolution (full active area) */
-#define IMX678_DEFAULT_WIDTH		3856
-#define IMX678_DEFAULT_HEIGHT		2180
-
+enum imx678_type {
+	IMX678_COLOR = 0,
+	IMX678_MONOCHROME = 1,
+};
 
 /* Link frequency setup (DDR: lane rate = 2 x link freq) */
 enum {
@@ -816,8 +813,8 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 		.pad = 0,
 		.format = {
 			.code = imx678_default_mbus_code(imx678),
-			.width = IMX678_DEFAULT_WIDTH,
-			.height = IMX678_DEFAULT_HEIGHT,
+			.width = imx678_active_area.width,
+			.height = imx678_active_area.height,
 		},
 	};
 
@@ -1136,12 +1133,12 @@ static int imx678_init_controls(struct imx678 *imx678)
 		imx678->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	imx678->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_VBLANK,
-					   imx678->VMAX - IMX678_DEFAULT_HEIGHT,
-					   IMX678_VMAX_MAX - IMX678_DEFAULT_HEIGHT, 1,
-					   imx678->VMAX - IMX678_DEFAULT_HEIGHT);
+					   imx678->VMAX - imx678_active_area.height,
+					   IMX678_VMAX_MAX - imx678_active_area.height, 1,
+					   imx678->VMAX - imx678_active_area.height);
 
-	hblank = imx678_iclk_to_pix(pixel_rate, imx678->HMAX) - IMX678_DEFAULT_WIDTH;
-	max_hblank = imx678_iclk_to_pix(pixel_rate, IMX678_HMAX_MAX) - IMX678_DEFAULT_WIDTH;
+	hblank = imx678_iclk_to_pix(pixel_rate, imx678->HMAX) - imx678_active_area.width;
+	max_hblank = imx678_iclk_to_pix(pixel_rate, IMX678_HMAX_MAX) - imx678_active_area.width;
 	imx678->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_HBLANK,
 					   hblank, max_hblank, 1, hblank);
 
