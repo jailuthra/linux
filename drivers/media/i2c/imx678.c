@@ -169,6 +169,10 @@ static const struct v4l2_rect imx678_active_area = {
 #define IMX678_CROP_HST_ALIGN		4
 #define IMX678_CROP_VST_ALIGN		4
 
+/* Default output resolution (1080p with 2x2 binning over the full active area) */
+#define IMX678_DEFAULT_WIDTH		1928
+#define IMX678_DEFAULT_HEIGHT		1090
+
 
 /* Link frequency setup (DDR: lane rate = 2 x link freq) */
 enum {
@@ -263,18 +267,6 @@ static const int imx678_tpg_val[] = {
 	IMX678_TPG_V_COLOR_BARS,
 };
 
-
-/* Mode : resolution and related config&values */
-struct imx678_mode {
-	/* Frame width */
-	unsigned int width;
-
-	/* Frame height */
-	unsigned int height;
-
-	/* Analog crop rectangle. */
-	struct v4l2_rect crop;
-};
 
 /* IMX678 Register List */
 /* Common Modes */
@@ -406,45 +398,6 @@ static const struct cci_reg_sequence common_regs[] = {
 	{IMX678_REG_MDBIT, 0x01},
 };
 
-/* Mode configs */
-static const struct imx678_mode modes[] = {
-	{
-		/* 1080p60 2x2 binning */
-		.width = 1928,
-		.height = 1090,
-		.crop = imx678_active_area,
-	},
-	{
-		/* 4K60 All pixel */
-		.width = 3856,
-		.height = 2180,
-		.crop = imx678_active_area,
-	},
-	{
-		/* 720p60 2x2 binning */
-		.width = 1280,
-		.height = 720,
-		.crop = {
-			.top = 388,
-			.left = 648,
-			.width = 2560,
-			.height = 1440,
-		},
-	},
-	{
-		/* 3200x1800 */
-		.width = 3200,
-		.height = 1800,
-		.crop = {
-			.top = 120,
-			.left = 328,
-			.width = 3200,
-			.height = 1800,
-		},
-	},
-};
-
-
 static const u32 codes_normal[] = {
 	MEDIA_BUS_FMT_SRGGB12_1X12,
 };
@@ -507,7 +460,7 @@ struct imx678 {
 	u16 HMAX;
 	u32 VMAX;
 
-	/* Per-mode HMAX limits (internal clock units), recomputed on mode change */
+	/* HMAX limits (internal clock units) */
 	u32 min_HMAX;
 	u32 default_HMAX;
 
@@ -554,46 +507,12 @@ static bool imx678_mbus_code_supported(struct imx678 *imx678, u32 code)
 	return false;
 }
 
-static inline void get_mode_table(unsigned int code,
-				  const struct imx678_mode **mode_list,
-				  unsigned int *num_modes)
-{
-	*mode_list = NULL;
-	*num_modes = 0;
-
-	switch (code) {
-	case MEDIA_BUS_FMT_SRGGB12_1X12:
-	case MEDIA_BUS_FMT_Y12_1X12:
-		*mode_list = modes;
-		*num_modes = ARRAY_SIZE(modes);
-		break;
-	default:
-		*mode_list = NULL;
-		*num_modes = 0;
-	}
-}
-
 static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 {
 	if (imx678_mbus_code_supported(imx678, code))
 		return code;
 
 	return imx678_default_mbus_code(imx678);
-}
-
-static void imx678_apply_mode(struct imx678 *imx678,
-			      const struct imx678_mode *mode)
-{
-	imx678->width = mode->width;
-	imx678->height = mode->height;
-	imx678->crop = mode->crop;
-	imx678->binning = mode->crop.width == 2 * mode->width &&
-			  mode->crop.height == 2 * mode->height;
-}
-
-static void imx678_set_default_format(struct imx678 *imx678)
-{
-	imx678_apply_mode(imx678, &modes[0]);
 }
 
 /*
@@ -639,6 +558,20 @@ static void imx678_default_crop_for_format(u32 width, u32 height, bool binning,
 	crop->top = imx678_active_area.top +
 		    round_down((imx678_active_area.height - crop->height) / 2,
 			       IMX678_CROP_VST_ALIGN);
+}
+
+static void imx678_set_default_format(struct imx678 *imx678)
+{
+	u32 width = IMX678_DEFAULT_WIDTH;
+	u32 height = IMX678_DEFAULT_HEIGHT;
+	bool binning = imx678_pick_binning(width, height);
+
+	imx678_snap_format(&width, &height, binning);
+
+	imx678->width = width;
+	imx678->height = height;
+	imx678->binning = binning;
+	imx678_default_crop_for_format(width, height, binning, &imx678->crop);
 }
 
 static u64 imx678_output_pixel_rate(struct imx678 *imx678)
@@ -842,7 +775,7 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static void imx678_reset_colorspace(const struct imx678_mode *mode, struct v4l2_mbus_framefmt *fmt)
+static void imx678_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
 {
 	fmt->colorspace = V4L2_COLORSPACE_RAW;
 	fmt->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(fmt->colorspace);
@@ -850,16 +783,6 @@ static void imx678_reset_colorspace(const struct imx678_mode *mode, struct v4l2_
 							  fmt->colorspace,
 							  fmt->ycbcr_enc);
 	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
-}
-
-static void imx678_update_image_pad_format(struct imx678 *imx678,
-					   const struct imx678_mode *mode,
-					   struct v4l2_mbus_framefmt *format)
-{
-	format->width = mode->width;
-	format->height = mode->height;
-	format->field = V4L2_FIELD_NONE;
-	imx678_reset_colorspace(mode, format);
 }
 
 static int imx678_set_pad_format(struct v4l2_subdev *sd,
@@ -880,7 +803,7 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	fmt->format.width = width;
 	fmt->format.height = height;
 	fmt->format.field = V4L2_FIELD_NONE;
-	imx678_reset_colorspace(NULL, &fmt->format);
+	imx678_reset_colorspace(&fmt->format);
 
 	framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 	*framefmt = fmt->format;
@@ -903,16 +826,23 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_state *state)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	const struct imx678_mode *mode = &modes[0];
 	struct v4l2_mbus_framefmt *format;
 	struct v4l2_rect *crop;
+	u32 width = IMX678_DEFAULT_WIDTH;
+	u32 height = IMX678_DEFAULT_HEIGHT;
+	bool binning = imx678_pick_binning(width, height);
+
+	imx678_snap_format(&width, &height, binning);
 
 	format = v4l2_subdev_state_get_format(state, 0);
 	format->code = imx678_default_mbus_code(imx678);
-	imx678_update_image_pad_format(imx678, mode, format);
+	format->width = width;
+	format->height = height;
+	format->field = V4L2_FIELD_NONE;
+	imx678_reset_colorspace(format);
 
 	crop = v4l2_subdev_state_get_crop(state, 0);
-	*crop = mode->crop;
+	imx678_default_crop_for_format(width, height, binning, crop);
 
 	return 0;
 }
