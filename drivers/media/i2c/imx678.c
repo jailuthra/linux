@@ -262,8 +262,8 @@ struct imx678_mode {
 	/* Frame height */
 	unsigned int height;
 
-	/* AD bits per pixel */
-	u8 ad_bpp;
+	/* 2x2 analog binning enabled (10-bit AD instead of 12-bit) */
+	bool binning;
 
 	/* Analog crop rectangle. */
 	struct v4l2_rect crop;
@@ -405,21 +405,21 @@ static const struct imx678_mode modes[] = {
 		/* 1080p60 2x2 binning */
 		.width = 1928,
 		.height = 1090,
-		.ad_bpp = 10,
+		.binning = true,
 		.crop = imx678_active_area,
 	},
 	{
 		/* 4K60 All pixel */
 		.width = 3856,
 		.height = 2180,
-		.ad_bpp = 12,
+		.binning = false,
 		.crop = imx678_active_area,
 	},
 	{
 		/* 720p60 2x2 binning */
 		.width = 1280,
 		.height = 720,
-		.ad_bpp = 10,
+		.binning = true,
 		.crop = {
 			.top = 388,
 			.left = 648,
@@ -431,7 +431,7 @@ static const struct imx678_mode modes[] = {
 		/* 3200x1800 */
 		.width = 3200,
 		.height = 1800,
-		.ad_bpp = 12,
+		.binning = false,
 		.crop = {
 			.top = 120,
 			.left = 328,
@@ -619,7 +619,8 @@ static void imx678_scale_hmax(struct imx678 *imx678)
 {
 	const u32 base_4lane = min_hmax_4lane[imx678->link_freq_idx];
 	const u32 lane_scale = (imx678->lane_count == 2) ? 2 : 1;
-	const u32 bpp = imx678->mode->ad_bpp;
+	/* Binned modes use 10-bit AD, full-resolution modes use 12-bit */
+	const u32 bpp = imx678->mode->binning ? 10 : 12;
 
 	imx678->default_HMAX = base_4lane * lane_scale;
 	/* Minimum can be lower when using 10-bit AD for binned modes */
@@ -906,7 +907,7 @@ static int imx678_start_streaming(struct imx678 *imx678)
 	}
 
 	ret = imx678_program_window(imx678, &imx678->mode->crop,
-				    imx678->mode->ad_bpp == 10);
+				    imx678->mode->binning);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
 		return ret;
