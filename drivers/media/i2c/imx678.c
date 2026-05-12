@@ -159,6 +159,16 @@ static const struct v4l2_rect imx678_active_area = {
 	.height = 2180,
 };
 
+/* Minimum output resolution */
+#define IMX678_PIXEL_ARRAY_MIN_WIDTH	128
+#define IMX678_PIXEL_ARRAY_MIN_HEIGHT	96
+
+/* Sensor windowing register alignment (datasheet) */
+#define IMX678_CROP_HWIDTH_ALIGN	16
+#define IMX678_CROP_VWIDTH_ALIGN	4
+#define IMX678_CROP_HST_ALIGN		4
+#define IMX678_CROP_VST_ALIGN		4
+
 
 /* Link frequency setup (DDR: lane rate = 2 x link freq) */
 enum {
@@ -586,6 +596,51 @@ static void imx678_set_default_format(struct imx678 *imx678)
 	imx678_apply_mode(imx678, &modes[0]);
 }
 
+/*
+ * Preserve FoV, default to 2x binning when feasible
+ */
+static bool imx678_pick_binning(u32 width, u32 height)
+{
+	return 2 * width <= imx678_active_area.width &&
+	       2 * height <= imx678_active_area.height;
+}
+
+/*
+ * Align width to 16 and height to 4 as the sensor crop requires it
+ */
+static void imx678_snap_format(u32 *width, u32 *height, bool binning)
+{
+	const u32 scale = binning ? 2 : 1;
+	const u32 max_w = imx678_active_area.width / scale;
+	const u32 max_h = imx678_active_area.height / scale;
+	const u32 w_align = IMX678_CROP_HWIDTH_ALIGN / scale;
+	const u32 h_align = IMX678_CROP_VWIDTH_ALIGN / scale;
+
+	*width = clamp_t(u32, ALIGN(*width, w_align),
+			 IMX678_PIXEL_ARRAY_MIN_WIDTH, max_w);
+	*height = clamp_t(u32, ALIGN(*height, h_align),
+			  IMX678_PIXEL_ARRAY_MIN_HEIGHT, max_h);
+}
+
+/*
+ * Compute a centered analog crop rectangle of size (width, height) * scale,
+ * with origin aligned to the windowing register granularity.
+ */
+static void imx678_default_crop_for_format(u32 width, u32 height, bool binning,
+					   struct v4l2_rect *crop)
+{
+	const u32 scale = binning ? 2 : 1;
+
+	crop->width = width * scale;
+	crop->height = height * scale;
+	crop->left = imx678_active_area.left +
+		     round_down((imx678_active_area.width - crop->width) / 2,
+				IMX678_CROP_HST_ALIGN);
+	crop->top = imx678_active_area.top +
+		    round_down((imx678_active_area.height - crop->height) / 2,
+			       IMX678_CROP_VST_ALIGN);
+}
+
 static u64 imx678_output_pixel_rate(struct imx678 *imx678)
 {
 	const u32 lane_count = imx678->lane_count;
@@ -773,21 +828,16 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 {
 	struct imx678 *imx678 = to_imx678(sd);
 
-	const struct imx678_mode *mode_list;
-	unsigned int num_modes;
-
-	get_mode_table(fse->code, &mode_list, &num_modes);
-
-	if (fse->index >= num_modes)
+	if (fse->index > 0)
 		return -EINVAL;
 
-	if (fse->code != imx678_get_format_code(imx678, fse->code))
+	if (!imx678_mbus_code_supported(imx678, fse->code))
 		return -EINVAL;
 
-	fse->min_width = mode_list[fse->index].width;
-	fse->max_width = fse->min_width;
-	fse->min_height = mode_list[fse->index].height;
-	fse->max_height = fse->min_height;
+	fse->min_width = IMX678_PIXEL_ARRAY_MIN_WIDTH;
+	fse->max_width = imx678_active_area.width;
+	fse->min_height = IMX678_PIXEL_ARRAY_MIN_HEIGHT;
+	fse->max_height = imx678_active_area.height;
 
 	return 0;
 }
@@ -816,27 +866,33 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_format *fmt)
 {
-	struct v4l2_mbus_framefmt *framefmt;
-	const struct imx678_mode *mode;
-	const struct imx678_mode *mode_list;
-	unsigned int num_modes;
 	struct imx678 *imx678 = to_imx678(sd);
+	struct v4l2_mbus_framefmt *framefmt;
+	struct v4l2_rect *crop;
+	u32 width = fmt->format.width;
+	u32 height = fmt->format.height;
+	bool binning;
 
-	/* FIXME: Bayer order is not actually varying with flips? */
 	fmt->format.code = imx678_get_format_code(imx678, fmt->format.code);
-	get_mode_table(fmt->format.code, &mode_list, &num_modes);
-	mode = v4l2_find_nearest_size(mode_list,
-					  num_modes,
-					  width, height,
-					  fmt->format.width,
-					  fmt->format.height);
-	imx678_update_image_pad_format(imx678, mode, &fmt->format);
+	binning = imx678_pick_binning(width, height);
+	imx678_snap_format(&width, &height, binning);
+
+	fmt->format.width = width;
+	fmt->format.height = height;
+	fmt->format.field = V4L2_FIELD_NONE;
+	imx678_reset_colorspace(NULL, &fmt->format);
 
 	framefmt = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 	*framefmt = fmt->format;
 
+	crop = v4l2_subdev_state_get_crop(sd_state, fmt->pad);
+	imx678_default_crop_for_format(width, height, binning, crop);
+
 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
-		imx678_apply_mode(imx678, mode);
+		imx678->width = width;
+		imx678->height = height;
+		imx678->crop = *crop;
+		imx678->binning = binning;
 		imx678_set_framing_limits(imx678);
 	}
 
