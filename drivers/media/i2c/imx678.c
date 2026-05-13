@@ -674,15 +674,14 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_EXPOSURE: {
 		u32 shr = (imx678->VMAX - ctrl->val) & ~1u;
 
-		ret = cci_write(imx678->cci, IMX678_REG_SHR, shr, NULL);
+		cci_write(imx678->cci, IMX678_REG_SHR, shr, &ret);
 		break;
 	}
 	case V4L2_CID_ANALOGUE_GAIN:
-		ret = cci_write(imx678->cci, IMX678_REG_ANALOG_GAIN,
-				ctrl->val, NULL);
+		cci_write(imx678->cci, IMX678_REG_ANALOG_GAIN, ctrl->val, &ret);
 		break;
 	case V4L2_CID_VBLANK: {
-		ret = cci_write(imx678->cci, IMX678_REG_VMAX, imx678->VMAX, NULL);
+		cci_write(imx678->cci, IMX678_REG_VMAX, imx678->VMAX, &ret);
 		break;
 	}
 	case V4L2_CID_HBLANK: {
@@ -693,7 +692,7 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 
 		imx678->HMAX = hmax;
 
-		ret = cci_write(imx678->cci, IMX678_REG_HMAX, hmax, NULL);
+		cci_write(imx678->cci, IMX678_REG_HMAX, hmax, &ret);
 		break;
 	}
 	case V4L2_CID_TEST_PATTERN: {
@@ -706,10 +705,10 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	}
 	case V4L2_CID_HFLIP:
-		ret = cci_write(imx678->cci, IMX678_REG_WINMODEH, ctrl->val, NULL);
+		cci_write(imx678->cci, IMX678_REG_WINMODEH, ctrl->val, &ret);
 		break;
 	case V4L2_CID_VFLIP:
-		ret = cci_write(imx678->cci, IMX678_REG_WINMODEV, ctrl->val, NULL);
+		cci_write(imx678->cci, IMX678_REG_WINMODEV, ctrl->val, &ret);
 		break;
 	default:
 		dev_warn(&client->dev,
@@ -823,6 +822,38 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int imx678_write_common(struct imx678 *imx678)
+{
+	int ret = 0;
+
+	if (imx678->common_regs_written)
+		return 0;
+
+	cci_multi_reg_write(imx678->cci, common_regs, ARRAY_SIZE(common_regs), &ret);
+
+	cci_write(imx678->cci, IMX678_REG_INCK_SEL, imx678->inck_sel_val, &ret);
+	cci_write(imx678->cci, IMX678_REG_BLKLEVEL, IMX678_BLKLEVEL_DEFAULT, &ret);
+	cci_write(imx678->cci, IMX678_REG_DATARATE_SEL,
+		  link_freqs_reg_value[imx678->link_freq_idx], &ret);
+
+	if (imx678->lane_count == 2)
+		cci_write(imx678->cci, IMX678_REG_LANEMODE, 0x01, &ret);
+	else
+		cci_write(imx678->cci, IMX678_REG_LANEMODE, 0x03, &ret);
+
+	cci_write(imx678->cci, IMX678_REG_INTERFACE_SEL, IMX678_INTERFACE_2L_4L,
+		  &ret);
+
+	/* Internal sync leader mode: enable XHS and XVS output */
+	cci_write(imx678->cci, IMX678_REG_XXS_DRV, 0x00, &ret);
+	cci_write(imx678->cci, IMX678_REG_XXS_OUTSEL, 0xAA, &ret);
+
+	if (!ret)
+		imx678->common_regs_written = true;
+
+	return ret;
+}
+
 static int imx678_program_window(struct imx678 *imx678,
 				 const struct v4l2_rect *crop, bool binning)
 {
@@ -849,33 +880,12 @@ static int imx678_start_streaming(struct imx678 *imx678,
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	const struct v4l2_rect *crop = imx678_state_crop(state);
 	const bool binning = imx678_state_binning(state);
-	int ret;
+	int ret = 0;
 
-	if (!imx678->common_regs_written) {
-		ret = cci_multi_reg_write(imx678->cci, common_regs,
-					  ARRAY_SIZE(common_regs), NULL);
-		if (ret) {
-			dev_err(&client->dev, "%s failed to set common settings\n", __func__);
-			return ret;
-		}
-
-		cci_write(imx678->cci, IMX678_REG_INCK_SEL, imx678->inck_sel_val, NULL);
-		cci_write(imx678->cci, IMX678_REG_BLKLEVEL, IMX678_BLKLEVEL_DEFAULT, NULL);
-		cci_write(imx678->cci, IMX678_REG_DATARATE_SEL,
-			  link_freqs_reg_value[imx678->link_freq_idx], NULL);
-
-		if (imx678->lane_count == 2)
-			cci_write(imx678->cci, IMX678_REG_LANEMODE, 0x01, NULL);
-		else
-			cci_write(imx678->cci, IMX678_REG_LANEMODE, 0x03, NULL);
-
-		cci_write(imx678->cci, IMX678_REG_INTERFACE_SEL, IMX678_INTERFACE_2L_4L,
-			  NULL);
-
-		/* Internal sync leader mode: enable XHS and XVS output */
-		cci_write(imx678->cci, IMX678_REG_XXS_DRV, 0x00, NULL);
-		cci_write(imx678->cci, IMX678_REG_XXS_OUTSEL, 0xAA, NULL);
-		imx678->common_regs_written = true;
+	ret = imx678_write_common(imx678);
+	if (ret) {
+		dev_err(&client->dev, "%s failed to write registers\n", __func__);
+		return ret;
 	}
 
 	ret = imx678_program_window(imx678, crop, binning);
@@ -890,12 +900,12 @@ static int imx678_start_streaming(struct imx678 *imx678,
 		return ret;
 	}
 
-	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING, NULL);
+	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING, &ret);
 
 	usleep_range(IMX678_STREAM_DELAY_US, IMX678_STREAM_DELAY_US + IMX678_STREAM_DELAY_RANGE_US);
 
 	/* Master mode enable */
-	ret = cci_write(imx678->cci, IMX678_REG_XMSTA, 0x00, NULL);
+	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x00, &ret);
 
 	return ret;
 }
@@ -903,12 +913,13 @@ static int imx678_start_streaming(struct imx678 *imx678,
 static void imx678_stop_streaming(struct imx678 *imx678)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
-	int ret;
+	int ret = 0;
 
 	/* Master mode disable */
-	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x01, NULL);
+	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x01, &ret);
+	/* Standby */
+	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STANDBY, &ret);
 
-	ret = cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STANDBY, NULL);
 	if (ret)
 		dev_err(&client->dev, "%s failed to stop stream\n", __func__);
 }
