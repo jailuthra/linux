@@ -782,6 +782,10 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	u32 height = fmt->format.height;
 	bool binning;
 
+	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
+	    v4l2_subdev_is_streaming(sd))
+		return -EBUSY;
+
 	fmt->format.code = imx678_get_format_code(imx678, fmt->format.code);
 	binning = imx678_pick_binning(width, height);
 	imx678_snap_format(&width, &height, binning);
@@ -1085,6 +1089,10 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 
 	if (sel->target != V4L2_SEL_TGT_CROP || sel->pad != 0)
 		return -EINVAL;
+
+	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
+	    v4l2_subdev_is_streaming(sd))
+		return -EBUSY;
 
 	format = v4l2_subdev_state_get_format(sd_state, sel->pad);
 	crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
