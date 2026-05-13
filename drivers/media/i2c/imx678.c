@@ -402,12 +402,10 @@ static const u32 mono_codes[] = {
 	MEDIA_BUS_FMT_Y12_1X12,   /* 12-bit mono */
 };
 
-/* regulator supplies */
 static const char * const imx678_supply_name[] = {
-	/* Supplies can be enabled in any order */
-	"VANA",  /* Analog (3.3V) supply */
-	"VDIG",  /* Digital Core (1.1V) supply */
-	"VDDL",  /* IF (1.8V) supply */
+	"avdd",  /* Analog (3.3V) supply */
+	"dvdd",  /* Digital Core (1.1V) supply */
+	"ovdd",  /* IF (1.8V) supply */
 };
 
 struct imx678 {
