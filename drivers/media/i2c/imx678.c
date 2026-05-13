@@ -264,7 +264,6 @@ static const int imx678_tpg_val[] = {
 	IMX678_TPG_V_COLOR_BARS,
 };
 
-
 /* IMX678 Register List */
 /* Common Modes */
 static const struct cci_reg_sequence common_regs[] = {
@@ -450,7 +449,6 @@ struct imx678 {
 	/* Rewrite common registers on stream on? */
 	bool common_regs_written;
 };
-
 
 static inline struct imx678 *to_imx678(struct v4l2_subdev *_sd)
 {
@@ -1343,10 +1341,9 @@ static int imx678_probe(struct i2c_client *client)
 		return -EINVAL;
 
 	imx678->xclk = devm_clk_get(dev, NULL);
-	if (IS_ERR(imx678->xclk)) {
-		dev_err(dev, "failed to get xclk\n");
-		return PTR_ERR(imx678->xclk);
-	}
+	if (IS_ERR(imx678->xclk))
+		return dev_err_probe(dev, PTR_ERR(imx678->xclk),
+				     "failed to get xclk\n");
 
 	imx678->xclk_freq = clk_get_rate(imx678->xclk);
 
@@ -1357,20 +1354,20 @@ static int imx678_probe(struct i2c_client *client)
 		}
 	}
 
-	if (i == ARRAY_SIZE(imx678_inck_table)) {
-		dev_err(dev, "unsupported XCLK rate %u Hz\n",
-			imx678->xclk_freq);
-		return -EINVAL;
-	}
+	if (i == ARRAY_SIZE(imx678_inck_table))
+		return dev_err_probe(dev, -EINVAL,
+				     "unsupported XCLK rate %u Hz\n",
+				     imx678->xclk_freq);
 
 	ret = imx678_get_regulators(imx678);
-	if (ret) {
-		dev_err(dev, "failed to get regulators\n");
-		return ret;
-	}
+	if (ret)
+		return dev_err_probe(dev, ret, "failed to get regulators\n");
 
 	imx678->reset_gpio = devm_gpiod_get_optional(dev, "reset",
-							 GPIOD_OUT_HIGH);
+						     GPIOD_OUT_HIGH);
+	if (IS_ERR(imx678->reset_gpio))
+		return dev_err_probe(dev, PTR_ERR(imx678->reset_gpio),
+				     "failed to get reset GPIO\n");
 
 	ret = imx678_power_on(dev);
 	if (ret)
