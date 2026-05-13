@@ -635,7 +635,7 @@ static void imx678_set_framing_limits(struct imx678 *imx678,
 	__v4l2_ctrl_s_ctrl(imx678->vblank, IMX678_VMAX_DEFAULT - format->height);
 
 	__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
-				 imx678->VMAX - IMX678_SHR_MIN_CLEARHDR, 1,
+				 imx678->VMAX - IMX678_SHR_MIN, 1,
 				 IMX678_EXPOSURE_DEFAULT);
 }
 
@@ -652,14 +652,13 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	if (ctrl->id == V4L2_CID_VBLANK) {
 		u32 current_exposure = imx678->exposure->cur.val;
-		u32 minSHR = IMX678_SHR_MIN;
 
 		imx678->VMAX = (format->height + ctrl->val) & ~1u;
 
 		current_exposure = clamp_t(u32, current_exposure, IMX678_EXPOSURE_MIN,
-					   imx678->VMAX - minSHR);
+					   imx678->VMAX - IMX678_SHR_MIN);
 		__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
-					 imx678->VMAX - minSHR, 1,
+					 imx678->VMAX - IMX678_SHR_MIN, 1,
 					 current_exposure);
 	}
 
@@ -1212,7 +1211,7 @@ static int imx678_init_controls(struct imx678 *imx678)
 					     V4L2_CID_EXPOSURE,
 					     IMX678_EXPOSURE_MIN,
 					     IMX678_VMAX_DEFAULT -
-					     IMX678_SHR_MIN_CLEARHDR,
+					     IMX678_SHR_MIN,
 					     IMX678_EXPOSURE_STEP,
 					     IMX678_EXPOSURE_DEFAULT);
 
