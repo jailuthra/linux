@@ -1065,6 +1065,66 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 	return -EINVAL;
 }
 
+/*
+ * Only two analog crop sizes are valid for a given output format:
+ *   - crop = format         (no binning)
+ *   - crop = 2 x format     (2x2 analog binning, when it fits)
+ *
+ * Snap (and not reject) the request: pick the nearer of the two sizes (biased
+ * by V4L2_SEL_FLAG_{LE,GE}), align the position to PIX_HST/VST granularity, and
+ * clamp into the active area.
+ */
+static int imx678_set_selection(struct v4l2_subdev *sd,
+				struct v4l2_subdev_state *sd_state,
+				struct v4l2_subdev_selection *sel)
+{
+	struct imx678 *imx678 = to_imx678(sd);
+	const struct v4l2_mbus_framefmt *format;
+	struct v4l2_rect *crop;
+	bool prefer_2x = false;
+
+	if (sel->target != V4L2_SEL_TGT_CROP || sel->pad != 0)
+		return -EINVAL;
+
+	format = v4l2_subdev_state_get_format(sd_state, sel->pad);
+	crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
+
+	/* Current format can support 2x2 binning */
+	if (imx678_pick_binning(format->width, format->height)) {
+		if (sel->flags & V4L2_SEL_FLAG_LE)
+			/* Prefer lower rectangle */
+			prefer_2x = sel->r.width  >= 2 * format->width &&
+				    sel->r.height >= 2 * format->height;
+		else if (sel->flags & V4L2_SEL_FLAG_GE)
+			/* Prefer bigger rectangle */
+			prefer_2x = (sel->r.width  > format->width ||
+				     sel->r.height > format->height);
+		else
+			/* Snap to closest rectangle */
+			prefer_2x = 2 * sel->r.width  >= 3 * format->width &&
+				    2 * sel->r.height >= 3 * format->height;
+	}
+
+	crop->width  = format->width  * (prefer_2x ? 2 : 1);
+	crop->height = format->height * (prefer_2x ? 2 : 1);
+	crop->left = imx678_active_area.left +
+		     ALIGN(sel->r.left - imx678_active_area.left,
+			   IMX678_CROP_HST_ALIGN);
+	crop->top  = imx678_active_area.top  +
+		     ALIGN(sel->r.top  - imx678_active_area.top,
+			   IMX678_CROP_VST_ALIGN);
+
+	/* This is safe to do because width/height are also 4-aligned */
+	v4l2_rect_map_inside(crop, &imx678_active_area);
+
+	sel->r = *crop;
+
+	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+		imx678_set_framing_limits(imx678, sd_state);
+
+	return 0;
+}
+
 static const struct v4l2_subdev_core_ops imx678_core_ops = {
 	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
 	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
@@ -1079,6 +1139,7 @@ static const struct v4l2_subdev_pad_ops imx678_pad_ops = {
 	.get_fmt = v4l2_subdev_get_fmt,
 	.set_fmt = imx678_set_pad_format,
 	.get_selection = imx678_get_selection,
+	.set_selection = imx678_set_selection,
 	.enum_frame_size = imx678_enum_frame_size,
 	.enable_streams = imx678_enable_streams,
 	.disable_streams = imx678_disable_streams,
