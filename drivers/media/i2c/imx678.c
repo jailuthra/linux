@@ -391,7 +391,7 @@ static const struct cci_reg_sequence common_regs[] = {
 	{CCI_REG8(0x47B4), 0x3F}, {CCI_REG8(0x47B6), 0x49}, {CCI_REG8(0x47BC), 0xFB},
 	{CCI_REG8(0x47BE), 0x0C}, {CCI_REG8(0x47C0), 0x32}, {CCI_REG8(0x47C1), 0x01},
 	{CCI_REG8(0x47C2), 0x3E}, {CCI_REG8(0x47C3), 0x01}, {IMX678_REG_WDMODE, 0x00},
-	{IMX678_REG_MDBIT, 0x01},
+	{IMX678_REG_MDBIT, 0x01}, {IMX678_REG_XXS_DRV, 0x00},
 };
 
 static const u32 codes_normal[] = {
@@ -833,7 +833,6 @@ static int imx678_write_common(struct imx678 *imx678)
 	cci_multi_reg_write(imx678->cci, common_regs, ARRAY_SIZE(common_regs), &ret);
 
 	cci_write(imx678->cci, IMX678_REG_INCK_SEL, imx678->inck_sel_val, &ret);
-	cci_write(imx678->cci, IMX678_REG_BLKLEVEL, IMX678_BLKLEVEL_DEFAULT, &ret);
 	cci_write(imx678->cci, IMX678_REG_DATARATE_SEL,
 		  link_freqs_reg_value[imx678->link_freq_idx], &ret);
 
@@ -844,10 +843,6 @@ static int imx678_write_common(struct imx678 *imx678)
 
 	cci_write(imx678->cci, IMX678_REG_INTERFACE_SEL, IMX678_INTERFACE_2L_4L,
 		  &ret);
-
-	/* Internal sync leader mode: enable XHS and XVS output */
-	cci_write(imx678->cci, IMX678_REG_XXS_DRV, 0x00, &ret);
-	cci_write(imx678->cci, IMX678_REG_XXS_OUTSEL, 0xAA, &ret);
 
 	if (!ret)
 		imx678->common_regs_written = true;
