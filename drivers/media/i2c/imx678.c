@@ -874,90 +874,74 @@ static int imx678_program_window(struct imx678 *imx678,
 	return ret;
 }
 
-static int imx678_start_streaming(struct imx678 *imx678,
-				  struct v4l2_subdev_state *state)
+static int imx678_enable_streams(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_state *state, u32 pad,
+				 u64 mask)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct imx678 *imx678 = to_imx678(sd);
 	const struct v4l2_rect *crop = imx678_state_crop(state);
 	const bool binning = imx678_state_binning(state);
 	int ret = 0;
 
+	ret = pm_runtime_get_sync(&client->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(&client->dev);
+		goto err_rpm_put;
+	}
+
 	ret = imx678_write_common(imx678);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to write registers\n", __func__);
-		return ret;
+		goto err_rpm_put;
 	}
 
 	ret = imx678_program_window(imx678, crop, binning);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
-		return ret;
+		goto err_rpm_put;
 	}
 
 	ret = __v4l2_ctrl_handler_setup(imx678->sd.ctrl_handler);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to apply user values\n", __func__);
-		return ret;
+		goto err_rpm_put;
 	}
 
 	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING, &ret);
-
-	usleep_range(IMX678_STREAM_DELAY_US, IMX678_STREAM_DELAY_US + IMX678_STREAM_DELAY_RANGE_US);
-
-	/* Master mode enable */
+	usleep_range(IMX678_STREAM_DELAY_US, IMX678_STREAM_DELAY_US +
+		     IMX678_STREAM_DELAY_RANGE_US);
 	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x00, &ret);
+
+	if (ret) {
+		dev_err(&client->dev, "%s failed to start streaming\n", __func__);
+		goto err_rpm_put;
+	}
+
+	return 0;
+
+err_rpm_put:
+	pm_runtime_put(&client->dev);
 
 	return ret;
 }
 
-static void imx678_stop_streaming(struct imx678 *imx678)
+static int imx678_disable_streams(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_state *state,
+				  u32 pad, u64 mask)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct imx678 *imx678 = to_imx678(sd);
 	int ret = 0;
 
 	/* Master mode disable */
 	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x01, &ret);
 	/* Standby */
 	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STANDBY, &ret);
-
 	if (ret)
 		dev_err(&client->dev, "%s failed to stop stream\n", __func__);
-}
 
-static int imx678_set_stream(struct v4l2_subdev *sd, int enable)
-{
-	struct imx678 *imx678 = to_imx678(sd);
-	struct v4l2_subdev_state *state;
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	int ret = 0;
-
-	state = v4l2_subdev_lock_and_get_active_state(sd);
-
-	if (enable) {
-		ret = pm_runtime_get_sync(&client->dev);
-		if (ret < 0) {
-			pm_runtime_put_noidle(&client->dev);
-			goto err_unlock;
-		}
-
-		/*
-		 * Apply default & customized values and then start streaming.
-		 */
-		ret = imx678_start_streaming(imx678, state);
-		if (ret)
-			goto err_rpm_put;
-	} else {
-		imx678_stop_streaming(imx678);
-		pm_runtime_put(&client->dev);
-	}
-
-	v4l2_subdev_unlock_state(state);
-	return ret;
-
-err_rpm_put:
 	pm_runtime_put(&client->dev);
-err_unlock:
-	v4l2_subdev_unlock_state(state);
 
 	return ret;
 }
@@ -1087,7 +1071,7 @@ static const struct v4l2_subdev_core_ops imx678_core_ops = {
 };
 
 static const struct v4l2_subdev_video_ops imx678_video_ops = {
-	.s_stream = imx678_set_stream,
+	.s_stream = v4l2_subdev_s_stream_helper,
 };
 
 static const struct v4l2_subdev_pad_ops imx678_pad_ops = {
@@ -1096,6 +1080,8 @@ static const struct v4l2_subdev_pad_ops imx678_pad_ops = {
 	.set_fmt = imx678_set_pad_format,
 	.get_selection = imx678_get_selection,
 	.enum_frame_size = imx678_enum_frame_size,
+	.enable_streams = imx678_enable_streams,
+	.disable_streams = imx678_disable_streams,
 };
 
 static const struct v4l2_subdev_ops imx678_subdev_ops = {
