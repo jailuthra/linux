@@ -21,10 +21,14 @@
 	reg_2p8v_csi0: regulator-2p8v-csi0 {
 		compatible = "regulator-fixed";
 		regulator-name = "2P8V_CSI0";
-		regulator-min-microvolt = <2800000>;
-		regulator-max-microvolt = <2800000>;
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
 		vin-supply = <&vdd_3v3>;
-		regulator-always-on;
+		startup-delay-us = <200000>;
+		off-on-delay-us = <30000>;
+		enable-active-high;
+		gpios = <&mcu_gpio0 15 GPIO_ACTIVE_HIGH>;
+
 	};
 
 	reg_1p8v_csi0: regulator-1p8v-csi0 {
@@ -67,27 +71,28 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	imx219_0: sensor@10 {
-		compatible = "sony,imx219";
-		reg = <0x10>;
+	imx219_0: sensor@1a {
+		compatible = "sony,imx678-aaqr";
+		reg = <0x1a>;
+
+		orientation = <2>;
+		rotation = <0>;
 
 		clocks = <&clk_imx219_csi0>;
 
-		VANA-supply = <&reg_2p8v_csi0>;
-		VDIG-supply = <&reg_1p8v_csi0>;
-		VDDL-supply = <&reg_1p2v_csi0>;
+		avdd-supply = <&reg_2p8v_csi0>;
+		ovdd-supply = <&reg_1p8v_csi0>;
+		dvdd-supply = <&reg_1p2v_csi0>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&cam0_reset_pins_default>;
 
-		reset-gpios = <&mcu_gpio0 15 GPIO_ACTIVE_HIGH>;
-
 		port {
 			csi2_cam0: endpoint {
 				remote-endpoint = <&csi2rx0_in_sensor>;
-				link-frequencies = /bits/ 64 <456000000>;
+				link-frequencies = /bits/ 64 <720000000>;
 				clock-lanes = <0>;
-				data-lanes = <1 2>;
+				data-lanes = <1 2 3 4>;
 			};
 		};
 	};
@@ -106,7 +111,7 @@
 				remote-endpoint = <&csi2_cam0>;
 				bus-type = <4>; /* CSI2 DPHY. */
 				clock-lanes = <0>;
-				data-lanes = <1 2>;
+				data-lanes = <1 2 3 4>;
 			};
 		};
 	};
