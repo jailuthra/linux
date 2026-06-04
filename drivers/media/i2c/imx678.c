@@ -787,6 +787,7 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	const struct v4l2_mbus_framefmt *format;
 	struct v4l2_subdev_state *state;
+	int rpm_in_use;
 	int ret = 0;
 
 	state = v4l2_subdev_get_locked_active_state(&imx678->sd);
@@ -806,10 +807,11 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 	}
 
 	/*
-	 * Applying V4L2 control value only happens
-	 * when power is up for streaming
+	 * Applying V4L2 control value only happens when power is up for
+	 * streaming
 	 */
-	if (pm_runtime_get_if_in_use(&client->dev) == 0)
+	rpm_in_use = pm_runtime_get_if_in_use(&client->dev);
+	if (!rpm_in_use)
 		return 0;
 
 	switch (ctrl->id) {
@@ -854,7 +856,8 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	}
 
-	pm_runtime_put(&client->dev);
+	if (rpm_in_use > 0)
+		pm_runtime_put(&client->dev);
 
 	return ret;
 }
@@ -1578,7 +1581,7 @@ static struct i2c_driver imx678_i2c_driver = {
 	.driver = {
 		.name = "imx678",
 		.of_match_table = imx678_of_match,
-		.pm = &imx678_pm_ops,
+		.pm = pm_ptr(&imx678_pm_ops),
 	},
 	.probe = imx678_probe,
 	.remove = imx678_remove,
