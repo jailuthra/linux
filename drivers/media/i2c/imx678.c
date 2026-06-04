@@ -72,10 +72,15 @@
 #define IMX678_EXPOSURE_STEP            1
 #define IMX678_EXPOSURE_DEFAULT         1000
 
-/* Analog gain control */
-#define IMX678_REG_ANALOG_GAIN          CCI_REG16_LE(0x3070)
+/*
+ * Analogue gain control
+ * Range is from 0 to 100 (0dB - 30dB) with 0.3dB step size
+ * Values from 101 to 240 are valid but correspond to additional digital gain
+ * (0.3dB - 42dB) so don't expose it to userspace
+ */
+#define IMX678_REG_GAIN			CCI_REG16_LE(0x3070)
 #define IMX678_ANA_GAIN_MIN_NORMAL      0
-#define IMX678_ANA_GAIN_MAX_NORMAL      240
+#define IMX678_ANA_GAIN_MAX_NORMAL      100
 #define IMX678_ANA_GAIN_STEP            1
 #define IMX678_ANA_GAIN_DEFAULT         0
 
@@ -835,7 +840,7 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	}
 	case V4L2_CID_ANALOGUE_GAIN:
-		cci_write(imx678->cci, IMX678_REG_ANALOG_GAIN, ctrl->val, &ret);
+		cci_write(imx678->cci, IMX678_REG_GAIN, ctrl->val, &ret);
 		break;
 	case V4L2_CID_HBLANK: {
 		u32 hmax = (format->width + ctrl->val) / IMX678_PIX_PER_CLK;
