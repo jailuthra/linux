@@ -144,6 +144,9 @@
 #define IMX678_CROP_HST_ALIGN		4
 #define IMX678_CROP_VST_ALIGN		4
 
+/* Subdev pads */
+#define IMX678_SOURCE_PAD		0
+
 /* IMX678 native and active pixel array size. */
 static const struct v4l2_rect imx678_native_area = {
 	.top = 0,
@@ -705,22 +708,9 @@ static inline struct imx678 *to_imx678(struct v4l2_subdev *_sd)
 	return container_of(_sd, struct imx678, sd);
 }
 
-static inline struct v4l2_mbus_framefmt *
-imx678_state_format(struct v4l2_subdev_state *state)
+static inline bool imx678_state_binning(const struct v4l2_mbus_framefmt *format,
+					const struct v4l2_rect *crop)
 {
-	return v4l2_subdev_state_get_format(state, 0);
-}
-
-static inline struct v4l2_rect *imx678_state_crop(struct v4l2_subdev_state *state)
-{
-	return v4l2_subdev_state_get_crop(state, 0);
-}
-
-static bool imx678_state_binning(struct v4l2_subdev_state *state)
-{
-	const struct v4l2_mbus_framefmt *format = imx678_state_format(state);
-	const struct v4l2_rect *crop = imx678_state_crop(state);
-
 	return crop->width == 2 * format->width &&
 	       crop->height == 2 * format->height;
 }
@@ -761,13 +751,13 @@ static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 }
 
 static void imx678_set_framing_limits(struct imx678 *imx678,
-				      struct v4l2_subdev_state *state)
+				      const struct v4l2_mbus_framefmt *format,
+				      const struct v4l2_rect *crop)
 {
-	const struct v4l2_mbus_framefmt *format = imx678_state_format(state);
 	s64 min_hblank, default_hblank, max_hblank, vblank;
 	const u32 hmax_4lane = min_hmax_4lane[__ffs(imx678->link_freq_bitmap)];
 	const u32 lane_scale = imx678->lane_mode == IMX678_LANEMODE_2L ? 2 : 1;
-	const bool binning = imx678_state_binning(state);
+	const bool binning = imx678_state_binning(format, crop);
 	const u8 bpp = binning ? 10 : 12;
 	u32 hmax, min_hmax;
 
@@ -797,13 +787,13 @@ static void imx678_set_framing_limits(struct imx678 *imx678,
 static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx678 *imx678 = container_of(ctrl->handler, struct imx678, ctrl_handler);
-	struct v4l2_subdev_state *state;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	const struct v4l2_mbus_framefmt *format;
+	struct v4l2_subdev_state *state;
 	int ret = 0;
 
 	state = v4l2_subdev_get_locked_active_state(&imx678->sd);
-	format = imx678_state_format(state);
+	format = v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD);
 
 	if (ctrl->id == V4L2_CID_VBLANK) {
 		u32 current_exposure = imx678->exposure->cur.val;
@@ -892,8 +882,8 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_state *sd_state,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
-	const struct v4l2_rect *crop = imx678_state_crop(sd_state);
 	struct imx678 *imx678 = to_imx678(sd);
+	const struct v4l2_rect *crop;
 
 	/* Return non-binned and binned resolution for current crop */
 	if (fse->index > 1)
@@ -901,6 +891,8 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 
 	if (!imx678_mbus_code_supported(imx678, fse->code))
 		return -EINVAL;
+
+	crop = v4l2_subdev_state_get_crop(sd_state, fse->pad);
 
 	fse->min_width = crop->width / (fse->index + 1);
 	fse->max_width = fse->min_width;
@@ -923,13 +915,13 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	struct v4l2_mbus_framefmt *format;
 	u32 width = fmt->format.width;
 	u32 height = fmt->format.height;
-	struct v4l2_rect *crop;
+	const struct v4l2_rect *crop;
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
 	    v4l2_subdev_is_streaming(sd))
 		return -EBUSY;
 
-	crop = imx678_state_crop(sd_state);
+	crop = v4l2_subdev_state_get_crop(sd_state, fmt->pad);
 	format = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 
 	/* Snap format size to 2x2 binned mode if it is < 0.75 * crop */
@@ -950,7 +942,7 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	format->xfer_func = V4L2_XFER_FUNC_NONE;
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		imx678_set_framing_limits(imx678, sd_state);
+		imx678_set_framing_limits(imx678, format, crop);
 
 	return 0;
 }
@@ -961,7 +953,7 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 {
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP:
-		sel->r = *imx678_state_crop(sd_state);
+		sel->r = *v4l2_subdev_state_get_crop(sd_state, sel->pad);
 		return 0;
 
 	case V4L2_SEL_TGT_NATIVE_SIZE:
@@ -982,10 +974,10 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_selection *sel)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	struct v4l2_rect *crop;
-	struct v4l2_rect rect;
+	struct v4l2_mbus_framefmt *format;
+	struct v4l2_rect *crop, rect;
 
-	if (sel->target != V4L2_SEL_TGT_CROP || sel->pad != 0)
+	if (sel->target != V4L2_SEL_TGT_CROP || sel->pad != IMX678_SOURCE_PAD)
 		return -EINVAL;
 
 	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
@@ -1009,10 +1001,9 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 	rect.height = min_t(u32, rect.height, imx678_native_area.height - rect.top);
 
 	crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
+	format = v4l2_subdev_state_get_format(sd_state, sel->pad);
 
 	if (rect.width != crop->width || rect.height != crop->height) {
-		struct v4l2_mbus_framefmt *format =
-			v4l2_subdev_state_get_format(sd_state, sel->pad);
 		format->width = rect.width;
 		format->height = rect.height;
 	}
@@ -1021,7 +1012,7 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 	sel->r = *crop;
 
 	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		imx678_set_framing_limits(imx678, sd_state);
+		imx678_set_framing_limits(imx678, format, crop);
 
 	return 0;
 }
@@ -1037,7 +1028,7 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 	};
 	struct v4l2_subdev_format fmt = {
 		.which = V4L2_SUBDEV_FORMAT_TRY,
-		.pad = 0,
+		.pad = IMX678_SOURCE_PAD,
 		.format = {
 			.code = imx678_default_mbus_code(imx678),
 			.width = imx678_active_area.width,
@@ -1069,8 +1060,10 @@ static int imx678_write_common(struct imx678 *imx678)
 }
 
 static int imx678_program_window(struct imx678 *imx678,
-				 const struct v4l2_rect *crop, bool binning)
+				 const struct v4l2_mbus_framefmt *format,
+				 const struct v4l2_rect *crop)
 {
+	const bool binning = imx678_state_binning(format, crop);
 	int ret = 0;
 
 	cci_write(imx678->cci, IMX678_REG_ADDMODE, binning ? 0x01 : 0x00, &ret);
@@ -1094,15 +1087,17 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct imx678 *imx678 = to_imx678(sd);
-	const struct v4l2_rect *crop = imx678_state_crop(state);
-	const bool binning = imx678_state_binning(state);
+	const struct v4l2_mbus_framefmt *format;
+	const struct v4l2_rect *crop;
 	int ret;
 
 	ret = pm_runtime_resume_and_get(&client->dev);
 	if (ret < 0)
 		return ret;
 
-	ret = imx678_program_window(imx678, crop, binning);
+	format = v4l2_subdev_state_get_format(state, pad);
+	crop = v4l2_subdev_state_get_crop(state, pad);
+	ret = imx678_program_window(imx678, format, crop);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
 		goto err_rpm_put;
@@ -1210,18 +1205,6 @@ static int imx678_power_off(struct device *dev)
 	regulator_bulk_disable(ARRAY_SIZE(imx678_supply_name), imx678->supplies);
 
 	return 0;
-}
-
-static int imx678_get_regulators(struct imx678 *imx678)
-{
-	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(imx678_supply_name); i++)
-		imx678->supplies[i].supply = imx678_supply_name[i];
-
-	return devm_regulator_bulk_get(&client->dev, ARRAY_SIZE(imx678_supply_name),
-				       imx678->supplies);
 }
 
 static int imx678_identify_model(struct imx678 *imx678)
@@ -1385,11 +1368,6 @@ error:
 	return ret;
 }
 
-static void imx678_free_controls(struct imx678 *imx678)
-{
-	v4l2_ctrl_handler_free(imx678->sd.ctrl_handler);
-}
-
 static int imx678_check_hwcfg(struct device *dev, struct imx678 *imx678)
 {
 	struct fwnode_handle *endpoint;
@@ -1473,7 +1451,11 @@ static int imx678_probe(struct i2c_client *client)
 				     "unsupported XCLK rate %u Hz\n",
 				     imx678->xclk_freq);
 
-	ret = imx678_get_regulators(imx678);
+	for (i = 0; i < ARRAY_SIZE(imx678_supply_name); i++)
+		imx678->supplies[i].supply = imx678_supply_name[i];
+
+	ret = devm_regulator_bulk_get(&client->dev, ARRAY_SIZE(imx678_supply_name),
+				       imx678->supplies);
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to get regulators\n");
 
@@ -1536,7 +1518,7 @@ error_media_entity:
 	media_entity_cleanup(&imx678->sd.entity);
 
 error_handler_free:
-	imx678_free_controls(imx678);
+	v4l2_ctrl_handler_free(imx678->sd.ctrl_handler);
 
 error_pm_runtime:
 	pm_runtime_disable(&client->dev);
@@ -1556,7 +1538,7 @@ static void imx678_remove(struct i2c_client *client)
 	v4l2_async_unregister_subdev(sd);
 	v4l2_subdev_cleanup(sd);
 	media_entity_cleanup(&sd->entity);
-	imx678_free_controls(imx678);
+	v4l2_ctrl_handler_free(imx678->sd.ctrl_handler);
 
 	pm_runtime_disable(&client->dev);
 	if (!pm_runtime_status_suspended(&client->dev))
