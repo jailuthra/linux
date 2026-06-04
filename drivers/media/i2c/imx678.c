@@ -690,12 +690,7 @@ struct imx678 {
 	struct v4l2_ctrl_handler ctrl_handler;
 
 	/* V4L2 Controls */
-	struct v4l2_ctrl *pixel_rate;
-	struct v4l2_ctrl *link_freq;
 	struct v4l2_ctrl *exposure;
-	struct v4l2_ctrl *gain;
-	struct v4l2_ctrl *vflip;
-	struct v4l2_ctrl *hflip;
 	struct v4l2_ctrl *vblank;
 	struct v4l2_ctrl *hblank;
 
@@ -777,7 +772,8 @@ static void imx678_set_framing_limits(struct imx678 *imx678,
 	vblank = imx678->vmax - format->height;
 	__v4l2_ctrl_modify_range(imx678->vblank, vblank,
 				 IMX678_VMAX_MAX - format->height, 2, vblank);
-	__v4l2_ctrl_s_ctrl(imx678->vblank, IMX678_VMAX_DEFAULT - format->height);
+	__v4l2_ctrl_s_ctrl(imx678->vblank,
+			   IMX678_VMAX_DEFAULT - format->height);
 
 	__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
 				 imx678->vmax - IMX678_SHR_MIN, 1,
@@ -786,7 +782,8 @@ static void imx678_set_framing_limits(struct imx678 *imx678,
 
 static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 {
-	struct imx678 *imx678 = container_of(ctrl->handler, struct imx678, ctrl_handler);
+	struct imx678 *imx678 = container_of(ctrl->handler, struct imx678,
+					     ctrl_handler);
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	const struct v4l2_mbus_framefmt *format;
 	struct v4l2_subdev_state *state;
@@ -800,7 +797,8 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 
 		imx678->vmax = format->height + ctrl->val;
 
-		current_exposure = clamp_t(u32, current_exposure, IMX678_EXPOSURE_MIN,
+		current_exposure = clamp_t(u32, current_exposure,
+					   IMX678_EXPOSURE_MIN,
 					   imx678->vmax - IMX678_SHR_MIN);
 		__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
 					 imx678->vmax - IMX678_SHR_MIN, 1,
@@ -838,7 +836,8 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 			  IMX678_TPG_COLORWIDTH_160PIX, &ret);
 		cci_write(imx678->cci, IMX678_REG_TPG_PATSEL_DUOUT,
 			  imx678_tpg_val[ctrl->val], &ret);
-		cci_write(imx678->cci, IMX678_REG_TPG_EN_DUOUT, (ctrl->val) ? 1 : 0,
+		cci_write(imx678->cci, IMX678_REG_TPG_EN_DUOUT,
+			  (ctrl->val) ? 1 : 0,
 			  &ret);
 		break;
 	}
@@ -986,19 +985,25 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 
 	/* Align left, top to 4 */
 	rect.left = clamp_t(s32, ALIGN(sel->r.left, IMX678_CROP_HST_ALIGN),
-			    imx678_active_area.left,
-			    imx678_active_area.width - IMX678_PIXEL_ARRAY_MIN_WIDTH);
+			    imx678_active_area.left, imx678_active_area.width -
+			    IMX678_PIXEL_ARRAY_MIN_WIDTH);
 	rect.top = clamp_t(s32, ALIGN(sel->r.top, IMX678_CROP_VST_ALIGN),
 			   imx678_active_area.top,
-			   imx678_active_area.height - IMX678_PIXEL_ARRAY_MIN_HEIGHT);
+			   imx678_active_area.height -
+			   IMX678_PIXEL_ARRAY_MIN_HEIGHT);
 	/* Align width to 16 and height to 4 */
 	rect.width = clamp_t(u32, ALIGN(sel->r.width, IMX678_CROP_HWIDTH_ALIGN),
-			     IMX678_PIXEL_ARRAY_MIN_WIDTH, imx678_active_area.width);
-	rect.height = clamp_t(u32, ALIGN(sel->r.height, IMX678_CROP_VWIDTH_ALIGN),
-			      IMX678_PIXEL_ARRAY_MIN_HEIGHT, imx678_active_area.height);
+			     IMX678_PIXEL_ARRAY_MIN_WIDTH,
+			     imx678_active_area.width);
+	rect.height = clamp_t(u32,
+			      ALIGN(sel->r.height, IMX678_CROP_VWIDTH_ALIGN),
+			      IMX678_PIXEL_ARRAY_MIN_HEIGHT,
+			      imx678_active_area.height);
 
-	rect.width = min_t(u32, rect.width, imx678_native_area.width - rect.left);
-	rect.height = min_t(u32, rect.height, imx678_native_area.height - rect.top);
+	rect.width = min_t(u32, rect.width,
+			   imx678_native_area.width - rect.left);
+	rect.height = min_t(u32, rect.height,
+			    imx678_native_area.height - rect.top);
 
 	crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
 	format = v4l2_subdev_state_get_format(sd_state, sel->pad);
@@ -1046,7 +1051,8 @@ static int imx678_write_common(struct imx678 *imx678)
 {
 	int ret = 0;
 
-	cci_multi_reg_write(imx678->cci, common_regs, ARRAY_SIZE(common_regs), &ret);
+	cci_multi_reg_write(imx678->cci, common_regs, ARRAY_SIZE(common_regs),
+			    &ret);
 
 	cci_write(imx678->cci, IMX678_REG_INCK_SEL, imx678->inck_sel_val, &ret);
 	cci_write(imx678->cci, IMX678_REG_DATARATE_SEL,
@@ -1105,17 +1111,20 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 
 	ret = __v4l2_ctrl_handler_setup(imx678->sd.ctrl_handler);
 	if (ret) {
-		dev_err(&client->dev, "%s failed to apply user values\n", __func__);
+		dev_err(&client->dev, "%s failed to apply user values\n",
+			__func__);
 		goto err_rpm_put;
 	}
 
-	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING, &ret);
+	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING,
+		  &ret);
 	usleep_range(IMX678_STREAM_DELAY_US, IMX678_STREAM_DELAY_US +
 		     IMX678_STREAM_DELAY_RANGE_US);
 	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x00, &ret);
 
 	if (ret) {
-		dev_err(&client->dev, "%s failed to start streaming\n", __func__);
+		dev_err(&client->dev, "%s failed to start streaming\n",
+			__func__);
 		goto err_rpm_put;
 	}
 
@@ -1138,7 +1147,8 @@ static int imx678_disable_streams(struct v4l2_subdev *sd,
 	/* Master mode disable */
 	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x01, &ret);
 	/* Standby */
-	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STANDBY, &ret);
+	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STANDBY,
+		  &ret);
 	if (ret)
 		dev_err(&client->dev, "%s failed to stop stream\n", __func__);
 
@@ -1154,7 +1164,8 @@ static int imx678_power_on(struct device *dev)
 	struct imx678 *imx678 = to_imx678(sd);
 	int ret;
 
-	ret = regulator_bulk_enable(ARRAY_SIZE(imx678_supply_name), imx678->supplies);
+	ret = regulator_bulk_enable(ARRAY_SIZE(imx678_supply_name),
+				    imx678->supplies);
 	if (ret) {
 		dev_err(&client->dev, "%s: failed to enable regulators\n",
 			__func__);
@@ -1178,7 +1189,8 @@ static int imx678_power_on(struct device *dev)
 
 	ret = imx678_write_common(imx678);
 	if (ret) {
-		dev_err(&client->dev, "%s failed to write registers\n", __func__);
+		dev_err(&client->dev, "%s failed to write registers\n",
+			__func__);
 		goto clk_off;
 	}
 
@@ -1189,7 +1201,8 @@ clk_off:
 
 reg_off:
 	gpiod_set_value_cansleep(imx678->reset_gpio, 1);
-	regulator_bulk_disable(ARRAY_SIZE(imx678_supply_name), imx678->supplies);
+	regulator_bulk_disable(ARRAY_SIZE(imx678_supply_name),
+			       imx678->supplies);
 
 	return ret;
 }
@@ -1202,7 +1215,8 @@ static int imx678_power_off(struct device *dev)
 
 	clk_disable_unprepare(imx678->xclk);
 	gpiod_set_value_cansleep(imx678->reset_gpio, 1);
-	regulator_bulk_disable(ARRAY_SIZE(imx678_supply_name), imx678->supplies);
+	regulator_bulk_disable(ARRAY_SIZE(imx678_supply_name),
+			       imx678->supplies);
 
 	return 0;
 }
@@ -1284,7 +1298,8 @@ static int imx678_init_controls(struct imx678 *imx678)
 	const u32 lane_scale = imx678->lane_mode == IMX678_LANEMODE_2L ? 2 : 1;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	struct v4l2_fwnode_device_properties props;
-	s32 hblank, max_hblank;
+	struct v4l2_ctrl *link_freq;
+	s32 hblank, max_hblank, vblank, max_vblank;
 	u32 hmax;
 	int ret;
 
@@ -1301,32 +1316,34 @@ static int imx678_init_controls(struct imx678 *imx678)
 	hmax = hmax_4lane * lane_scale;
 
 	/* PIXEL_RATE is fixed and read-only */
-	imx678->pixel_rate = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
+	v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
 					       V4L2_CID_PIXEL_RATE,
 					       IMX678_PIXEL_RATE,
 					       IMX678_PIXEL_RATE, 1,
 					       IMX678_PIXEL_RATE);
 
 	/* LINK_FREQ is also read only */
-	imx678->link_freq =
-		v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx678_ctrl_ops,
-				       V4L2_CID_LINK_FREQ,
-				       ARRAY_SIZE(link_freqs) - 1,
-				       __ffs(imx678->link_freq_bitmap),
-				       link_freqs);
+	link_freq = v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx678_ctrl_ops,
+					   V4L2_CID_LINK_FREQ,
+					   ARRAY_SIZE(link_freqs) - 1,
+					   __ffs(imx678->link_freq_bitmap),
+					   link_freqs);
 
-	if (imx678->link_freq)
-		imx678->link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+	if (link_freq)
+		link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
-	imx678->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_VBLANK,
-					   imx678->vmax - imx678_active_area.height,
-					   IMX678_VMAX_MAX - imx678_active_area.height, 2,
-					   imx678->vmax - imx678_active_area.height);
+	vblank = imx678->vmax - imx678_active_area.height;
+	max_vblank = IMX678_VMAX_MAX - imx678_active_area.height;
+	imx678->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
+					   V4L2_CID_VBLANK, vblank, max_vblank,
+					   2, vblank);
 
 	hblank = hmax * IMX678_PIX_PER_CLK - imx678_active_area.width;
-	max_hblank = IMX678_HMAX_MAX * IMX678_PIX_PER_CLK - imx678_active_area.width;
-	imx678->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_HBLANK,
-					   hblank, max_hblank, IMX678_PIX_PER_CLK, hblank);
+	max_hblank = IMX678_HMAX_MAX * IMX678_PIX_PER_CLK -
+		     imx678_active_area.width;
+	imx678->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
+					   V4L2_CID_HBLANK, hblank, max_hblank,
+					   IMX678_PIX_PER_CLK, hblank);
 
 	imx678->exposure = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops,
 					     V4L2_CID_EXPOSURE,
@@ -1336,14 +1353,18 @@ static int imx678_init_controls(struct imx678 *imx678)
 					     IMX678_EXPOSURE_STEP,
 					     IMX678_EXPOSURE_DEFAULT);
 
-	imx678->gain = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_ANALOGUE_GAIN,
-					 IMX678_ANA_GAIN_MIN_NORMAL, IMX678_ANA_GAIN_MAX_NORMAL,
-					 IMX678_ANA_GAIN_STEP, IMX678_ANA_GAIN_DEFAULT);
+	v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_ANALOGUE_GAIN,
+			  IMX678_ANA_GAIN_MIN_NORMAL,
+			  IMX678_ANA_GAIN_MAX_NORMAL, IMX678_ANA_GAIN_STEP,
+			  IMX678_ANA_GAIN_DEFAULT);
 
-	imx678->hflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_HFLIP, 0, 1, 1, 0);
-	imx678->vflip = v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_VFLIP, 0, 1, 1, 0);
+	v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_HFLIP,
+			  0, 1, 1, 0);
+	v4l2_ctrl_new_std(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_VFLIP,
+			  0, 1, 1, 0);
 
-	v4l2_ctrl_new_std_menu_items(ctrl_hdlr, &imx678_ctrl_ops, V4L2_CID_TEST_PATTERN,
+	v4l2_ctrl_new_std_menu_items(ctrl_hdlr, &imx678_ctrl_ops,
+				     V4L2_CID_TEST_PATTERN,
 				     ARRAY_SIZE(imx678_tpg_menu) - 1, 0, 0,
 				     imx678_tpg_menu);
 
@@ -1447,8 +1468,9 @@ static int imx678_probe(struct i2c_client *client)
 	for (i = 0; i < ARRAY_SIZE(imx678_supply_name); i++)
 		imx678->supplies[i].supply = imx678_supply_name[i];
 
-	ret = devm_regulator_bulk_get(&client->dev, ARRAY_SIZE(imx678_supply_name),
-				       imx678->supplies);
+	ret = devm_regulator_bulk_get(&client->dev,
+				      ARRAY_SIZE(imx678_supply_name),
+				      imx678->supplies);
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to get regulators\n");
 
