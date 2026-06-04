@@ -745,16 +745,17 @@ static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 	return imx678_default_mbus_code(imx678);
 }
 
-static void imx678_set_framing_limits(struct imx678 *imx678,
+static int imx678_set_framing_limits(struct imx678 *imx678,
 				      const struct v4l2_mbus_framefmt *format,
 				      const struct v4l2_rect *crop)
 {
-	s64 min_hblank, default_hblank, max_hblank, vblank;
 	const u32 hmax_4lane = min_hmax_4lane[__ffs(imx678->link_freq_bitmap)];
 	const u32 lane_scale = imx678->lane_mode == IMX678_LANEMODE_2L ? 2 : 1;
 	const bool binning = imx678_state_binning(format, crop);
+	s32 min_hblank, default_hblank, max_hblank, vblank;
 	const u8 bpp = binning ? 10 : 12;
 	u32 hmax, min_hmax;
+	int ret;
 
 	imx678->vmax = IMX678_VMAX_DEFAULT;
 	hmax = hmax_4lane * lane_scale;
@@ -765,19 +766,22 @@ static void imx678_set_framing_limits(struct imx678 *imx678,
 	default_hblank = hmax * IMX678_PIX_PER_CLK - format->width;
 	max_hblank = IMX678_HMAX_MAX * IMX678_PIX_PER_CLK - format->width;
 
-	__v4l2_ctrl_modify_range(imx678->hblank, min_hblank, max_hblank,
-				 IMX678_PIX_PER_CLK, default_hblank);
-	__v4l2_ctrl_s_ctrl(imx678->hblank, default_hblank);
+	ret = __v4l2_ctrl_modify_range(imx678->hblank, min_hblank, max_hblank,
+				       IMX678_PIX_PER_CLK, default_hblank);
+	ret |= __v4l2_ctrl_s_ctrl(imx678->hblank, default_hblank);
 
 	vblank = imx678->vmax - format->height;
-	__v4l2_ctrl_modify_range(imx678->vblank, vblank,
-				 IMX678_VMAX_MAX - format->height, 2, vblank);
-	__v4l2_ctrl_s_ctrl(imx678->vblank,
-			   IMX678_VMAX_DEFAULT - format->height);
+	ret |= __v4l2_ctrl_modify_range(imx678->vblank, vblank,
+					IMX678_VMAX_MAX - format->height, 2,
+					vblank);
+	ret |= __v4l2_ctrl_s_ctrl(imx678->vblank,
+				  IMX678_VMAX_DEFAULT - format->height);
 
-	__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
-				 imx678->vmax - IMX678_SHR_MIN, 1,
-				 IMX678_EXPOSURE_DEFAULT);
+	ret |= __v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
+					imx678->vmax - IMX678_SHR_MIN, 1,
+					IMX678_EXPOSURE_DEFAULT);
+
+	return ret;
 }
 
 static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
@@ -801,9 +805,12 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		current_exposure = clamp_t(u32, current_exposure,
 					   IMX678_EXPOSURE_MIN,
 					   imx678->vmax - IMX678_SHR_MIN);
-		__v4l2_ctrl_modify_range(imx678->exposure, IMX678_EXPOSURE_MIN,
-					 imx678->vmax - IMX678_SHR_MIN, 1,
-					 current_exposure);
+		ret = __v4l2_ctrl_modify_range(imx678->exposure,
+					       IMX678_EXPOSURE_MIN,
+					       imx678->vmax - IMX678_SHR_MIN,
+					       1, current_exposure);
+		if (ret)
+			return ret;
 	}
 
 	/*
@@ -918,6 +925,7 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	u32 width = fmt->format.width;
 	u32 height = fmt->format.height;
 	const struct v4l2_rect *crop;
+	int ret = 0;
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
 	    v4l2_subdev_is_streaming(sd))
@@ -944,9 +952,9 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	format->xfer_func = V4L2_XFER_FUNC_NONE;
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		imx678_set_framing_limits(imx678, format, crop);
+		ret = imx678_set_framing_limits(imx678, format, crop);
 
-	return 0;
+	return ret;
 }
 
 static int imx678_get_selection(struct v4l2_subdev *sd,
@@ -978,6 +986,7 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 	struct imx678 *imx678 = to_imx678(sd);
 	struct v4l2_mbus_framefmt *format;
 	struct v4l2_rect *crop, rect;
+	int ret = 0;
 
 	if (sel->target != V4L2_SEL_TGT_CROP || sel->pad != IMX678_SOURCE_PAD)
 		return -EINVAL;
@@ -1020,9 +1029,9 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 	sel->r = *crop;
 
 	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		imx678_set_framing_limits(imx678, format, crop);
+		ret = imx678_set_framing_limits(imx678, format, crop);
 
-	return 0;
+	return ret;
 }
 
 static int imx678_init_state(struct v4l2_subdev *sd,
