@@ -13,15 +13,12 @@
 #include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
-#include <linux/of.h>
-#include <linux/of_graph.h>
 #include <linux/property.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <media/v4l2-cci.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
-#include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-mediabus.h>
 #include <media/v4l2-rect.h>
@@ -49,7 +46,7 @@
 #define IMX678_REG_LANEMODE             CCI_REG8(0x3040)
 
 /*
- * The internal readout clock runs at 74.25 Hz. In one cycle the AD reads 8
+ * The internal readout clock runs at 74.25 MHz. In one cycle the AD reads 8
  * pixels, thus giving us a rate of 74.25 * 8 = 594 MPix/s
  */
 #define IMX678_PIXEL_RATE		594000000
@@ -277,8 +274,7 @@ static const int imx678_tpg_val[] = {
 	IMX678_TPG_V_COLOR_BARS,
 };
 
-/* IMX678 Register List */
-/* Common Modes */
+/* Common configuration */
 static const struct cci_reg_sequence common_regs[] = {
 	{ IMX678_REG_THIN_V_EN, 0x00 },
 	{ IMX678_REG_VCMODE, 0x01 },
@@ -662,8 +658,6 @@ static const u32 codes_monochrome[] = {
 	MEDIA_BUS_FMT_Y12_1X12,   /* 12-bit mono */
 };
 
-#define IMX678_NUM_CODES ARRAY_SIZE(codes_bayer)
-
 static const char * const imx678_supply_name[] = {
 	"avdd",  /* Analog (3.3V) supply */
 	"dvdd",  /* Digital Core (1.1V) supply */
@@ -750,7 +744,7 @@ static bool imx678_mbus_code_supported(struct imx678 *imx678, u32 code)
 {
 	const u32 *codes = imx678_mbus_codes(imx678);
 
-	for (unsigned int i = 0; i < IMX678_NUM_CODES; i++) {
+	for (unsigned int i = 0; i < ARRAY_SIZE(codes_bayer); i++) {
 		if (codes[i] == code)
 			return true;
 	}
@@ -887,7 +881,7 @@ static int imx678_enum_mbus_code(struct v4l2_subdev *sd,
 	struct imx678 *imx678 = to_imx678(sd);
 	const u32 *codes = imx678_mbus_codes(imx678);
 
-	if (code->index >= IMX678_NUM_CODES)
+	if (code->index >= ARRAY_SIZE(codes_bayer))
 		return -EINVAL;
 
 	code->code = codes[code->index];
@@ -1102,7 +1096,7 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 	struct imx678 *imx678 = to_imx678(sd);
 	const struct v4l2_rect *crop = imx678_state_crop(state);
 	const bool binning = imx678_state_binning(state);
-	int ret = 0;
+	int ret;
 
 	ret = pm_runtime_resume_and_get(&client->dev);
 	if (ret < 0)
@@ -1197,9 +1191,11 @@ static int imx678_power_on(struct device *dev)
 
 clk_off:
 	clk_disable_unprepare(imx678->xclk);
+
 reg_off:
 	gpiod_set_value_cansleep(imx678->reset_gpio, 1);
 	regulator_bulk_disable(ARRAY_SIZE(imx678_supply_name), imx678->supplies);
+
 	return ret;
 }
 
@@ -1236,7 +1232,7 @@ static int imx678_identify_model(struct imx678 *imx678)
 	int ret = 0;
 	u64 val = 0;
 
-	info = of_device_get_match_data(&client->dev);
+	info = device_get_match_data(&client->dev);
 
 	/*
 	 * This sensor's ID registers become accessible 80ms after coming out
@@ -1274,11 +1270,6 @@ static int imx678_identify_model(struct imx678 *imx678)
 	return 0;
 }
 
-static const struct v4l2_subdev_core_ops imx678_core_ops = {
-	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
-	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
-};
-
 static const struct v4l2_subdev_video_ops imx678_video_ops = {
 	.s_stream = v4l2_subdev_s_stream_helper,
 };
@@ -1295,7 +1286,6 @@ static const struct v4l2_subdev_pad_ops imx678_pad_ops = {
 };
 
 static const struct v4l2_subdev_ops imx678_subdev_ops = {
-	.core = &imx678_core_ops,
 	.video = &imx678_video_ops,
 	.pad = &imx678_pad_ops,
 };
@@ -1408,7 +1398,7 @@ static int imx678_check_hwcfg(struct device *dev, struct imx678 *imx678)
 	};
 	int ret = -EINVAL;
 
-	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(dev), NULL);
+	endpoint = fwnode_graph_get_endpoint_by_id(dev_fwnode(dev), 0, 0, 0);
 	if (!endpoint) {
 		dev_err(dev, "endpoint node not found\n");
 		return -EINVAL;
@@ -1517,20 +1507,21 @@ static int imx678_probe(struct i2c_client *client)
 
 	ret = media_entity_pads_init(&imx678->sd.entity, 1, &imx678->pad);
 	if (ret) {
-		dev_err(dev, "failed to init entity pads: %d\n", ret);
+		dev_err_probe(dev, ret, "failed to init entity pads\n");
 		goto error_handler_free;
 	}
 
 	imx678->sd.state_lock = imx678->ctrl_handler.lock;
 	ret = v4l2_subdev_init_finalize(&imx678->sd);
 	if (ret < 0) {
-		dev_err(dev, "subdev init error\n");
+		dev_err_probe(dev, ret, "subdev init error\n");
 		goto error_media_entity;
 	}
 
 	ret = v4l2_async_register_subdev_sensor(&imx678->sd);
 	if (ret < 0) {
-		dev_err(dev, "failed to register sensor sub-device: %d\n", ret);
+		dev_err_probe(dev, ret,
+			      "failed to register sensor sub-device\n");
 		goto error_subdev_cleanup;
 	}
 
