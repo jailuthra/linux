@@ -1288,6 +1288,10 @@ static int imx678_init_controls(struct imx678 *imx678)
 	u32 hmax;
 	int ret;
 
+	ret = v4l2_fwnode_device_parse(&client->dev, &props);
+	if (ret < 0)
+		return ret;
+
 	ctrl_hdlr = &imx678->ctrl_handler;
 	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 11);
 	if (ret)
@@ -1343,29 +1347,18 @@ static int imx678_init_controls(struct imx678 *imx678)
 				     ARRAY_SIZE(imx678_tpg_menu) - 1, 0, 0,
 				     imx678_tpg_menu);
 
+	v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &imx678_ctrl_ops, &props);
+
 	if (ctrl_hdlr->error) {
 		ret = ctrl_hdlr->error;
 		dev_err(&client->dev, "%s control init failed (%d)\n",
 			__func__, ret);
-		goto error;
+		return ret;
 	}
-
-	ret = v4l2_fwnode_device_parse(&client->dev, &props);
-	if (ret)
-		goto error;
-
-	ret = v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &imx678_ctrl_ops, &props);
-	if (ret)
-		goto error;
 
 	imx678->sd.ctrl_handler = ctrl_hdlr;
 
 	return 0;
-
-error:
-	v4l2_ctrl_handler_free(ctrl_hdlr);
-
-	return ret;
 }
 
 static int imx678_check_hwcfg(struct device *dev, struct imx678 *imx678)
