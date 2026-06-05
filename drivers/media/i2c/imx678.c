@@ -169,14 +169,8 @@ enum imx678_type {
 
 struct imx678_model_info {
 	enum imx678_type type;
-};
-
-static const struct imx678_model_info imx678_aaqr_info = {
-	.type = IMX678_COLOR,
-};
-
-static const struct imx678_model_info imx678_aamr_info = {
-	.type = IMX678_MONOCHROME,
+	const u32 *codes;
+	unsigned int num_codes;
 };
 
 enum imx678_lanemode {
@@ -661,6 +655,18 @@ static const u32 codes_monochrome[] = {
 	MEDIA_BUS_FMT_Y12_1X12,   /* 12-bit mono */
 };
 
+static const struct imx678_model_info imx678_aaqr_info = {
+	.type = IMX678_COLOR,
+	.codes = codes_bayer,
+	.num_codes = ARRAY_SIZE(codes_bayer),
+};
+
+static const struct imx678_model_info imx678_aamr_info = {
+	.type = IMX678_MONOCHROME,
+	.codes = codes_monochrome,
+	.num_codes = ARRAY_SIZE(codes_monochrome),
+};
+
 static const char * const imx678_supply_name[] = {
 	"avdd",  /* Analog (3.3V) supply */
 	"dvdd",  /* Digital Core (1.1V) supply */
@@ -672,7 +678,7 @@ struct imx678 {
 	struct media_pad pad;
 	struct regmap *cci;
 
-	enum imx678_type type;
+	const struct imx678_model_info *info;
 
 	struct clk *xclk;
 	u32 xclk_freq;
@@ -710,27 +716,15 @@ static inline bool imx678_state_binning(const struct v4l2_mbus_framefmt *format,
 	       crop->height == 2 * format->height;
 }
 
-static const u32 *imx678_mbus_codes(struct imx678 *imx678)
-{
-	if (imx678->type == IMX678_MONOCHROME)
-		return codes_monochrome;
-	else
-		return codes_bayer;
-}
-
 static u32 imx678_default_mbus_code(struct imx678 *imx678)
 {
-	const u32 *codes = imx678_mbus_codes(imx678);
-
-	return codes[0];
+	return imx678->info->codes[0];
 }
 
 static bool imx678_mbus_code_supported(struct imx678 *imx678, u32 code)
 {
-	const u32 *codes = imx678_mbus_codes(imx678);
-
-	for (unsigned int i = 0; i < ARRAY_SIZE(codes_bayer); i++) {
-		if (codes[i] == code)
+	for (unsigned int i = 0; i < imx678->info->num_codes; i++) {
+		if (imx678->info->codes[i] == code)
 			return true;
 	}
 
@@ -878,12 +872,11 @@ static int imx678_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	const u32 *codes = imx678_mbus_codes(imx678);
 
-	if (code->index >= ARRAY_SIZE(codes_bayer))
+	if (code->index >= imx678->info->num_codes)
 		return -EINVAL;
 
-	code->code = codes[code->index];
+	code->code = imx678->info->codes[code->index];
 	return 0;
 }
 
@@ -1252,6 +1245,12 @@ static int imx678_identify_model(struct imx678 *imx678)
 
 	cci_read(imx678->cci, IMX678_REG_MODULE_ID, &val, &ret);
 
+	if (ret) {
+		dev_err(&client->dev,
+			"I2C transaction failed ret = %d\n", ret);
+		return ret;
+	}
+
 	if (val != IMX678_ID) {
 		dev_err(&client->dev,
 			"Chip ID mismatch: %x!=%llx\n", IMX678_ID, val);
@@ -1268,13 +1267,21 @@ static int imx678_identify_model(struct imx678 *imx678)
 
 	detected = val & IMX678_TYPE;
 
-	if (info && detected != info->type)
-		dev_err(&client->dev,
-			"sensor type mismatch: detected %s, DT specifies %s; using DT value\n",
-			detected == IMX678_MONOCHROME ? "mono" : "color",
-			info->type == IMX678_MONOCHROME ? "mono" : "color");
-
-	imx678->type = info ? info->type : detected;
+	/* Prefer to use sensor type specified in device tree */
+	if (info) {
+		imx678->info = info;
+		if (detected != info->type)
+			dev_err(&client->dev,
+				"detected %s sensor, DT specifies %s; using DT value\n",
+				detected == IMX678_COLOR ? "color" : "mono",
+				info->type == IMX678_COLOR ? "color" : "mono");
+	} else {
+		imx678->info = detected == IMX678_MONOCHROME ?
+			       &imx678_aamr_info : &imx678_aaqr_info;
+		dev_info(&client->dev,
+			 "sensor type missing in DT; detected %s sensor\n",
+			 detected == IMX678_MONOCHROME ? "mono" : "color");
+	}
 
 	return 0;
 }
@@ -1578,9 +1585,10 @@ static const struct dev_pm_ops imx678_pm_ops = {
 };
 
 static const struct of_device_id imx678_of_match[] = {
-	{ .compatible = "sony,imx678" },
 	{ .compatible = "sony,imx678-aamr", .data = &imx678_aamr_info },
 	{ .compatible = "sony,imx678-aaqr", .data = &imx678_aaqr_info },
+	/* for non-conforming DTs that rely on runtime check */
+	{ .compatible = "sony,imx678" },
 	{ /* sentinel */ }
 };
 
