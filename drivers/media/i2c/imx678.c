@@ -990,12 +990,14 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 
 	/* Align left, top to 4 */
 	rect.left = clamp_t(s32, ALIGN(sel->r.left, IMX678_CROP_HST_ALIGN),
-			    imx678_active_area.left, imx678_active_area.width -
+			    imx678_active_area.left,
+			    imx678_active_area.left + imx678_active_area.width -
 			    IMX678_PIXEL_ARRAY_MIN_WIDTH);
 	rect.top = clamp_t(s32, ALIGN(sel->r.top, IMX678_CROP_VST_ALIGN),
 			   imx678_active_area.top,
-			   imx678_active_area.height -
+			   imx678_active_area.top + imx678_active_area.height -
 			   IMX678_PIXEL_ARRAY_MIN_HEIGHT);
+
 	/* Align width to 16 and height to 4 */
 	rect.width = clamp_t(u32, ALIGN(sel->r.width, IMX678_CROP_HWIDTH_ALIGN),
 			     IMX678_PIXEL_ARRAY_MIN_WIDTH,
@@ -1005,14 +1007,23 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 			      IMX678_PIXEL_ARRAY_MIN_HEIGHT,
 			      imx678_active_area.height);
 
+	/* If left/top are big, reduce width/height to fit active area */
 	rect.width = min_t(u32, rect.width,
-			   imx678_native_area.width - rect.left);
+			   ALIGN_DOWN(imx678_active_area.left +
+				      imx678_active_area.width - rect.left,
+				      IMX678_CROP_HWIDTH_ALIGN));
 	rect.height = min_t(u32, rect.height,
-			    imx678_native_area.height - rect.top);
+			    ALIGN_DOWN(imx678_active_area.top +
+				       imx678_active_area.height - rect.top,
+				       IMX678_CROP_VWIDTH_ALIGN));
 
 	crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
 	format = v4l2_subdev_state_get_format(sd_state, sel->pad);
 
+	/*
+	 * Changing the crop size resets the output to non-binned mode. Moving
+	 * a crop rectangle without resizing it preserves the current binning.
+	 */
 	if (rect.width != crop->width || rect.height != crop->height) {
 		format->width = rect.width;
 		format->height = rect.height;
