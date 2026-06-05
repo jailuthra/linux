@@ -709,13 +709,6 @@ static inline struct imx678 *to_imx678(struct v4l2_subdev *_sd)
 	return container_of(_sd, struct imx678, sd);
 }
 
-static inline bool imx678_state_binning(const struct v4l2_mbus_framefmt *format,
-					const struct v4l2_rect *crop)
-{
-	return crop->width == 2 * format->width &&
-	       crop->height == 2 * format->height;
-}
-
 static u32 imx678_default_mbus_code(struct imx678 *imx678)
 {
 	return imx678->info->codes[0];
@@ -740,29 +733,23 @@ static u32 imx678_get_format_code(struct imx678 *imx678, u32 code)
 }
 
 static int imx678_set_framing_limits(struct imx678 *imx678,
-				      const struct v4l2_mbus_framefmt *format,
-				      const struct v4l2_rect *crop)
+				      const struct v4l2_mbus_framefmt *format)
 {
 	const u32 hmax_4lane = min_hmax_4lane[__ffs(imx678->link_freq_bitmap)];
 	const u32 lane_scale = imx678->lane_mode == IMX678_LANEMODE_2L ? 2 : 1;
-	const bool binning = imx678_state_binning(format, crop);
-	s32 min_hblank, default_hblank, max_hblank, vblank;
-	const u8 bpp = binning ? 10 : 12;
-	u32 hmax, min_hmax;
+	s32 hblank, max_hblank, vblank;
+	u32 hmax;
 	int ret;
 
 	imx678->vmax = IMX678_VMAX_DEFAULT;
 	hmax = hmax_4lane * lane_scale;
 
-	/* HMAX can go lower when using 10bit AD for binning */
-	min_hmax = (hmax * bpp) / 12;
-	min_hblank = min_hmax * IMX678_PIX_PER_CLK - format->width;
-	default_hblank = hmax * IMX678_PIX_PER_CLK - format->width;
+	hblank = hmax * IMX678_PIX_PER_CLK - format->width;
 	max_hblank = IMX678_HMAX_MAX * IMX678_PIX_PER_CLK - format->width;
 
-	ret = __v4l2_ctrl_modify_range(imx678->hblank, min_hblank, max_hblank,
-				       IMX678_PIX_PER_CLK, default_hblank);
-	ret |= __v4l2_ctrl_s_ctrl(imx678->hblank, default_hblank);
+	ret = __v4l2_ctrl_modify_range(imx678->hblank, hblank, max_hblank,
+				       IMX678_PIX_PER_CLK, hblank);
+	ret |= __v4l2_ctrl_s_ctrl(imx678->hblank, hblank);
 
 	vblank = imx678->vmax - format->height;
 	ret |= __v4l2_ctrl_modify_range(imx678->vblank, vblank,
@@ -887,8 +874,7 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 	struct imx678 *imx678 = to_imx678(sd);
 	const struct v4l2_rect *crop;
 
-	/* Return non-binned and binned resolution for current crop */
-	if (fse->index > 1)
+	if (fse->index)
 		return -EINVAL;
 
 	if (!imx678_mbus_code_supported(imx678, fse->code))
@@ -896,27 +882,20 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 
 	crop = v4l2_subdev_state_get_crop(sd_state, fse->pad);
 
-	fse->min_width = crop->width / (fse->index + 1);
+	fse->min_width = crop->width;
 	fse->max_width = fse->min_width;
-	fse->min_height = crop->height / (fse->index + 1);
+	fse->min_height = crop->height;
 	fse->max_height = fse->min_height;
 
 	return 0;
 }
 
-/*
- * Only two format sizes are valid for a given crop rectangle:
- *   - format = crop		(no binning)
- *   - format = crop / 2	(2x2 binning, when it fits)
- */
 static int imx678_set_pad_format(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_format *fmt)
 {
 	struct imx678 *imx678 = to_imx678(sd);
 	struct v4l2_mbus_framefmt *format;
-	u32 width = fmt->format.width;
-	u32 height = fmt->format.height;
 	const struct v4l2_rect *crop;
 	int ret = 0;
 
@@ -927,16 +906,8 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	crop = v4l2_subdev_state_get_crop(sd_state, fmt->pad);
 	format = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 
-	/* Snap format size to 2x2 binned mode if it is < 0.75 * crop */
-	if ((4 * width < 3 * crop->width) &&
-	    (4 * height < 3 * crop->height)) {
-		format->width = crop->width / 2;
-		format->height = crop->height / 2;
-	} else {
-		format->width = crop->width;
-		format->height = crop->height;
-	}
-
+	format->width = crop->width;
+	format->height = crop->height;
 	format->code = imx678_get_format_code(imx678, fmt->format.code);
 	format->field = V4L2_FIELD_NONE;
 	format->colorspace = V4L2_COLORSPACE_RAW;
@@ -945,7 +916,7 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	format->xfer_func = V4L2_XFER_FUNC_NONE;
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		ret = imx678_set_framing_limits(imx678, format, crop);
+		ret = imx678_set_framing_limits(imx678, format);
 
 	return ret;
 }
@@ -972,81 +943,11 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 	return -EINVAL;
 }
 
-static int imx678_set_selection(struct v4l2_subdev *sd,
-				struct v4l2_subdev_state *sd_state,
-				struct v4l2_subdev_selection *sel)
-{
-	struct imx678 *imx678 = to_imx678(sd);
-	struct v4l2_mbus_framefmt *format;
-	struct v4l2_rect *crop, rect;
-	int ret = 0;
-
-	if (sel->target != V4L2_SEL_TGT_CROP || sel->pad != IMX678_SOURCE_PAD)
-		return -EINVAL;
-
-	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
-	    v4l2_subdev_is_streaming(sd))
-		return -EBUSY;
-
-	/* Align left, top to 4 */
-	rect.left = clamp_t(s32, ALIGN(sel->r.left, IMX678_CROP_HST_ALIGN),
-			    imx678_active_area.left,
-			    imx678_active_area.left + imx678_active_area.width -
-			    IMX678_PIXEL_ARRAY_MIN_WIDTH);
-	rect.top = clamp_t(s32, ALIGN(sel->r.top, IMX678_CROP_VST_ALIGN),
-			   imx678_active_area.top,
-			   imx678_active_area.top + imx678_active_area.height -
-			   IMX678_PIXEL_ARRAY_MIN_HEIGHT);
-
-	/* Align width to 16 and height to 4 */
-	rect.width = clamp_t(u32, ALIGN(sel->r.width, IMX678_CROP_HWIDTH_ALIGN),
-			     IMX678_PIXEL_ARRAY_MIN_WIDTH,
-			     imx678_active_area.width);
-	rect.height = clamp_t(u32,
-			      ALIGN(sel->r.height, IMX678_CROP_VWIDTH_ALIGN),
-			      IMX678_PIXEL_ARRAY_MIN_HEIGHT,
-			      imx678_active_area.height);
-
-	/* If left/top are big, reduce width/height to fit active area */
-	rect.width = min_t(u32, rect.width,
-			   ALIGN_DOWN(imx678_active_area.left +
-				      imx678_active_area.width - rect.left,
-				      IMX678_CROP_HWIDTH_ALIGN));
-	rect.height = min_t(u32, rect.height,
-			    ALIGN_DOWN(imx678_active_area.top +
-				       imx678_active_area.height - rect.top,
-				       IMX678_CROP_VWIDTH_ALIGN));
-
-	crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
-	format = v4l2_subdev_state_get_format(sd_state, sel->pad);
-
-	/*
-	 * Changing the crop size resets the output to non-binned mode. Moving
-	 * a crop rectangle without resizing it preserves the current binning.
-	 */
-	if (rect.width != crop->width || rect.height != crop->height) {
-		format->width = rect.width;
-		format->height = rect.height;
-	}
-
-	*crop = rect;
-	sel->r = *crop;
-
-	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		ret = imx678_set_framing_limits(imx678, format, crop);
-
-	return ret;
-}
-
 static int imx678_init_state(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_state *state)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	struct v4l2_subdev_selection sel = {
-		.which = V4L2_SUBDEV_FORMAT_TRY,
-		.target = V4L2_SEL_TGT_CROP,
-		.r = imx678_active_area,
-	};
+	struct v4l2_rect *crop;
 	struct v4l2_subdev_format fmt = {
 		.which = V4L2_SUBDEV_FORMAT_TRY,
 		.pad = IMX678_SOURCE_PAD,
@@ -1057,7 +958,8 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 		},
 	};
 
-	imx678_set_selection(sd, state, &sel);
+	crop = v4l2_subdev_state_get_crop(state, IMX678_SOURCE_PAD);
+	*crop = imx678_active_area;
 	imx678_set_pad_format(sd, state, &fmt);
 
 	return 0;
@@ -1085,10 +987,9 @@ static int imx678_program_window(struct imx678 *imx678,
 				 const struct v4l2_mbus_framefmt *format,
 				 const struct v4l2_rect *crop)
 {
-	const bool binning = imx678_state_binning(format, crop);
 	int ret = 0;
 
-	cci_write(imx678->cci, IMX678_REG_ADDMODE, binning ? 0x01 : 0x00, &ret);
+	cci_write(imx678->cci, IMX678_REG_ADDMODE, 0x00, &ret);
 	cci_write(imx678->cci, IMX678_REG_WINMODE,
 		  v4l2_rect_equal(crop, &imx678_active_area) ? 0x00 : 0x04,
 		  &ret);
@@ -1098,7 +999,7 @@ static int imx678_program_window(struct imx678 *imx678,
 	cci_write(imx678->cci, IMX678_REG_PIX_VST,
 		  crop->top - imx678_active_area.top, &ret);
 	cci_write(imx678->cci, IMX678_REG_PIX_VWIDTH, crop->height, &ret);
-	cci_write(imx678->cci, IMX678_REG_ADBIT, binning ? 0x00 : 0x01, &ret);
+	cci_write(imx678->cci, IMX678_REG_ADBIT, 0x01, &ret);
 
 	return ret;
 }
@@ -1306,7 +1207,6 @@ static const struct v4l2_subdev_pad_ops imx678_pad_ops = {
 	.get_fmt = v4l2_subdev_get_fmt,
 	.set_fmt = imx678_set_pad_format,
 	.get_selection = imx678_get_selection,
-	.set_selection = imx678_set_selection,
 	.enum_frame_size = imx678_enum_frame_size,
 	.enable_streams = imx678_enable_streams,
 	.disable_streams = imx678_disable_streams,
