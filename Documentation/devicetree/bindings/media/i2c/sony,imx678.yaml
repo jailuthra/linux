@@ -19,14 +19,15 @@ allOf:
 
 properties:
   compatible:
-    enum:
-      - sony,imx678
-      - sony,imx678-aamr
-      - sony,imx678-aaqr
+    items:
+      - enum:
+          - sony,imx678-aamr
+          - sony,imx678-aaqr
+      - const: sony,imx678
     description:
       The IMX678 sensor exists in a colour variant (IMX678-AAQR) and a mono
-      variant (IMX678-AAMR). An internal register can also help detect this at
-      runtime.
+      variant (IMX678-AAMR). The variant-specific compatible describes the
+      exact sensor variant, with the generic IMX678 compatible as a fallback.
 
   reg:
     maxItems: 1
@@ -107,7 +108,7 @@ examples:
         #size-cells = <0>;
 
         camera@1a {
-            compatible = "sony,imx678";
+            compatible = "sony,imx678-aaqr", "sony,imx678";
             reg = <0x1a>;
             clocks = <&imx678_clk>;
 
