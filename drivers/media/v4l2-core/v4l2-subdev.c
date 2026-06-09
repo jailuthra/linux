@@ -260,8 +260,11 @@ static int call_set_fmt(struct v4l2_subdev *sd,
 			struct v4l2_subdev_state *state,
 			struct v4l2_subdev_format *format)
 {
-	return do_subdev_call(sd, check_format(sd, state, format), pad, set_fmt,
-			      state, format);
+	return check_format(sd, state, format) ? :
+		sd->ops->pad->set_fmt ?
+		sd->ops->pad->set_fmt(sd, state, format) :
+		sd->ops->pad->get_fmt ?
+		sd->ops->pad->get_fmt(sd, state, format) : -ENOIOCTLCMD;
 }
 
 static int call_enum_mbus_code(struct v4l2_subdev *sd,
