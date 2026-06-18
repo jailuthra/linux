@@ -1119,7 +1119,7 @@ static int imx219_enum_frame_size(struct v4l2_subdev *sd,
 
 	switch (fse->pad) {
 	case IMX219_PAD_IMAGE:
-		if (fse->code != IMX219_NATIVE_FORMAT || fse->index > 0)
+		if (fse->code != MEDIA_BUS_FMT_RAW_10 || fse->index > 0)
 			return -EINVAL;
 
 		fse->min_width = IMX219_ACTIVE_AREA_WIDTH;
@@ -1129,7 +1129,7 @@ static int imx219_enum_frame_size(struct v4l2_subdev *sd,
 		return 0;
 
 	case IMX219_PAD_EDATA:
-		if (fse->code != MEDIA_BUS_FMT_META_8 || fse->index > 0)
+		if (fse->code != MEDIA_BUS_FMT_META_10 || fse->index > 0)
 			return -EINVAL;
 
 		fse->min_width = IMX219_OUTPUT_X_SIZE_MIN;
