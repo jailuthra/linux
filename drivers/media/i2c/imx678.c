@@ -145,8 +145,16 @@
 #define IMX678_CROP_HST_ALIGN		4
 #define IMX678_CROP_VST_ALIGN		4
 
-/* Subdev pads */
-#define IMX678_SOURCE_PAD		0
+/* Source and internal sink pads */
+enum imx678_pad_ids {
+	IMX678_SOURCE_PAD = 0,
+	IMX678_IMAGE_PAD,
+	IMX678_NUM_PADS,
+};
+
+enum imx678_stream_ids {
+	IMX678_STREAM_IMAGE,
+};
 
 enum imx678_type {
 	IMX678_COLOR = 0,
@@ -866,7 +874,7 @@ static const char * const imx678_supply_name[] = {
 
 struct imx678 {
 	struct v4l2_subdev sd;
-	struct media_pad pad;
+	struct media_pad pads[IMX678_NUM_PADS];
 	struct regmap *cci;
 
 	const struct imx678_model_info *info;
@@ -926,7 +934,8 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 	int ret = 0;
 
 	state = v4l2_subdev_get_locked_active_state(&imx678->sd);
-	format = v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD);
+	format = v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD,
+					      IMX678_STREAM_IMAGE);
 
 	if (ctrl->id == V4L2_CID_VBLANK) {
 		u32 current_exposure = imx678->exposure->cur.val;
@@ -1020,7 +1029,6 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	const struct v4l2_rect *crop;
 
 	if (fse->index)
 		return -EINVAL;
@@ -1028,12 +1036,20 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 	if (!imx678_mbus_code_supported(imx678, fse->code))
 		return -EINVAL;
 
-	crop = v4l2_subdev_state_get_crop(sd_state, fse->pad);
-
-	fse->min_width = crop->width;
-	fse->max_width = fse->min_width;
-	fse->min_height = crop->height;
-	fse->max_height = fse->min_height;
+	if (fse->pad == IMX678_IMAGE_PAD) {
+		fse->min_width = imx678->variant->native_area.width;
+		fse->max_width = fse->min_width;
+		fse->min_height = imx678->variant->native_area.height;
+		fse->max_height = fse->min_height;
+	} else {
+		const struct v4l2_rect *analogue_crop =
+			v4l2_subdev_state_get_crop(sd_state, IMX678_IMAGE_PAD,
+						   IMX678_STREAM_IMAGE);
+		fse->min_width = analogue_crop->width;
+		fse->max_width = fse->min_width;
+		fse->min_height = analogue_crop->height;
+		fse->max_height = fse->min_height;
+	}
 
 	return 0;
 }
@@ -1045,9 +1061,43 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 {
 	struct imx678 *imx678 = to_imx678(sd);
 
+	if (sel->stream != IMX678_STREAM_IMAGE)
+		return -EINVAL;
+
+	/* Crop is on the source pad for legacy clients */
+	if (!(ci &&
+	      ci->client_caps & V4L2_SUBDEV_CLIENT_CAP_COMMON_RAW_SENSOR)) {
+		if (sel->pad != IMX678_SOURCE_PAD)
+			return -EINVAL;
+
+		switch (sel->target) {
+		case V4L2_SEL_TGT_CROP:
+			sel->r = *v4l2_subdev_state_get_crop(sd_state,
+							     IMX678_IMAGE_PAD,
+							     sel->stream);
+			return 0;
+
+		case V4L2_SEL_TGT_NATIVE_SIZE:
+			sel->r = imx678->variant->native_area;
+			return 0;
+
+		case V4L2_SEL_TGT_CROP_DEFAULT:
+		case V4L2_SEL_TGT_CROP_BOUNDS:
+			sel->r = imx678->variant->active_area;
+			return 0;
+		}
+
+		return -EINVAL;
+	}
+
+	/* Analog crop on internal pad with the common raw sensor model */
+	if (sel->pad != IMX678_IMAGE_PAD)
+		return -EINVAL;
+
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP:
-		sel->r = *v4l2_subdev_state_get_crop(sd_state, sel->pad);
+		sel->r = *v4l2_subdev_state_get_crop(sd_state, sel->pad,
+						     sel->stream);
 		return 0;
 
 	case V4L2_SEL_TGT_NATIVE_SIZE:
@@ -1067,21 +1117,50 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_state *state)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	struct v4l2_mbus_framefmt *format;
-	struct v4l2_rect *crop;
+	struct v4l2_subdev_route routes[] = {
+		{
+			.sink_pad = IMX678_IMAGE_PAD,
+			.sink_stream = 0,
+			.source_pad = IMX678_SOURCE_PAD,
+			.source_stream = IMX678_STREAM_IMAGE,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE |
+				 V4L2_SUBDEV_ROUTE_FL_IMMUTABLE |
+				 V4L2_SUBDEV_ROUTE_FL_STATIC,
+		},
+	};
+	struct v4l2_subdev_krouting routing = {
+		.len_routes = ARRAY_SIZE(routes),
+		.num_routes = ARRAY_SIZE(routes),
+		.routes = routes,
+	};
+	struct v4l2_mbus_framefmt *format, *source_format;
+	struct v4l2_rect *analogue_crop;
+	int ret;
 
-	crop = v4l2_subdev_state_get_crop(state, IMX678_SOURCE_PAD);
-	*crop = imx678->variant->active_area;
+	ret = v4l2_subdev_set_routing(sd, state, &routing);
+	if (ret)
+		return ret;
 
-	format = v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD);
+	analogue_crop = v4l2_subdev_state_get_crop(state, IMX678_IMAGE_PAD,
+						   IMX678_STREAM_IMAGE);
+	*analogue_crop = imx678->variant->active_area;
+
+	format = v4l2_subdev_state_get_format(state, IMX678_IMAGE_PAD,
+					      IMX678_STREAM_IMAGE);
 	format->code = imx678_default_mbus_code(imx678);
-	format->width = imx678->variant->active_area.width;
-	format->height = imx678->variant->active_area.height;
+	format->width = imx678->variant->native_area.width;
+	format->height = imx678->variant->native_area.height;
 	format->field = V4L2_FIELD_NONE;
 	format->colorspace = V4L2_COLORSPACE_RAW;
 	format->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
 	format->quantization = V4L2_QUANTIZATION_FULL_RANGE;
 	format->xfer_func = V4L2_XFER_FUNC_NONE;
+
+	source_format = v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD,
+						     IMX678_STREAM_IMAGE);
+	*source_format = *format;
+	source_format->width = analogue_crop->width;
+	source_format->height = analogue_crop->height;
 
 	return 0;
 }
@@ -1135,7 +1214,8 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 	if (ret < 0)
 		return ret;
 
-	crop = v4l2_subdev_state_get_crop(state, pad);
+	crop = v4l2_subdev_state_get_crop(state, IMX678_IMAGE_PAD,
+					  IMX678_STREAM_IMAGE);
 	ret = imx678_program_window(imx678, crop);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
@@ -1554,12 +1634,16 @@ static int imx678_probe(struct i2c_client *client)
 		goto error_pm_runtime;
 
 	imx678->sd.internal_ops = &imx678_internal_ops;
-	imx678->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	imx678->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_STREAMS;
 	imx678->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
-	imx678->pad.flags = MEDIA_PAD_FL_SOURCE;
+	imx678->pads[IMX678_IMAGE_PAD].flags = MEDIA_PAD_FL_SINK |
+					       MEDIA_PAD_FL_INTERNAL;
+	imx678->pads[IMX678_SOURCE_PAD].flags = MEDIA_PAD_FL_SOURCE;
 
-	ret = media_entity_pads_init(&imx678->sd.entity, 1, &imx678->pad);
+	ret = media_entity_pads_init(&imx678->sd.entity,
+				     ARRAY_SIZE(imx678->pads), imx678->pads);
 	if (ret) {
 		dev_err_probe(dev, ret, "failed to init entity pads\n");
 		goto error_handler_free;
