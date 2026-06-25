@@ -17,6 +17,7 @@
 #include <linux/property.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
+#include <media/mipi-csi2.h>
 #include <media/v4l2-cci.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
@@ -1011,6 +1012,29 @@ static const struct v4l2_ctrl_ops imx678_ctrl_ops = {
 	.s_ctrl = imx678_set_ctrl,
 };
 
+static int imx678_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
+				 struct v4l2_mbus_frame_desc *fd)
+{
+	const struct v4l2_mbus_framefmt *fmt;
+	struct v4l2_subdev_state *state;
+
+	if (pad != IMX678_SOURCE_PAD)
+		return -EINVAL;
+
+	fd->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
+	fd->num_entries = 1;
+	fd->entry[0].stream = IMX678_STREAM_IMAGE;
+	fd->entry[0].bus.csi2.vc = 0;
+	fd->entry[0].bus.csi2.dt = MIPI_CSI2_DT_RAW12;
+
+	state = v4l2_subdev_lock_and_get_active_state(sd);
+	fmt = v4l2_subdev_state_get_format(state, pad, IMX678_STREAM_IMAGE);
+	fd->entry[0].pixelcode = fmt->code;
+	v4l2_subdev_unlock_state(state);
+
+	return 0;
+}
+
 static int imx678_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_mbus_code_enum *code)
@@ -1412,6 +1436,7 @@ static const struct v4l2_subdev_pad_ops imx678_pad_ops = {
 	.get_fmt = v4l2_subdev_get_fmt,
 	.get_selection = imx678_get_selection,
 	.enum_frame_size = imx678_enum_frame_size,
+	.get_frame_desc = imx678_get_frame_desc,
 	.enable_streams = imx678_enable_streams,
 	.disable_streams = imx678_disable_streams,
 };
