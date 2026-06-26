@@ -179,6 +179,7 @@ enum imx678_type {
 
 struct imx678_model_info {
 	enum imx678_type type;
+	unsigned int pattern;
 	const u32 *codes;
 	unsigned int num_codes;
 };
@@ -657,6 +658,10 @@ static const struct cci_reg_sequence common_regs[] = {
 	{ IMX678_REG_XXS_DRV, 0x00 },
 };
 
+static const u32 codes_generic[] = {
+	MEDIA_BUS_FMT_RAW_12,
+};
+
 static const u32 codes_bayer[] = {
 	MEDIA_BUS_FMT_SRGGB12_1X12,
 };
@@ -667,12 +672,14 @@ static const u32 codes_monochrome[] = {
 
 static const struct imx678_model_info imx678_aaqr_info = {
 	.type = IMX678_COLOR,
+	.pattern = V4L2_CFA_PATTERN_RGGB,
 	.codes = codes_bayer,
 	.num_codes = ARRAY_SIZE(codes_bayer),
 };
 
 static const struct imx678_model_info imx678_aamr_info = {
 	.type = IMX678_MONOCHROME,
+	.pattern = V4L2_CFA_PATTERN_MONO,
 	.codes = codes_monochrome,
 	.num_codes = ARRAY_SIZE(codes_monochrome),
 };
@@ -719,19 +726,40 @@ static inline struct imx678 *to_imx678(struct v4l2_subdev *_sd)
 	return container_of_const(_sd, struct imx678, sd);
 }
 
-static u32 imx678_default_mbus_code(struct imx678 *imx678)
+static u32 imx678_default_mbus_code(struct imx678 *imx678, unsigned int pad)
 {
+	if (pad == IMX678_IMAGE_PAD)
+		return codes_generic[0];
+
 	return imx678->info->codes[0];
 }
 
-static bool imx678_mbus_code_supported(struct imx678 *imx678, u32 code)
+static bool imx678_mbus_code_supported(struct imx678 *imx678, unsigned int pad,
+				       u32 code)
 {
+	for (unsigned int i = 0; i < ARRAY_SIZE(codes_generic); i++) {
+		if (codes_generic[i] == code)
+			return true;
+	}
+
+	if (pad == IMX678_IMAGE_PAD)
+		return false;
+
 	for (unsigned int i = 0; i < imx678->info->num_codes; i++) {
 		if (imx678->info->codes[i] == code)
 			return true;
 	}
 
 	return false;
+}
+
+static u32 imx678_get_format_code(struct imx678 *imx678, unsigned int pad,
+				  u32 code)
+{
+	if (imx678_mbus_code_supported(imx678, pad, code))
+		return code;
+
+	return imx678_default_mbus_code(imx678, pad);
 }
 
 static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
@@ -850,10 +878,28 @@ static int imx678_enum_mbus_code(struct v4l2_subdev *sd,
 {
 	struct imx678 *imx678 = to_imx678(sd);
 
-	if (code->index >= imx678->info->num_codes)
-		return -EINVAL;
+	switch (code->pad) {
+	case IMX678_IMAGE_PAD:
+		if (code->index >= ARRAY_SIZE(codes_generic))
+			return -EINVAL;
 
-	code->code = imx678->info->codes[code->index];
+		code->code = codes_generic[code->index];
+		break;
+	case IMX678_SOURCE_PAD:
+		unsigned int num_bayer = imx678->info->num_codes;
+
+		if (code->index >= num_bayer + ARRAY_SIZE(codes_generic))
+			return -EINVAL;
+
+		if (code->index < num_bayer)
+			code->code = imx678->info->codes[code->index];
+		else
+			code->code = codes_generic[code->index - num_bayer];
+		break;
+	default:
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -866,7 +912,7 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 	if (fse->index)
 		return -EINVAL;
 
-	if (!imx678_mbus_code_supported(imx678, fse->code))
+	if (!imx678_mbus_code_supported(imx678, fse->pad, fse->code))
 		return -EINVAL;
 
 	if (fse->pad == IMX678_IMAGE_PAD) {
@@ -883,6 +929,28 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 		fse->min_height = analogue_crop->height;
 		fse->max_height = fse->min_height;
 	}
+
+	return 0;
+}
+
+static int imx678_set_pad_format(struct v4l2_subdev *sd,
+				 const struct v4l2_subdev_client_info *ci,
+				 struct v4l2_subdev_state *sd_state,
+				 struct v4l2_subdev_format *fmt)
+{
+	struct imx678 *imx678 = to_imx678(sd);
+	struct v4l2_mbus_framefmt *format;
+
+	if (fmt->pad != IMX678_SOURCE_PAD && fmt->stream != IMX678_STREAM_IMAGE)
+		return v4l2_subdev_get_fmt(sd, sd_state, fmt);
+
+	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
+	    v4l2_subdev_is_streaming(sd))
+		return -EBUSY;
+
+	format = v4l2_subdev_state_get_format(sd_state, fmt->pad, fmt->stream);
+	format->code = fmt->format.code =
+		imx678_get_format_code(imx678, fmt->pad, fmt->format.code);
 
 	return 0;
 }
@@ -978,7 +1046,7 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 
 	format = v4l2_subdev_state_get_format(state, IMX678_IMAGE_PAD,
 					      IMX678_STREAM_IMAGE);
-	format->code = imx678_default_mbus_code(imx678);
+	format->code = imx678_default_mbus_code(imx678, IMX678_IMAGE_PAD);
 	format->width = imx678_native_area.width;
 	format->height = imx678_native_area.height;
 	format->field = V4L2_FIELD_NONE;
@@ -990,6 +1058,8 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 	source_format = v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD,
 						     IMX678_STREAM_IMAGE);
 	*source_format = *format;
+	source_format->code = imx678_default_mbus_code(imx678,
+						       IMX678_SOURCE_PAD);
 	source_format->width = analogue_crop->width;
 	source_format->height = analogue_crop->height;
 
@@ -1234,6 +1304,7 @@ static const struct v4l2_subdev_video_ops imx678_video_ops = {
 static const struct v4l2_subdev_pad_ops imx678_pad_ops = {
 	.enum_mbus_code = imx678_enum_mbus_code,
 	.get_fmt = v4l2_subdev_get_fmt,
+	.set_fmt = imx678_set_pad_format,
 	.get_selection = imx678_get_selection,
 	.enum_frame_size = imx678_enum_frame_size,
 	.get_frame_desc = imx678_get_frame_desc,
@@ -1257,7 +1328,7 @@ static int imx678_init_controls(struct imx678 *imx678)
 	const u32 lane_scale = imx678->lane_mode == IMX678_LANEMODE_2L ? 2 : 1;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx678->sd);
 	struct v4l2_fwnode_device_properties props;
-	struct v4l2_ctrl *link_freq;
+	struct v4l2_ctrl *link_freq, *cfa_pattern;
 	s32 hblank, max_hblank, vblank, max_vblank;
 	u32 hmax;
 	int ret;
@@ -1324,6 +1395,21 @@ static int imx678_init_controls(struct imx678 *imx678)
 				     V4L2_CID_TEST_PATTERN,
 				     ARRAY_SIZE(imx678_tpg_menu) - 1, 0, 0,
 				     imx678_tpg_menu);
+
+	v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_CONFIG_MODEL, 0,
+			  V4L2_CONFIG_MODEL_COMMON_RAW_SENSOR, 0,
+			  V4L2_CONFIG_MODEL_COMMON_RAW_SENSOR);
+
+	cfa_pattern = v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_CFA_PATTERN,
+					imx678->info->pattern,
+					imx678->info->pattern, 1,
+					imx678->info->pattern);
+
+	if (cfa_pattern)
+		cfa_pattern->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+
+	v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_CFA_PATTERN_FLIP, 0,
+			  V4L2_CFA_PATTERN_FLIP_BOTH, 0, 0);
 
 	v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &imx678_ctrl_ops, &props);
 
