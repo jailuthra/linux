@@ -150,11 +150,13 @@
 enum imx678_pad_ids {
 	IMX678_SOURCE_PAD = 0,
 	IMX678_IMAGE_PAD,
+	IMX678_METADATA_PAD,
 	IMX678_NUM_PADS,
 };
 
 enum imx678_stream_ids {
 	IMX678_STREAM_IMAGE,
+	IMX678_STREAM_METADATA,
 };
 
 /* IMX678 native and active pixel array size. */
@@ -658,16 +660,18 @@ static const struct cci_reg_sequence common_regs[] = {
 	{ IMX678_REG_XXS_DRV, 0x00 },
 };
 
-static const u32 codes_generic[] = {
-	MEDIA_BUS_FMT_RAW_12,
+static const u32 codes_meta[] = {
+	MEDIA_BUS_FMT_META_12,
 };
 
 static const u32 codes_bayer[] = {
 	MEDIA_BUS_FMT_SRGGB12_1X12,
+	MEDIA_BUS_FMT_RAW_12,
 };
 
 static const u32 codes_monochrome[] = {
 	MEDIA_BUS_FMT_Y12_1X12,
+	MEDIA_BUS_FMT_RAW_12,
 };
 
 static const struct imx678_model_info imx678_aaqr_info = {
@@ -726,24 +730,41 @@ static inline struct imx678 *to_imx678(struct v4l2_subdev *_sd)
 	return container_of_const(_sd, struct imx678, sd);
 }
 
-static u32 imx678_default_mbus_code(struct imx678 *imx678, unsigned int pad)
+static u32 imx678_default_mbus_code(struct imx678 *imx678, unsigned int pad,
+				    unsigned int stream)
 {
-	if (pad == IMX678_IMAGE_PAD)
-		return codes_generic[0];
+	switch (pad) {
+	case IMX678_IMAGE_PAD:
+		return MEDIA_BUS_FMT_RAW_12;
 
-	return imx678->info->codes[0];
+	case IMX678_METADATA_PAD:
+		return MEDIA_BUS_FMT_META_8;
+
+	case IMX678_SOURCE_PAD:
+	default:
+		if (stream == IMX678_STREAM_METADATA)
+			return codes_meta[0];
+		else
+			return imx678->info->codes[0];
+	}
 }
 
 static bool imx678_mbus_code_supported(struct imx678 *imx678, unsigned int pad,
-				       u32 code)
+				       unsigned int stream, u32 code)
 {
-	for (unsigned int i = 0; i < ARRAY_SIZE(codes_generic); i++) {
-		if (codes_generic[i] == code)
-			return true;
-	}
-
 	if (pad == IMX678_IMAGE_PAD)
-		return false;
+		return (code == MEDIA_BUS_FMT_RAW_12);
+
+	if (pad == IMX678_METADATA_PAD)
+		return (code == MEDIA_BUS_FMT_META_8);
+
+	/* Source pad */
+	if (stream == IMX678_STREAM_METADATA) {
+		for (unsigned int i = 0; i < ARRAY_SIZE(codes_meta); i++) {
+			if (codes_meta[i] == code)
+				return true;
+		}
+	}
 
 	for (unsigned int i = 0; i < imx678->info->num_codes; i++) {
 		if (imx678->info->codes[i] == code)
@@ -754,12 +775,12 @@ static bool imx678_mbus_code_supported(struct imx678 *imx678, unsigned int pad,
 }
 
 static u32 imx678_get_format_code(struct imx678 *imx678, unsigned int pad,
-				  u32 code)
+				  unsigned int stream, u32 code)
 {
-	if (imx678_mbus_code_supported(imx678, pad, code))
+	if (imx678_mbus_code_supported(imx678, pad, stream, code))
 		return code;
 
-	return imx678_default_mbus_code(imx678, pad);
+	return imx678_default_mbus_code(imx678, pad, stream);
 }
 
 static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
@@ -859,14 +880,23 @@ static int imx678_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 		return -EINVAL;
 
 	fd->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
-	fd->num_entries = 1;
+	fd->num_entries = 2;
 	fd->entry[0].stream = IMX678_STREAM_IMAGE;
 	fd->entry[0].bus.csi2.vc = 0;
 	fd->entry[0].bus.csi2.dt = MIPI_CSI2_DT_RAW12;
 
+	fd->entry[1].stream = IMX678_STREAM_METADATA;
+	fd->entry[1].bus.csi2.vc = 0;
+	fd->entry[1].bus.csi2.dt = MIPI_CSI2_DT_EMBEDDED_8B;
+
 	state = v4l2_subdev_lock_and_get_active_state(sd);
+
 	fmt = v4l2_subdev_state_get_format(state, pad, IMX678_STREAM_IMAGE);
 	fd->entry[0].pixelcode = fmt->code;
+
+	fmt = v4l2_subdev_state_get_format(state, pad, IMX678_STREAM_METADATA);
+	fd->entry[1].pixelcode = fmt->code;
+
 	v4l2_subdev_unlock_state(state);
 
 	return 0;
@@ -880,21 +910,28 @@ static int imx678_enum_mbus_code(struct v4l2_subdev *sd,
 
 	switch (code->pad) {
 	case IMX678_IMAGE_PAD:
-		if (code->index >= ARRAY_SIZE(codes_generic))
+	case IMX678_METADATA_PAD:
+		if (code->index > 0)
 			return -EINVAL;
 
-		code->code = codes_generic[code->index];
+		code->code = imx678_default_mbus_code(imx678, code->pad,
+						      code->stream);
 		break;
 	case IMX678_SOURCE_PAD:
-		unsigned int num_bayer = imx678->info->num_codes;
+		switch (code->stream) {
+		case IMX678_STREAM_IMAGE:
+			if (code->index >= imx678->info->num_codes)
+				return -EINVAL;
 
-		if (code->index >= num_bayer + ARRAY_SIZE(codes_generic))
-			return -EINVAL;
-
-		if (code->index < num_bayer)
 			code->code = imx678->info->codes[code->index];
-		else
-			code->code = codes_generic[code->index - num_bayer];
+			break;
+		case IMX678_STREAM_METADATA:
+			if (code->index >= ARRAY_SIZE(codes_meta))
+				return -EINVAL;
+
+			code->code = codes_meta[code->index];
+			break;
+		}
 		break;
 	default:
 		return -EINVAL;
@@ -908,11 +945,15 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct imx678 *imx678 = to_imx678(sd);
+	const struct v4l2_rect *analogue_crop =
+			v4l2_subdev_state_get_crop(sd_state, IMX678_IMAGE_PAD,
+						   IMX678_STREAM_IMAGE);
 
 	if (fse->index)
 		return -EINVAL;
 
-	if (!imx678_mbus_code_supported(imx678, fse->pad, fse->code))
+	if (!imx678_mbus_code_supported(imx678, fse->pad, fse->stream,
+					fse->code))
 		return -EINVAL;
 
 	if (fse->pad == IMX678_IMAGE_PAD) {
@@ -920,10 +961,14 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 		fse->max_width = fse->min_width;
 		fse->min_height = imx678_native_area.height;
 		fse->max_height = fse->min_height;
+	} else if (fse->pad == IMX678_METADATA_PAD ||
+		   (fse->pad == IMX678_SOURCE_PAD &&
+		    fse->stream == IMX678_STREAM_METADATA)) {
+		fse->min_width = analogue_crop->width;
+		fse->max_width = fse->min_width;
+		fse->min_height = 1;
+		fse->max_height = fse->min_height;
 	} else {
-		const struct v4l2_rect *analogue_crop =
-			v4l2_subdev_state_get_crop(sd_state, IMX678_IMAGE_PAD,
-						   IMX678_STREAM_IMAGE);
 		fse->min_width = analogue_crop->width;
 		fse->max_width = fse->min_width;
 		fse->min_height = analogue_crop->height;
@@ -950,7 +995,8 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 
 	format = v4l2_subdev_state_get_format(sd_state, fmt->pad, fmt->stream);
 	format->code = fmt->format.code =
-		imx678_get_format_code(imx678, fmt->pad, fmt->format.code);
+		imx678_get_format_code(imx678, fmt->pad, fmt->stream,
+				       fmt->format.code);
 
 	return 0;
 }
@@ -1026,6 +1072,15 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 				 V4L2_SUBDEV_ROUTE_FL_IMMUTABLE |
 				 V4L2_SUBDEV_ROUTE_FL_STATIC,
 		},
+		{
+			.sink_pad = IMX678_METADATA_PAD,
+			.sink_stream = 0,
+			.source_pad = IMX678_SOURCE_PAD,
+			.source_stream = IMX678_STREAM_METADATA,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE |
+				 V4L2_SUBDEV_ROUTE_FL_IMMUTABLE |
+				 V4L2_SUBDEV_ROUTE_FL_STATIC,
+		},
 	};
 	struct v4l2_subdev_krouting routing = {
 		.len_routes = ARRAY_SIZE(routes),
@@ -1034,6 +1089,8 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 	};
 	struct v4l2_mbus_framefmt *format, *source_format;
 	struct v4l2_rect *analogue_crop;
+	struct v4l2_mbus_framefmt *meta_format, *meta_source_format;
+
 	int ret;
 
 	ret = v4l2_subdev_set_routing(sd, state, &routing);
@@ -1046,7 +1103,8 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 
 	format = v4l2_subdev_state_get_format(state, IMX678_IMAGE_PAD,
 					      IMX678_STREAM_IMAGE);
-	format->code = imx678_default_mbus_code(imx678, IMX678_IMAGE_PAD);
+	format->code = imx678_default_mbus_code(imx678, IMX678_IMAGE_PAD,
+						IMX678_STREAM_IMAGE);
 	format->width = imx678_native_area.width;
 	format->height = imx678_native_area.height;
 	format->field = V4L2_FIELD_NONE;
@@ -1059,9 +1117,25 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 						     IMX678_STREAM_IMAGE);
 	*source_format = *format;
 	source_format->code = imx678_default_mbus_code(imx678,
-						       IMX678_SOURCE_PAD);
+						       IMX678_SOURCE_PAD,
+						       IMX678_STREAM_IMAGE);
 	source_format->width = analogue_crop->width;
 	source_format->height = analogue_crop->height;
+
+	meta_format = v4l2_subdev_state_get_format(state, IMX678_METADATA_PAD);
+	meta_format->code = imx678_default_mbus_code(imx678,
+						     IMX678_METADATA_PAD, 0);
+	meta_format->width = source_format->width;
+	meta_format->height = 1;
+	meta_format->field = V4L2_FIELD_NONE;
+
+	meta_source_format =
+		v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD,
+					     IMX678_STREAM_METADATA);
+	*meta_source_format = *meta_format;
+	meta_source_format->code =
+		imx678_default_mbus_code(imx678, IMX678_SOURCE_PAD,
+					 IMX678_STREAM_METADATA);
 
 	return 0;
 }
@@ -1113,6 +1187,9 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 	const struct v4l2_rect *crop;
 	int ret;
 
+	if (!(mask & 1ULL))
+		return 0;
+
 	ret = pm_runtime_resume_and_get(&client->dev);
 	if (ret < 0)
 		return ret;
@@ -1159,6 +1236,9 @@ static int imx678_disable_streams(struct v4l2_subdev *sd,
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct imx678 *imx678 = to_imx678(sd);
 	int ret = 0;
+
+	if (!(mask & 1ULL))
+		return 0;
 
 	/* Master mode disable */
 	cci_write(imx678->cci, IMX678_REG_XMSTA, 0x01, &ret);
@@ -1411,6 +1491,10 @@ static int imx678_init_controls(struct imx678 *imx678)
 	v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_CFA_PATTERN_FLIP, 0,
 			  V4L2_CFA_PATTERN_FLIP_BOTH, 0, 0);
 
+	v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_METADATA_LAYOUT,
+			  0, V4L2_METADATA_LAYOUT_IMX678,
+			  1, V4L2_METADATA_LAYOUT_IMX678);
+
 	v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &imx678_ctrl_ops, &props);
 
 	if (ctrl_hdlr->error) {
@@ -1545,6 +1629,8 @@ static int imx678_probe(struct i2c_client *client)
 	imx678->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
 	imx678->pads[IMX678_IMAGE_PAD].flags = MEDIA_PAD_FL_SINK |
+					       MEDIA_PAD_FL_INTERNAL;
+	imx678->pads[IMX678_METADATA_PAD].flags = MEDIA_PAD_FL_SINK |
 					       MEDIA_PAD_FL_INTERNAL;
 	imx678->pads[IMX678_SOURCE_PAD].flags = MEDIA_PAD_FL_SOURCE;
 
