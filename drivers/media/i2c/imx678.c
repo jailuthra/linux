@@ -105,9 +105,13 @@
 /* Common configuration registers */
 #define IMX678_REG_WDMODE               CCI_REG8(0x301a)
 #define IMX678_REG_ADDMODE              CCI_REG8(0x301b)
+#define IMX678_ADDMODE_FULL		0x0
+#define IMX678_ADDMODE_2X2		0x1
 #define IMX678_REG_THIN_V_EN            CCI_REG8(0x301c)
 #define IMX678_REG_VCMODE               CCI_REG8(0x301e)
 #define IMX678_REG_ADBIT                CCI_REG8(0x3022)
+#define IMX678_AD_10B			0x0
+#define IMX678_AD_12B			0x1
 #define IMX678_REG_MDBIT                CCI_REG8(0x3023)
 #define IMX678_REG_GAIN_PGC_FIDMD       CCI_REG8(0x3400)
 
@@ -282,6 +286,16 @@ static const int imx678_tpg_val[] = {
 	IMX678_TPG_TOG_FFF_000,
 	IMX678_TPG_H_COLOR_BARS,
 	IMX678_TPG_V_COLOR_BARS,
+};
+
+enum imx678_binning_factor_indices {
+	IMX678_BINNING_11,
+	IMX678_BINNING_22,
+};
+
+static const s64 imx678_binning_factors[] = {
+	[IMX678_BINNING_11] = V4L2_BINNING_FACTORS_MAKE(1, 1, 1, 1),
+	[IMX678_BINNING_22] = V4L2_BINNING_FACTORS_MAKE(2, 1, 2, 1),
 };
 
 /* Common configuration */
@@ -660,6 +674,11 @@ static const struct cci_reg_sequence common_regs[] = {
 	{ IMX678_REG_XXS_DRV, 0x00 },
 };
 
+static const u32 codes_internal[] = {
+	MEDIA_BUS_FMT_RAW_12,
+	MEDIA_BUS_FMT_RAW_10,
+};
+
 static const u32 codes_meta[] = {
 	MEDIA_BUS_FMT_META_12,
 };
@@ -720,6 +739,7 @@ struct imx678 {
 	struct v4l2_ctrl *exposure;
 	struct v4l2_ctrl *vblank;
 	struct v4l2_ctrl *hblank;
+	struct v4l2_ctrl *binning;
 
 	/* Track VMAX for exposure updates */
 	u32 vmax;
@@ -752,11 +772,15 @@ static u32 imx678_default_mbus_code(struct imx678 *imx678, unsigned int pad,
 static bool imx678_mbus_code_supported(struct imx678 *imx678, unsigned int pad,
 				       unsigned int stream, u32 code)
 {
-	if (pad == IMX678_IMAGE_PAD)
-		return (code == MEDIA_BUS_FMT_RAW_12);
-
 	if (pad == IMX678_METADATA_PAD)
 		return (code == MEDIA_BUS_FMT_META_8);
+
+	if (pad == IMX678_IMAGE_PAD) {
+		for (unsigned int i = 0; i < ARRAY_SIZE(codes_internal); i++) {
+			if (codes_internal[i] == code)
+				return true;
+		}
+	}
 
 	/* Source pad */
 	if (stream == IMX678_STREAM_METADATA) {
@@ -784,23 +808,27 @@ static u32 imx678_get_format_code(struct imx678 *imx678, unsigned int pad,
 }
 
 static int imx678_set_framing_limits(struct imx678 *imx678,
-				     const struct v4l2_mbus_framefmt *format)
+				     const struct v4l2_mbus_framefmt *format,
+				     u8 ad_bpp)
 {
 	const u32 hmax_4lane = min_hmax_4lane[__ffs(imx678->link_freq_bitmap)];
 	const u32 lane_scale = imx678->lane_mode == IMX678_LANEMODE_2L ? 2 : 1;
-	s32 hblank, max_hblank, vblank;
-	u32 hmax;
+	s32 min_hblank, default_hblank, max_hblank, vblank;
+	u32 hmax, min_hmax;
 	int ret;
 
 	imx678->vmax = IMX678_VMAX_DEFAULT;
 	hmax = hmax_4lane * lane_scale;
 
-	hblank = hmax * IMX678_PIX_PER_CLK - format->width;
+	/* HMAX can go lower when using 10bit AD */
+	min_hmax = (hmax * ad_bpp) / 12;
+	min_hblank = min_hmax * IMX678_PIX_PER_CLK - format->width;
+	default_hblank = hmax * IMX678_PIX_PER_CLK - format->width;
 	max_hblank = IMX678_HMAX_MAX * IMX678_PIX_PER_CLK - format->width;
 
-	ret = __v4l2_ctrl_modify_range(imx678->hblank, hblank, max_hblank,
-				       IMX678_PIX_PER_CLK, hblank);
-	ret |= __v4l2_ctrl_s_ctrl(imx678->hblank, hblank);
+	ret = __v4l2_ctrl_modify_range(imx678->hblank, min_hblank, max_hblank,
+				       IMX678_PIX_PER_CLK, default_hblank);
+	ret |= __v4l2_ctrl_s_ctrl(imx678->hblank, default_hblank);
 
 	vblank = imx678->vmax - format->height;
 	ret |= __v4l2_ctrl_modify_range(imx678->vblank, vblank,
@@ -816,6 +844,58 @@ static int imx678_set_framing_limits(struct imx678 *imx678,
 	return ret;
 }
 
+static int imx678_set_binning(struct imx678 *imx678,
+			      struct v4l2_subdev_state *state)
+{
+	struct v4l2_rect *crop =
+		v4l2_subdev_state_get_crop(state, IMX678_IMAGE_PAD,
+					   IMX678_STREAM_IMAGE);
+	struct v4l2_rect *compose =
+		v4l2_subdev_state_get_compose(state, IMX678_IMAGE_PAD,
+					      IMX678_STREAM_IMAGE);
+	struct v4l2_mbus_framefmt *image_format =
+		v4l2_subdev_state_get_format(state, IMX678_IMAGE_PAD);
+	struct v4l2_mbus_framefmt *source_format =
+		v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD,
+					     IMX678_STREAM_IMAGE);
+	struct v4l2_mbus_framefmt *meta_format =
+		v4l2_subdev_state_get_format(state, IMX678_METADATA_PAD);
+	struct v4l2_mbus_framefmt *meta_source_format =
+		v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD,
+					     IMX678_STREAM_METADATA);
+	const s64 binning = imx678_binning_factors[imx678->binning->val];
+	const u32 bin_h = V4L2_BINNING_FACTORS_HNUM(binning);
+	const u32 bin_v = V4L2_BINNING_FACTORS_VNUM(binning);
+	u8 ad_bpp;
+
+	/*
+	 * The compose rectangle represents the output size after binning and
+	 * the source pad format is sized to match it.
+	 */
+	compose->width = crop->width / bin_h;
+	compose->height = crop->height / bin_v;
+
+	source_format->width = compose->width;
+	source_format->height = compose->height;
+
+	meta_format->width = source_format->width;
+	meta_source_format->width = source_format->width;
+
+	switch (imx678->binning->val) {
+	case IMX678_BINNING_11:
+		image_format->code = MEDIA_BUS_FMT_RAW_12;
+		ad_bpp = 12;
+		break;
+	case IMX678_BINNING_22:
+		/* 10bit AD used when binning */
+		image_format->code = MEDIA_BUS_FMT_RAW_10;
+		ad_bpp = 10;
+		break;
+	}
+
+	return imx678_set_framing_limits(imx678, source_format, ad_bpp);
+}
+
 static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx678 *imx678 = container_of_const(ctrl->handler, struct
@@ -829,7 +909,8 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 	format = v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD,
 					      IMX678_STREAM_IMAGE);
 
-	if (ctrl->id == V4L2_CID_VBLANK) {
+	switch (ctrl->id) {
+	case V4L2_CID_VBLANK: {
 		u32 current_exposure = imx678->exposure->cur.val;
 
 		imx678->vmax = format->height + ctrl->val;
@@ -843,6 +924,15 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 					       1, current_exposure);
 		if (ret)
 			return ret;
+		break;
+	}
+	case V4L2_CID_BINNING_FACTORS:
+		if (ctrl->val != ctrl->cur.val) {
+			ret = imx678_set_binning(imx678, state);
+			if (ret)
+				return ret;
+		}
+		break;
 	}
 
 	/*
@@ -886,6 +976,9 @@ static int imx678_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_VFLIP:
 		cci_write(imx678->cci, IMX678_REG_WINMODEV, ctrl->val, &ret);
+		break;
+	case V4L2_CID_BINNING_FACTORS:
+		/* Applied to registers on the next stream start. */
 		break;
 	default:
 		dev_warn(&client->dev,
@@ -942,13 +1035,18 @@ static int imx678_enum_mbus_code(struct v4l2_subdev *sd,
 	struct imx678 *imx678 = to_imx678(sd);
 
 	switch (code->pad) {
-	case IMX678_IMAGE_PAD:
 	case IMX678_METADATA_PAD:
 		if (code->index > 0)
 			return -EINVAL;
 
 		code->code = imx678_default_mbus_code(imx678, code->pad,
 						      code->stream);
+		break;
+	case IMX678_IMAGE_PAD:
+		if (code->index >= ARRAY_SIZE(codes_internal))
+			return -EINVAL;
+
+		code->code = codes_internal[code->index];
 		break;
 	case IMX678_SOURCE_PAD:
 		switch (code->stream) {
@@ -978,9 +1076,9 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	const struct v4l2_rect *analogue_crop =
-			v4l2_subdev_state_get_crop(sd_state, IMX678_IMAGE_PAD,
-						   IMX678_STREAM_IMAGE);
+	const struct v4l2_mbus_framefmt *source_format =
+		v4l2_subdev_state_get_format(sd_state, IMX678_SOURCE_PAD,
+					     IMX678_STREAM_IMAGE);
 
 	if (fse->index)
 		return -EINVAL;
@@ -997,14 +1095,14 @@ static int imx678_enum_frame_size(struct v4l2_subdev *sd,
 	} else if (fse->pad == IMX678_METADATA_PAD ||
 		   (fse->pad == IMX678_SOURCE_PAD &&
 		    fse->stream == IMX678_STREAM_METADATA)) {
-		fse->min_width = analogue_crop->width;
+		fse->min_width = source_format->width;
 		fse->max_width = fse->min_width;
 		fse->min_height = 1;
 		fse->max_height = fse->min_height;
 	} else {
-		fse->min_width = analogue_crop->width;
+		fse->min_width = source_format->width;
 		fse->max_width = fse->min_width;
-		fse->min_height = analogue_crop->height;
+		fse->min_height = source_format->height;
 		fse->max_height = fse->min_height;
 	}
 
@@ -1086,6 +1184,10 @@ static int imx678_get_selection(struct v4l2_subdev *sd,
 	case V4L2_SEL_TGT_CROP_BOUNDS:
 		sel->r = imx678_active_area;
 		return 0;
+
+	case V4L2_SEL_TGT_COMPOSE:
+		sel->r = *v4l2_subdev_state_get_compose(sd_state, sel->pad);
+		return 0;
 	}
 
 	return -EINVAL;
@@ -1097,22 +1199,29 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_selection *sel)
 {
 	struct imx678 *imx678 = to_imx678(sd);
-	struct v4l2_mbus_framefmt *source_format, *meta_format;
-	struct v4l2_mbus_framefmt *meta_source_format;
-	struct v4l2_rect *crop, rect;
+	struct v4l2_rect *crop, *compose, rect;
 	int ret = 0;
 
 	if (!(ci && ci->client_caps & V4L2_SUBDEV_CLIENT_CAP_COMMON_RAW_SENSOR))
 		return -EINVAL;
 
-	if (sel->target != V4L2_SEL_TGT_CROP ||
-	    sel->pad != IMX678_IMAGE_PAD ||
-	    sel->stream != IMX678_STREAM_IMAGE)
+	if (sel->pad != IMX678_IMAGE_PAD || sel->stream != IMX678_STREAM_IMAGE)
 		return -EINVAL;
 
 	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
 	    v4l2_subdev_is_streaming(sd))
 		return -EBUSY;
+
+	switch (sel->target) {
+	case V4L2_SEL_TGT_COMPOSE:
+		sel->r = *v4l2_subdev_state_get_compose(sd_state, sel->pad);
+		return 0;
+	case V4L2_SEL_TGT_CROP:
+		/* Handled below */
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	/* Align left, top to 4 */
 	rect.left = clamp_t(s32, ALIGN(sel->r.left, IMX678_CROP_HST_ALIGN),
@@ -1145,29 +1254,22 @@ static int imx678_set_selection(struct v4l2_subdev *sd,
 
 	crop = v4l2_subdev_state_get_crop(sd_state, IMX678_IMAGE_PAD,
 					  IMX678_STREAM_IMAGE);
-	source_format = v4l2_subdev_state_get_format(sd_state,
-						     IMX678_SOURCE_PAD,
-						     IMX678_STREAM_IMAGE);
-	meta_format = v4l2_subdev_state_get_format(sd_state,
-						   IMX678_METADATA_PAD);
-	meta_source_format =
-		v4l2_subdev_state_get_format(sd_state, IMX678_SOURCE_PAD,
-					     IMX678_STREAM_METADATA);
-
-	if (rect.width != crop->width || rect.height != crop->height) {
-		source_format->width = rect.width;
-		source_format->height = rect.height;
-		meta_format->width = rect.width;
-		meta_source_format->width = rect.width;
-	}
+	compose = v4l2_subdev_state_get_compose(sd_state, IMX678_IMAGE_PAD,
+						IMX678_STREAM_IMAGE);
 
 	*crop = rect;
+
+	/*
+	 * Apply the current binning factor to the new crop. This updates
+	 * compose, source format and control limits.
+	 */
+	ret = imx678_set_binning(imx678, sd_state);
+	if (ret)
+		return ret;
+
 	sel->r = *crop;
 
-	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-		ret = imx678_set_framing_limits(imx678, source_format);
-
-	return ret;
+	return 0;
 }
 
 static int imx678_init_state(struct v4l2_subdev *sd,
@@ -1200,7 +1302,7 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 		.routes = routes,
 	};
 	struct v4l2_mbus_framefmt *format, *source_format;
-	struct v4l2_rect *analogue_crop;
+	struct v4l2_rect *analogue_crop, *compose;
 	struct v4l2_mbus_framefmt *meta_format, *meta_source_format;
 
 	int ret;
@@ -1212,6 +1314,10 @@ static int imx678_init_state(struct v4l2_subdev *sd,
 	analogue_crop = v4l2_subdev_state_get_crop(state, IMX678_IMAGE_PAD,
 						   IMX678_STREAM_IMAGE);
 	*analogue_crop = imx678_active_area;
+
+	compose = v4l2_subdev_state_get_compose(state, IMX678_IMAGE_PAD,
+						IMX678_STREAM_IMAGE);
+	*compose = *analogue_crop;
 
 	format = v4l2_subdev_state_get_format(state, IMX678_IMAGE_PAD,
 					      IMX678_STREAM_IMAGE);
@@ -1271,11 +1377,11 @@ static int imx678_write_common(struct imx678 *imx678)
 }
 
 static int imx678_program_window(struct imx678 *imx678,
-				 const struct v4l2_rect *crop)
+				 const struct v4l2_rect *crop,
+				 const struct v4l2_mbus_framefmt *format)
 {
 	int ret = 0;
 
-	cci_write(imx678->cci, IMX678_REG_ADDMODE, 0x00, &ret);
 	cci_write(imx678->cci, IMX678_REG_WINMODE,
 		  v4l2_rect_equal(crop, &imx678_active_area) ? 0x00 : 0x04,
 		  &ret);
@@ -1285,7 +1391,27 @@ static int imx678_program_window(struct imx678 *imx678,
 	cci_write(imx678->cci, IMX678_REG_PIX_VST,
 		  crop->top - imx678_active_area.top, &ret);
 	cci_write(imx678->cci, IMX678_REG_PIX_VWIDTH, crop->height, &ret);
-	cci_write(imx678->cci, IMX678_REG_ADBIT, 0x01, &ret);
+
+	switch (imx678->binning->val) {
+	case IMX678_BINNING_11:
+		cci_write(imx678->cci, IMX678_REG_ADDMODE, IMX678_ADDMODE_FULL,
+			  &ret);
+		break;
+	case IMX678_BINNING_22:
+		cci_write(imx678->cci, IMX678_REG_ADDMODE, IMX678_ADDMODE_2X2,
+			  &ret);
+		break;
+	}
+
+	switch (format->code) {
+	case MEDIA_BUS_FMT_RAW_10:
+		cci_write(imx678->cci, IMX678_REG_ADBIT, IMX678_AD_10B, &ret);
+		break;
+	case MEDIA_BUS_FMT_RAW_12:
+	default:
+		cci_write(imx678->cci, IMX678_REG_ADBIT, IMX678_AD_12B, &ret);
+		break;
+	}
 
 	return ret;
 }
@@ -1297,6 +1423,7 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct imx678 *imx678 = to_imx678(sd);
 	const struct v4l2_rect *crop;
+	const struct v4l2_mbus_framefmt *format;
 	int ret;
 
 	if (!(mask & 1ULL))
@@ -1308,7 +1435,9 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 
 	crop = v4l2_subdev_state_get_crop(state, IMX678_IMAGE_PAD,
 					  IMX678_STREAM_IMAGE);
-	ret = imx678_program_window(imx678, crop);
+	format = v4l2_subdev_state_get_format(state, IMX678_IMAGE_PAD,
+					      IMX678_STREAM_IMAGE);
+	ret = imx678_program_window(imx678, crop, format);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
 		goto err_rpm_put;
@@ -1320,6 +1449,8 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 			__func__);
 		goto err_rpm_put;
 	}
+
+	__v4l2_ctrl_grab(imx678->binning, true);
 
 	cci_write(imx678->cci, IMX678_REG_MODE_SELECT, IMX678_MODE_STREAMING,
 		  &ret);
@@ -1359,6 +1490,8 @@ static int imx678_disable_streams(struct v4l2_subdev *sd,
 		  &ret);
 	if (ret)
 		dev_err(&client->dev, "%s failed to stop stream\n", __func__);
+
+	__v4l2_ctrl_grab(imx678->binning, false);
 
 	pm_runtime_put(&client->dev);
 
@@ -1607,6 +1740,13 @@ static int imx678_init_controls(struct imx678 *imx678)
 	v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_METADATA_LAYOUT,
 			  0, V4L2_METADATA_LAYOUT_IMX678,
 			  1, V4L2_METADATA_LAYOUT_IMX678);
+
+	imx678->binning =
+		v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx678_ctrl_ops,
+				       V4L2_CID_BINNING_FACTORS,
+				       ARRAY_SIZE(imx678_binning_factors) - 1,
+				       IMX678_BINNING_11,
+				       imx678_binning_factors);
 
 	v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &imx678_ctrl_ops, &props);
 
