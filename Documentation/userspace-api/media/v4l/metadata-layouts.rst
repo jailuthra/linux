@@ -112,3 +112,44 @@ level 1.
     * - 89
       - 8
       - Frame counter (starts at 1, wraps to 0 after 255)
+
+Sony IMX678 Embedded Data Layout (``V4L2_METADATA_LAYOUT_IMX678``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Sony IMX678 camera sensor produces the following embedded data layout,
+indicated by ``V4L2_METADATA_LAYOUT_IMX678`` metadata layout. The format
+conforms to :ref:`CCS embedded data layout <media-metadata-layout-ccs>` up to
+level 1.
+
+Undocumented offsets till 170 may be ignored. From 171 to 288 all bytes are 00h
+and from 289 to line length all bytes are 07h.
+
+.. flat-table:: Sony IMX678 Embedded Data Layout. Octets at indices marked
+                ignored have been omitted from the table. Values for multi-byte
+                registers are in little-endian byte order.
+    :header-rows: 1
+
+    * - Offset
+      - Size in bits (active bits if not the same as size)
+      - Content description
+    * - 2
+      - 8 (6--0)
+      - CFMODE (6--5) | WINMODE (3--0)
+    * - 3
+      - 8 (5)
+      - HREVERSE
+    * - 9
+      - 8 (5)
+      - VREVERSE
+    * - 11
+      - 8 (7--6)
+      - ADBIT
+    * - 13
+      - 8 (3--0)
+      - MDBIT (3) | LANEMODE (2--0)
+    * - 24
+      - 24 (20--0)
+      - SHR0
+    * - 54
+      - 16 (12--0)
+      - BLKLEVEL
