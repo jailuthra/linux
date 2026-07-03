@@ -113,6 +113,8 @@
 #define IMX678_AD_10B			0x0
 #define IMX678_AD_12B			0x1
 #define IMX678_REG_MDBIT                CCI_REG8(0x3023)
+#define IMX678_MD_10B			0x0
+#define IMX678_MD_12B			0x1
 #define IMX678_REG_GAIN_PGC_FIDMD       CCI_REG8(0x3400)
 
 /* Test pattern generator */
@@ -670,7 +672,6 @@ static const struct cci_reg_sequence common_regs[] = {
 	{ CCI_REG8(0x47c2), 0x3e },
 	{ CCI_REG8(0x47c3), 0x01 },
 	{ IMX678_REG_WDMODE, 0x00 },
-	{ IMX678_REG_MDBIT, 0x01 },
 	{ IMX678_REG_XXS_DRV, 0x00 },
 };
 
@@ -681,16 +682,21 @@ static const u32 codes_internal[] = {
 
 static const u32 codes_meta[] = {
 	MEDIA_BUS_FMT_META_12,
+	MEDIA_BUS_FMT_META_10,
 };
 
 static const u32 codes_bayer[] = {
 	MEDIA_BUS_FMT_SRGGB12_1X12,
+	MEDIA_BUS_FMT_SRGGB10_1X10,
 	MEDIA_BUS_FMT_RAW_12,
+	MEDIA_BUS_FMT_RAW_10,
 };
 
 static const u32 codes_monochrome[] = {
 	MEDIA_BUS_FMT_Y12_1X12,
+	MEDIA_BUS_FMT_Y10_1X10,
 	MEDIA_BUS_FMT_RAW_12,
+	MEDIA_BUS_FMT_RAW_10,
 };
 
 static const struct imx678_model_info imx678_aaqr_info = {
@@ -1009,7 +1015,6 @@ static int imx678_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 	fd->num_entries = 2;
 	fd->entry[0].stream = IMX678_STREAM_IMAGE;
 	fd->entry[0].bus.csi2.vc = 0;
-	fd->entry[0].bus.csi2.dt = MIPI_CSI2_DT_RAW12;
 
 	fd->entry[1].stream = IMX678_STREAM_METADATA;
 	fd->entry[1].bus.csi2.vc = 0;
@@ -1019,6 +1024,16 @@ static int imx678_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 
 	fmt = v4l2_subdev_state_get_format(state, pad, IMX678_STREAM_IMAGE);
 	fd->entry[0].pixelcode = fmt->code;
+	switch (fmt->code) {
+	case MEDIA_BUS_FMT_SRGGB10_1X10:
+	case MEDIA_BUS_FMT_RAW_10:
+		fd->entry[0].bus.csi2.dt = MIPI_CSI2_DT_RAW10;
+		break;
+	case MEDIA_BUS_FMT_SRGGB12_1X12:
+	case MEDIA_BUS_FMT_RAW_12:
+		fd->entry[0].bus.csi2.dt = MIPI_CSI2_DT_RAW12;
+		break;
+	}
 
 	fmt = v4l2_subdev_state_get_format(state, pad, IMX678_STREAM_METADATA);
 	fd->entry[1].pixelcode = fmt->code;
@@ -1117,7 +1132,7 @@ static int imx678_set_pad_format(struct v4l2_subdev *sd,
 	struct imx678 *imx678 = to_imx678(sd);
 	struct v4l2_mbus_framefmt *format;
 
-	if (fmt->pad != IMX678_SOURCE_PAD && fmt->stream != IMX678_STREAM_IMAGE)
+	if (fmt->pad != IMX678_SOURCE_PAD)
 		return v4l2_subdev_get_fmt(sd, sd_state, fmt);
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
@@ -1378,7 +1393,8 @@ static int imx678_write_common(struct imx678 *imx678)
 
 static int imx678_program_window(struct imx678 *imx678,
 				 const struct v4l2_rect *crop,
-				 const struct v4l2_mbus_framefmt *format)
+				 const struct v4l2_mbus_framefmt *format,
+				 const struct v4l2_mbus_framefmt *src_format)
 {
 	int ret = 0;
 
@@ -1413,6 +1429,18 @@ static int imx678_program_window(struct imx678 *imx678,
 		break;
 	}
 
+	switch (src_format->code) {
+	case MEDIA_BUS_FMT_SRGGB10_1X10:
+	case MEDIA_BUS_FMT_RAW_10:
+		cci_write(imx678->cci, IMX678_REG_MDBIT, IMX678_MD_10B, &ret);
+		break;
+	case MEDIA_BUS_FMT_SRGGB12_1X12:
+	case MEDIA_BUS_FMT_RAW_12:
+	default:
+		cci_write(imx678->cci, IMX678_REG_MDBIT, IMX678_MD_12B, &ret);
+		break;
+	}
+
 	return ret;
 }
 
@@ -1423,7 +1451,7 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct imx678 *imx678 = to_imx678(sd);
 	const struct v4l2_rect *crop;
-	const struct v4l2_mbus_framefmt *format;
+	const struct v4l2_mbus_framefmt *format, *src_format;
 	int ret;
 
 	if (!(mask & 1ULL))
@@ -1437,7 +1465,9 @@ static int imx678_enable_streams(struct v4l2_subdev *sd,
 					  IMX678_STREAM_IMAGE);
 	format = v4l2_subdev_state_get_format(state, IMX678_IMAGE_PAD,
 					      IMX678_STREAM_IMAGE);
-	ret = imx678_program_window(imx678, crop, format);
+	src_format = v4l2_subdev_state_get_format(state, IMX678_SOURCE_PAD,
+						  IMX678_STREAM_IMAGE);
+	ret = imx678_program_window(imx678, crop, format, src_format);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
 		goto err_rpm_put;
