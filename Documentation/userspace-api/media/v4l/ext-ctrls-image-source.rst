@@ -181,6 +181,9 @@ Image Source Control IDs
     * - V4L2_METADATA_LAYOUT_OV2740
       - :ref:`OV2740 embedded data <media-metadata-layout-ov2740>`
       - 2
+    * - V4L2_METADATA_LAYOUT_IMX678
+      - :ref:`IMX678 embedded data <media-metadata-layout-imx678>`
+      - 3
 
 .. _image_source_control_binning_factors:
 
