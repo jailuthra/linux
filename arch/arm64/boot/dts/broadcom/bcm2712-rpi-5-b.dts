@@ -104,5 +104,4 @@
 	status = "okay";
 };
 
-//#include "rpi5-csi1-imx219.dtsi"
-#include "v3link.dtsi"
+#include "rpi5-csi1-imx219.dtsi"
