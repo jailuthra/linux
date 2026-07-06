@@ -1012,7 +1012,8 @@ static int imx678_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 		return -EINVAL;
 
 	fd->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
-	fd->num_entries = 2;
+	/* FIXME: Raspberry pi downstream CSI2 requires only one entry */
+	fd->num_entries = 1;
 	fd->entry[0].stream = IMX678_STREAM_IMAGE;
 	fd->entry[0].bus.csi2.vc = 0;
 
