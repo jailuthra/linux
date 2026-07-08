@@ -26,11 +26,6 @@ properties:
   clocks:
     maxItems: 1
 
-  clock-names:
-    description: Input clock (6 to 27 MHz)
-    items:
-      - const: inck
-
   vdig-supply:
     description:
       Digital I/O voltage supply, 1.1 volts
@@ -48,13 +43,12 @@ properties:
       Digital core voltage supply, 1.8 volts
 
   reset-gpios:
-    description: Sensor reset (XCLR) GPIO
+    description: Sensor RESETN (XCLR) GPIO
     maxItems: 1
 
   port:
     $ref: /schemas/graph.yaml#/$defs/port-base
-    description: |
-      Video output port
+    additionalProperties: false
 
     properties:
       endpoint:
@@ -73,19 +67,14 @@ properties:
                   - const: 3
                   - const: 4
 
-          link-frequencies: true
-
         required:
           - data-lanes
           - link-frequencies
-
-    additionalProperties: false
 
 required:
   - compatible
   - reg
   - clocks
-  - clock-names
   - vdig-supply
   - vana1-supply
   - vana2-supply
@@ -107,7 +96,6 @@ examples:
             reg = <0x1a>;
 
             clocks = <&clk 90>;
-            clock-names = "inck";
 
             vdig-supply = <&camera_vdig>;
             vana1-supply = <&camera_vana1>;
