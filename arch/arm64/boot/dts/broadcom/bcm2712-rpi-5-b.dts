@@ -105,3 +105,4 @@
 };
 
 #include "rpi5-csi1-imx708.dtsi"
+#include "rpi5-csi0-imx678.dtsi"
