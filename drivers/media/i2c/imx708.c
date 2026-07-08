@@ -2017,7 +2017,7 @@ static int imx708_probe(struct i2c_client *client)
 		return -EINVAL;
 
 	/* Get system clock (inclk) */
-	imx708->inclk = devm_clk_get(dev, "inclk");
+	imx708->inclk = devm_clk_get(dev, NULL);
 	if (IS_ERR(imx708->inclk))
 		return dev_err_probe(dev, PTR_ERR(imx708->inclk),
 				     "failed to get inclk\n");
@@ -2069,8 +2069,7 @@ static int imx708_probe(struct i2c_client *client)
 
 	/* Initialize subdev */
 	imx708->sd.internal_ops = &imx708_internal_ops;
-	imx708->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
-			    V4L2_SUBDEV_FL_HAS_EVENTS;
+	imx708->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	imx708->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
 	/* Initialize source pads */
@@ -2079,13 +2078,13 @@ static int imx708_probe(struct i2c_client *client)
 
 	ret = media_entity_pads_init(&imx708->sd.entity, NUM_PADS, imx708->pad);
 	if (ret) {
-		dev_err(dev, "failed to init entity pads: %d\n", ret);
+		dev_err_probe(dev, ret, "failed to init entity pads\n");
 		goto error_handler_free;
 	}
 
 	ret = v4l2_async_register_subdev_sensor(&imx708->sd);
 	if (ret < 0) {
-		dev_err(dev, "failed to register sensor sub-device: %d\n", ret);
+		dev_err_probe(dev, ret, "failed to register sensor sub-device\n");
 		goto error_media_entity;
 	}
 
@@ -2140,7 +2139,7 @@ static struct i2c_driver imx708_i2c_driver = {
 	.driver = {
 		.name = "imx708",
 		.of_match_table	= imx708_dt_ids,
-		.pm = &imx708_pm_ops,
+		.pm = pm_ptr(&imx708_pm_ops),
 	},
 	.probe = imx708_probe,
 	.remove = imx708_remove,
