@@ -1509,36 +1509,6 @@ static int imx708_power_off(struct device *dev)
 	return 0;
 }
 
-static int __maybe_unused imx708_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct imx708 *imx708 = to_imx708(sd);
-
-	if (v4l2_subdev_is_streaming(sd))
-		imx708_stop_streaming(imx708);
-
-	return 0;
-}
-
-static int __maybe_unused imx708_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct imx708 *imx708 = to_imx708(sd);
-	int ret;
-
-	if (v4l2_subdev_is_streaming(sd)) {
-		ret = imx708_start_streaming(imx708);
-		if (ret) {
-			imx708_stop_streaming(imx708);
-			return ret;
-		}
-	}
-
-	return 0;
-}
-
 static int imx708_get_regulators(struct imx708 *imx708)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx708->sd);
@@ -1947,7 +1917,6 @@ static const struct of_device_id imx708_dt_ids[] = {
 MODULE_DEVICE_TABLE(of, imx708_dt_ids);
 
 static const struct dev_pm_ops imx708_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(imx708_suspend, imx708_resume)
 	SET_RUNTIME_PM_OPS(imx708_power_off, imx708_power_on, NULL)
 };
 
