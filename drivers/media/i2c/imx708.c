@@ -19,6 +19,7 @@
 #include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
 #include <media/v4l2-mediabus.h>
+#include <media/v4l2-subdev.h>
 
 /*
  * Parameter to adjust Quad Bayer re-mosaic broken line correction
@@ -822,8 +823,6 @@ struct imx708 {
 	struct media_pad pad[NUM_PADS];
 	struct regmap *cci;
 
-	struct v4l2_mbus_framefmt fmt;
-
 	struct clk *inclk;
 	u32 inclk_freq;
 
@@ -845,15 +844,6 @@ struct imx708 {
 
 	/* Current mode */
 	const struct imx708_mode *mode;
-
-	/*
-	 * Mutex for serialized access:
-	 * Protect sensor module set pad format and start/stop streaming safely.
-	 */
-	struct mutex mutex;
-
-	/* Streaming on/off */
-	bool streaming;
 
 	/* Rewrite common registers on stream on? */
 	bool common_regs_written;
@@ -901,71 +891,10 @@ static u32 imx708_get_format_code(struct imx708 *imx708)
 {
 	unsigned int i;
 
-	lockdep_assert_held(&imx708->mutex);
-
 	i = (imx708->vflip->val ? 2 : 0) |
 	    (imx708->hflip->val ? 1 : 0);
 
 	return codes[i];
-}
-
-static void imx708_set_default_format(struct imx708 *imx708)
-{
-	struct v4l2_mbus_framefmt *fmt = &imx708->fmt;
-
-	/* Set default mode to max resolution */
-	imx708->mode = &supported_modes_10bit_no_hdr[0];
-
-	/* fmt->code not set as it will always be computed based on flips */
-	fmt->colorspace = V4L2_COLORSPACE_RAW;
-	fmt->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(fmt->colorspace);
-	fmt->quantization = V4L2_MAP_QUANTIZATION_DEFAULT(true,
-							  fmt->colorspace,
-							  fmt->ycbcr_enc);
-	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
-	fmt->width = imx708->mode->width;
-	fmt->height = imx708->mode->height;
-	fmt->field = V4L2_FIELD_NONE;
-}
-
-static int imx708_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
-{
-	struct imx708 *imx708 = to_imx708(sd);
-	struct v4l2_mbus_framefmt *try_fmt_img =
-		v4l2_subdev_state_get_format(fh->state, IMAGE_PAD);
-	struct v4l2_mbus_framefmt *try_fmt_meta =
-		v4l2_subdev_state_get_format(fh->state, METADATA_PAD);
-	struct v4l2_rect *try_crop;
-
-	mutex_lock(&imx708->mutex);
-
-	/* Initialize try_fmt for the image pad */
-	if (imx708->hdr_mode->val) {
-		try_fmt_img->width = supported_modes_10bit_hdr[0].width;
-		try_fmt_img->height = supported_modes_10bit_hdr[0].height;
-	} else {
-		try_fmt_img->width = supported_modes_10bit_no_hdr[0].width;
-		try_fmt_img->height = supported_modes_10bit_no_hdr[0].height;
-	}
-	try_fmt_img->code = imx708_get_format_code(imx708);
-	try_fmt_img->field = V4L2_FIELD_NONE;
-
-	/* Initialize try_fmt for the embedded metadata pad */
-	try_fmt_meta->width = IMX708_EMBEDDED_LINE_WIDTH;
-	try_fmt_meta->height = IMX708_NUM_EMBEDDED_LINES;
-	try_fmt_meta->code = MEDIA_BUS_FMT_SENSOR_DATA;
-	try_fmt_meta->field = V4L2_FIELD_NONE;
-
-	/* Initialize try_crop */
-	try_crop = v4l2_subdev_state_get_crop(fh->state, IMAGE_PAD);
-	try_crop->left = IMX708_PIXEL_ARRAY_LEFT;
-	try_crop->top = IMX708_PIXEL_ARRAY_TOP;
-	try_crop->width = IMX708_PIXEL_ARRAY_WIDTH;
-	try_crop->height = IMX708_PIXEL_ARRAY_HEIGHT;
-
-	mutex_unlock(&imx708->mutex);
-
-	return 0;
 }
 
 static int imx708_set_exposure(struct imx708 *imx708, unsigned int val)
@@ -1089,6 +1018,17 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 			imx708_set_framing_limits(imx708);
 		}
 		break;
+
+	case V4L2_CID_HFLIP:
+	case V4L2_CID_VFLIP: {
+		struct v4l2_subdev_state *state =
+			v4l2_subdev_get_locked_active_state(&imx708->sd);
+		struct v4l2_mbus_framefmt *format;
+
+		format = v4l2_subdev_state_get_format(state, IMAGE_PAD);
+		format->code = imx708_get_format_code(imx708);
+		break;
+	}
 	}
 
 	/*
@@ -1179,9 +1119,7 @@ static int imx708_enum_mbus_code(struct v4l2_subdev *sd,
 		if (code->index >= (ARRAY_SIZE(codes) / 4))
 			return -EINVAL;
 
-		mutex_lock(&imx708->mutex);
 		code->code = imx708_get_format_code(imx708);
-		mutex_unlock(&imx708->mutex);
 	} else {
 		if (code->index > 0)
 			return -EINVAL;
@@ -1212,9 +1150,7 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 		if (fse->index >= num_modes)
 			return -EINVAL;
 
-		mutex_lock(&imx708->mutex);
 		code = imx708_get_format_code(imx708);
-		mutex_unlock(&imx708->mutex);
 
 		if (fse->code != code)
 			return -EINVAL;
@@ -1246,55 +1182,47 @@ static void imx708_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
 	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
 }
 
-static void imx708_update_image_pad_format(struct imx708 *imx708,
-					   const struct imx708_mode *mode,
-					   struct v4l2_subdev_format *fmt)
+static void imx708_update_image_pad_format(const struct imx708_mode *mode,
+					   struct v4l2_mbus_framefmt *format)
 {
-	fmt->format.width = mode->width;
-	fmt->format.height = mode->height;
-	fmt->format.field = V4L2_FIELD_NONE;
-	imx708_reset_colorspace(&fmt->format);
+	format->width = mode->width;
+	format->height = mode->height;
+	format->field = V4L2_FIELD_NONE;
+	imx708_reset_colorspace(format);
 }
 
-static void imx708_update_metadata_pad_format(struct v4l2_subdev_format *fmt)
+static void imx708_update_metadata_pad_format(struct v4l2_mbus_framefmt *format)
 {
-	fmt->format.width = IMX708_EMBEDDED_LINE_WIDTH;
-	fmt->format.height = IMX708_NUM_EMBEDDED_LINES;
-	fmt->format.code = MEDIA_BUS_FMT_SENSOR_DATA;
-	fmt->format.field = V4L2_FIELD_NONE;
+	format->width = IMX708_EMBEDDED_LINE_WIDTH;
+	format->height = IMX708_NUM_EMBEDDED_LINES;
+	format->code = MEDIA_BUS_FMT_SENSOR_DATA;
+	format->field = V4L2_FIELD_NONE;
 }
 
-static int imx708_get_pad_format(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_state *sd_state,
-				 struct v4l2_subdev_format *fmt)
+static int imx708_init_state(struct v4l2_subdev *sd,
+			     struct v4l2_subdev_state *state)
 {
 	struct imx708 *imx708 = to_imx708(sd);
+	struct v4l2_mbus_framefmt *format, *format_meta;
+	struct v4l2_rect *crop;
 
-	if (fmt->pad >= NUM_PADS)
-		return -EINVAL;
+	/* Initialize the image pad format. */
+	format = v4l2_subdev_state_get_format(state, IMAGE_PAD);
+	imx708_update_image_pad_format(&supported_modes_10bit_no_hdr[0],
+				       format);
+	format->code = imx708_get_format_code(imx708);
 
-	mutex_lock(&imx708->mutex);
+	/* Initialize the metadata pad format. */
+	format_meta = v4l2_subdev_state_get_format(state, METADATA_PAD);
+	imx708_update_metadata_pad_format(format_meta);
 
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-		struct v4l2_mbus_framefmt *try_fmt =
-			v4l2_subdev_state_get_format(sd_state,
-						   fmt->pad);
-		/* update the code which could change due to vflip or hflip */
-		try_fmt->code = fmt->pad == IMAGE_PAD ?
-				imx708_get_format_code(imx708) :
-				MEDIA_BUS_FMT_SENSOR_DATA;
-		fmt->format = *try_fmt;
-	} else {
-		if (fmt->pad == IMAGE_PAD) {
-			imx708_update_image_pad_format(imx708, imx708->mode,
-						       fmt);
-			fmt->format.code = imx708_get_format_code(imx708);
-		} else {
-			imx708_update_metadata_pad_format(fmt);
-		}
-	}
+	/* Initialize the image pad crop. */
+	crop = v4l2_subdev_state_get_crop(state, IMAGE_PAD);
+	crop->left = IMX708_PIXEL_ARRAY_LEFT;
+	crop->top = IMX708_PIXEL_ARRAY_TOP;
+	crop->width = IMX708_PIXEL_ARRAY_WIDTH;
+	crop->height = IMX708_PIXEL_ARRAY_HEIGHT;
 
-	mutex_unlock(&imx708->mutex);
 	return 0;
 }
 
@@ -1303,23 +1231,23 @@ static int imx708_set_pad_format(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *sd_state,
 				 struct v4l2_subdev_format *fmt)
 {
-	struct v4l2_mbus_framefmt *framefmt;
-	const struct imx708_mode *mode;
+	struct v4l2_mbus_framefmt *format;
 	struct imx708 *imx708 = to_imx708(sd);
 
 	if (fmt->pad >= NUM_PADS)
 		return -EINVAL;
 
-	mutex_lock(&imx708->mutex);
+	format = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 
 	if (fmt->pad == IMAGE_PAD) {
 		const struct imx708_mode *mode_list;
+		const struct imx708_mode *mode;
 		unsigned int num_modes;
 
 		/* Bayer order varies with flips */
-		fmt->format.code = imx708_get_format_code(imx708);
+		format->code = imx708_get_format_code(imx708);
 
-		get_mode_table(fmt->format.code, &mode_list, &num_modes,
+		get_mode_table(format->code, &mode_list, &num_modes,
 			       imx708->hdr_mode->val);
 
 		mode = v4l2_find_nearest_size(mode_list,
@@ -1327,43 +1255,19 @@ static int imx708_set_pad_format(struct v4l2_subdev *sd,
 					      width, height,
 					      fmt->format.width,
 					      fmt->format.height);
-		imx708_update_image_pad_format(imx708, mode, fmt);
-		if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-			framefmt = v4l2_subdev_state_get_format(sd_state,
-							      fmt->pad);
-			*framefmt = fmt->format;
-		} else {
+		imx708_update_image_pad_format(mode, format);
+		fmt->format = *format;
+
+		if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
 			imx708->mode = mode;
 			imx708_set_framing_limits(imx708);
 		}
 	} else {
-		if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-			framefmt = v4l2_subdev_state_get_format(sd_state,
-							      fmt->pad);
-			*framefmt = fmt->format;
-		} else {
-			/* Only one embedded data mode is supported */
-			imx708_update_metadata_pad_format(fmt);
-		}
+		imx708_update_metadata_pad_format(format);
+		fmt->format = *format;
 	}
-
-	mutex_unlock(&imx708->mutex);
 
 	return 0;
-}
-
-static const struct v4l2_rect *
-__imx708_get_pad_crop(struct imx708 *imx708, struct v4l2_subdev_state *sd_state,
-		      unsigned int pad, enum v4l2_subdev_format_whence which)
-{
-	switch (which) {
-	case V4L2_SUBDEV_FORMAT_TRY:
-		return v4l2_subdev_state_get_crop(sd_state, pad);
-	case V4L2_SUBDEV_FORMAT_ACTIVE:
-		return &imx708->mode->crop;
-	}
-
-	return NULL;
 }
 
 static int imx708_get_selection(struct v4l2_subdev *sd,
@@ -1374,11 +1278,14 @@ static int imx708_get_selection(struct v4l2_subdev *sd,
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP: {
 		struct imx708 *imx708 = to_imx708(sd);
+		const struct v4l2_rect *crop;
 
-		mutex_lock(&imx708->mutex);
-		sel->r = *__imx708_get_pad_crop(imx708, sd_state, sel->pad,
-						sel->which);
-		mutex_unlock(&imx708->mutex);
+		if (sd_state)
+			crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
+		else
+			crop = &imx708->mode->crop;
+
+		sel->r = *crop;
 
 		return 0;
 	}
@@ -1510,13 +1417,10 @@ static int imx708_set_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct imx708 *imx708 = to_imx708(sd);
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct v4l2_subdev_state *state;
 	int ret = 0;
 
-	mutex_lock(&imx708->mutex);
-	if (imx708->streaming == enable) {
-		mutex_unlock(&imx708->mutex);
-		return 0;
-	}
+	state = v4l2_subdev_lock_and_get_active_state(sd);
 
 	if (enable) {
 		ret = pm_runtime_resume_and_get(&client->dev);
@@ -1538,19 +1442,17 @@ static int imx708_set_stream(struct v4l2_subdev *sd, int enable)
 		pm_runtime_put_autosuspend(&client->dev);
 	}
 
-	imx708->streaming = enable;
-
 	/* vflip/hflip and hdr mode cannot change during streaming */
 	__v4l2_ctrl_grab(imx708->vflip, enable);
 	__v4l2_ctrl_grab(imx708->hflip, enable);
 	__v4l2_ctrl_grab(imx708->hdr_mode, enable);
 
-	mutex_unlock(&imx708->mutex);
+	v4l2_subdev_unlock_state(state);
 
 	return ret;
 
 err_unlock:
-	mutex_unlock(&imx708->mutex);
+	v4l2_subdev_unlock_state(state);
 
 	return ret;
 }
@@ -1613,7 +1515,7 @@ static int __maybe_unused imx708_suspend(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx708 *imx708 = to_imx708(sd);
 
-	if (imx708->streaming)
+	if (v4l2_subdev_is_streaming(sd))
 		imx708_stop_streaming(imx708);
 
 	return 0;
@@ -1626,18 +1528,15 @@ static int __maybe_unused imx708_resume(struct device *dev)
 	struct imx708 *imx708 = to_imx708(sd);
 	int ret;
 
-	if (imx708->streaming) {
+	if (v4l2_subdev_is_streaming(sd)) {
 		ret = imx708_start_streaming(imx708);
-		if (ret)
-			goto error;
+		if (ret) {
+			imx708_stop_streaming(imx708);
+			return ret;
+		}
 	}
 
 	return 0;
-
-error:
-	imx708_stop_streaming(imx708);
-	imx708->streaming = 0;
-	return ret;
 }
 
 static int imx708_get_regulators(struct imx708 *imx708)
@@ -1695,7 +1594,7 @@ static const struct v4l2_subdev_video_ops imx708_video_ops = {
 
 static const struct v4l2_subdev_pad_ops imx708_pad_ops = {
 	.enum_mbus_code = imx708_enum_mbus_code,
-	.get_fmt = imx708_get_pad_format,
+	.get_fmt = v4l2_subdev_get_fmt,
 	.set_fmt = imx708_set_pad_format,
 	.get_selection = imx708_get_selection,
 	.enum_frame_size = imx708_enum_frame_size,
@@ -1708,7 +1607,7 @@ static const struct v4l2_subdev_ops imx708_subdev_ops = {
 };
 
 static const struct v4l2_subdev_internal_ops imx708_internal_ops = {
-	.open = imx708_open,
+	.init_state = imx708_init_state,
 };
 
 static const struct v4l2_ctrl_config imx708_notify_gains_ctrl = {
@@ -1737,9 +1636,6 @@ static int imx708_init_controls(struct imx708 *imx708)
 	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 16);
 	if (ret)
 		return ret;
-
-	mutex_init(&imx708->mutex);
-	ctrl_hdlr->lock = &imx708->mutex;
 
 	/* By default, PIXEL_RATE is read only */
 	imx708->pixel_rate = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
@@ -1832,15 +1728,12 @@ static int imx708_init_controls(struct imx708 *imx708)
 	imx708->sd.ctrl_handler = ctrl_hdlr;
 
 	/* Setup exposure and frame/line length limits. */
-	mutex_lock(&imx708->mutex);
 	imx708_set_framing_limits(imx708);
-	mutex_unlock(&imx708->mutex);
 
 	return 0;
 
 error:
 	v4l2_ctrl_handler_free(ctrl_hdlr);
-	mutex_destroy(&imx708->mutex);
 
 	return ret;
 }
@@ -1848,7 +1741,6 @@ error:
 static void imx708_free_controls(struct imx708 *imx708)
 {
 	v4l2_ctrl_handler_free(imx708->sd.ctrl_handler);
-	mutex_destroy(&imx708->mutex);
 }
 
 static int imx708_check_hwcfg(struct device *dev, struct imx708 *imx708)
@@ -1961,8 +1853,8 @@ static int imx708_probe(struct i2c_client *client)
 	if (ret)
 		goto error_power_off;
 
-	/* Initialize default format */
-	imx708_set_default_format(imx708);
+	/* Set default mode to max resolution. */
+	imx708->mode = &supported_modes_10bit_no_hdr[0];
 
 	/*
 	 * Enable runtime PM with autosuspend. As the device has been powered
@@ -1995,16 +1887,26 @@ static int imx708_probe(struct i2c_client *client)
 		goto error_handler_free;
 	}
 
+	imx708->sd.state_lock = imx708->ctrl_handler.lock;
+	ret = v4l2_subdev_init_finalize(&imx708->sd);
+	if (ret) {
+		dev_err_probe(dev, ret, "failed to finalize subdev\n");
+		goto error_media_entity;
+	}
+
 	ret = v4l2_async_register_subdev_sensor(&imx708->sd);
 	if (ret < 0) {
 		dev_err_probe(dev, ret, "failed to register sensor sub-device\n");
-		goto error_media_entity;
+		goto error_subdev_cleanup;
 	}
 
 	pm_runtime_mark_last_busy(dev);
 	pm_runtime_put_autosuspend(dev);
 
 	return 0;
+
+error_subdev_cleanup:
+	v4l2_subdev_cleanup(&imx708->sd);
 
 error_media_entity:
 	media_entity_cleanup(&imx708->sd.entity);
@@ -2028,6 +1930,7 @@ static void imx708_remove(struct i2c_client *client)
 	struct imx708 *imx708 = to_imx708(sd);
 
 	v4l2_async_unregister_subdev(sd);
+	v4l2_subdev_cleanup(sd);
 	media_entity_cleanup(&sd->entity);
 	imx708_free_controls(imx708);
 
