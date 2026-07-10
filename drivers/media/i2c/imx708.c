@@ -1509,19 +1509,6 @@ static int imx708_power_off(struct device *dev)
 	return 0;
 }
 
-static int imx708_get_regulators(struct imx708 *imx708)
-{
-	struct i2c_client *client = v4l2_get_subdevdata(&imx708->sd);
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(imx708_supply_name); i++)
-		imx708->supplies[i].supply = imx708_supply_name[i];
-
-	return devm_regulator_bulk_get(&client->dev,
-				       ARRAY_SIZE(imx708_supply_name),
-				       imx708->supplies);
-}
-
 /* Verify chip ID */
 static int imx708_identify_module(struct imx708 *imx708)
 {
@@ -1708,11 +1695,6 @@ error:
 	return ret;
 }
 
-static void imx708_free_controls(struct imx708 *imx708)
-{
-	v4l2_ctrl_handler_free(imx708->sd.ctrl_handler);
-}
-
 static int imx708_check_hwcfg(struct device *dev, struct imx708 *imx708)
 {
 	struct fwnode_handle *endpoint;
@@ -1803,7 +1785,12 @@ static int imx708_probe(struct i2c_client *client)
 				     "inclk frequency not supported: %d Hz\n",
 				     imx708->inclk_freq);
 
-	ret = imx708_get_regulators(imx708);
+	for (int i = 0; i < ARRAY_SIZE(imx708_supply_name); i++)
+		imx708->supplies[i].supply = imx708_supply_name[i];
+
+	ret = devm_regulator_bulk_get(&client->dev,
+				      ARRAY_SIZE(imx708_supply_name),
+				      imx708->supplies);
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to get regulators\n");
 
@@ -1882,7 +1869,7 @@ error_media_entity:
 	media_entity_cleanup(&imx708->sd.entity);
 
 error_handler_free:
-	imx708_free_controls(imx708);
+	v4l2_ctrl_handler_free(imx708->sd.ctrl_handler);
 
 error_pm_runtime:
 	pm_runtime_disable(dev);
@@ -1902,7 +1889,7 @@ static void imx708_remove(struct i2c_client *client)
 	v4l2_async_unregister_subdev(sd);
 	v4l2_subdev_cleanup(sd);
 	media_entity_cleanup(&sd->entity);
-	imx708_free_controls(imx708);
+	v4l2_ctrl_handler_free(imx708->sd.ctrl_handler);
 
 	pm_runtime_disable(&client->dev);
 	if (!pm_runtime_status_suspended(&client->dev))
