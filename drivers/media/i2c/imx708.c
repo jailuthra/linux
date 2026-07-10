@@ -836,7 +836,6 @@ struct imx708 {
 	struct v4l2_ctrl *vblank;
 	struct v4l2_ctrl *hblank;
 	struct v4l2_ctrl *hdr_mode;
-	struct v4l2_ctrl *link_freq;
 	struct {
 		struct v4l2_ctrl *hflip;
 		struct v4l2_ctrl *vflip;
@@ -851,7 +850,7 @@ struct imx708 {
 	/* Current long exposure factor in use. Set through V4L2_CID_VBLANK */
 	unsigned int long_exp_shift;
 
-	unsigned int link_freq_idx;
+	unsigned long link_freq_bitmap;
 
 	unsigned int csi_flags;
 };
@@ -1369,7 +1368,7 @@ static int imx708_start_streaming(struct imx708 *imx708)
 	}
 
 	/* Update the link frequency registers */
-	freq_regs = &link_freq_regs[imx708->link_freq_idx];
+	freq_regs = &link_freq_regs[__ffs(imx708->link_freq_bitmap)];
 	cci_multi_reg_write(imx708->cci, freq_regs->regs,
 			    freq_regs->num_of_regs, &ret);
 	if (ret) {
@@ -1585,7 +1584,7 @@ static int imx708_init_controls(struct imx708 *imx708)
 	struct v4l2_ctrl_handler *ctrl_hdlr;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx708->sd);
 	struct v4l2_fwnode_device_properties props;
-	struct v4l2_ctrl *ctrl;
+	struct v4l2_ctrl *link_freq;
 	unsigned int i;
 	int ret;
 
@@ -1601,11 +1600,13 @@ static int imx708_init_controls(struct imx708 *imx708)
 					       IMX708_INITIAL_PIXEL_RATE, 1,
 					       IMX708_INITIAL_PIXEL_RATE);
 
-	ctrl = v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx708_ctrl_ops,
-				      V4L2_CID_LINK_FREQ, 0, 0,
-				      &link_freqs[imx708->link_freq_idx]);
-	if (ctrl)
-		ctrl->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+	link_freq = v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx708_ctrl_ops,
+					   V4L2_CID_LINK_FREQ,
+					   ARRAY_SIZE(link_freqs) - 1,
+					   __ffs(imx708->link_freq_bitmap),
+					   link_freqs);
+	if (link_freq)
+		link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	/*
 	 * Create the controls here, but mode specific limits are setup
@@ -1702,7 +1703,6 @@ static int imx708_check_hwcfg(struct device *dev, struct imx708 *imx708)
 		.bus_type = V4L2_MBUS_CSI2_DPHY
 	};
 	int ret = -EINVAL;
-	int i;
 
 	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(dev), NULL);
 	if (!endpoint) {
@@ -1721,29 +1721,13 @@ static int imx708_check_hwcfg(struct device *dev, struct imx708 *imx708)
 		goto error_out;
 	}
 
-	/* Check the link frequency set in device tree */
-	if (!ep_cfg.nr_of_link_frequencies) {
-		dev_err(dev, "link-frequency property not found in DT\n");
-		goto error_out;
-	}
-
-	for (i = 0; i < ARRAY_SIZE(link_freqs); i++) {
-		if (link_freqs[i] == ep_cfg.link_frequencies[0]) {
-			imx708->link_freq_idx = i;
-			break;
-		}
-	}
-
-	if (i == ARRAY_SIZE(link_freqs)) {
-		dev_err(dev, "Link frequency not supported: %lld\n",
-			ep_cfg.link_frequencies[0]);
-			ret = -EINVAL;
-			goto error_out;
-	}
-
 	imx708->csi_flags = ep_cfg.bus.mipi_csi2.flags;
 
-	ret = 0;
+	/* Check the link frequency set in device tree */
+	ret = v4l2_link_freq_to_bitmap(dev, ep_cfg.link_frequencies,
+				       ep_cfg.nr_of_link_frequencies,
+				       link_freqs, ARRAY_SIZE(link_freqs),
+				       &imx708->link_freq_bitmap);
 
 error_out:
 	v4l2_fwnode_endpoint_free(&ep_cfg);
