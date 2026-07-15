@@ -503,10 +503,10 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 	}
 
 	/*
-	 * Applying V4L2 control value only happens
-	 * when power is up for streaming
+	 * Only apply control values when device is powered on (RPM ACTIVE)
+	 * and streaming (usage count != 0)
 	 */
-	if (pm_runtime_get_if_in_use(&client->dev) == 0)
+	if (!pm_runtime_get_if_in_use(&client->dev))
 		return 0;
 
 	switch (ctrl->id) {
@@ -567,7 +567,6 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	}
 
-	pm_runtime_mark_last_busy(&client->dev);
 	pm_runtime_put_autosuspend(&client->dev);
 
 	return ret;
@@ -871,7 +870,6 @@ static int imx708_disable_streams(struct v4l2_subdev *sd,
 	__v4l2_ctrl_grab(imx708->vflip, false);
 	__v4l2_ctrl_grab(imx708->hflip, false);
 
-	pm_runtime_mark_last_busy(&client->dev);
 	pm_runtime_put_autosuspend(&client->dev);
 
 	return ret;
@@ -1261,16 +1259,8 @@ static int imx708_probe(struct i2c_client *client)
 	if (ret)
 		goto error_power_off;
 
-	/*
-	 * Enable runtime PM with autosuspend. As the device has been powered
-	 * manually, mark it as active, and increase the usage count without
-	 * resuming the device.
-	 */
 	pm_runtime_set_active(dev);
-	pm_runtime_get_noresume(dev);
 	pm_runtime_enable(dev);
-	pm_runtime_set_autosuspend_delay(dev, 5000);
-	pm_runtime_use_autosuspend(dev);
 
 	/* This needs the pm runtime to be registered. */
 	ret = imx708_init_controls(imx708);
@@ -1305,8 +1295,9 @@ static int imx708_probe(struct i2c_client *client)
 		goto error_subdev_cleanup;
 	}
 
-	pm_runtime_mark_last_busy(dev);
-	pm_runtime_put_autosuspend(dev);
+	pm_runtime_idle(dev);
+	pm_runtime_set_autosuspend_delay(dev, 5000);
+	pm_runtime_use_autosuspend(dev);
 
 	return 0;
 
@@ -1321,7 +1312,7 @@ error_handler_free:
 
 error_pm_runtime:
 	pm_runtime_disable(dev);
-	pm_runtime_put_noidle(dev);
+	pm_runtime_set_suspended(dev);
 
 error_power_off:
 	imx708_power_off(&client->dev);
