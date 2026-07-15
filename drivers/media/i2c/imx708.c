@@ -865,7 +865,7 @@ static int imx708_power_on(struct device *dev)
 		goto reg_off;
 	}
 
-	gpiod_set_value_cansleep(imx708->reset_gpio, 1);
+	gpiod_set_value_cansleep(imx708->reset_gpio, 0);
 	usleep_range(IMX708_XCLR_MIN_DELAY_US,
 		     IMX708_XCLR_MIN_DELAY_US + IMX708_XCLR_DELAY_RANGE_US);
 
@@ -879,7 +879,7 @@ static int imx708_power_on(struct device *dev)
 	return 0;
 
 clk_off:
-	gpiod_set_value_cansleep(imx708->reset_gpio, 0);
+	gpiod_set_value_cansleep(imx708->reset_gpio, 1);
 	clk_disable_unprepare(imx708->inclk);
 
 reg_off:
@@ -894,7 +894,7 @@ static int imx708_power_off(struct device *dev)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx708 *imx708 = to_imx708(sd);
 
-	gpiod_set_value_cansleep(imx708->reset_gpio, 0);
+	gpiod_set_value_cansleep(imx708->reset_gpio, 1);
 	regulator_bulk_disable(ARRAY_SIZE(imx708_supply_name),
 			       imx708->supplies);
 	clk_disable_unprepare(imx708->inclk);
