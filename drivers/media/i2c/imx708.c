@@ -174,12 +174,19 @@ enum pad_types {
 };
 
 /* IMX708 native and active pixel array size. */
-#define IMX708_NATIVE_WIDTH		4640U
-#define IMX708_NATIVE_HEIGHT		2658U
-#define IMX708_PIXEL_ARRAY_LEFT		16U
-#define IMX708_PIXEL_ARRAY_TOP		24U
-#define IMX708_PIXEL_ARRAY_WIDTH	4608U
-#define IMX708_PIXEL_ARRAY_HEIGHT	2592U
+static const struct v4l2_rect imx708_native_area = {
+	.top = 0,
+	.left = 0,
+	.width = 4640,
+	.height = 2658,
+};
+
+static const struct v4l2_rect imx708_active_area = {
+	.top = 24,
+	.left = 16,
+	.width = 4608,
+	.height = 2592,
+};
 
 struct imx708_reg_list {
 	unsigned int num_of_regs;
@@ -441,7 +448,7 @@ static void imx708_adjust_exposure_range(struct imx708 *imx708)
 	int exposure_max, exposure_def;
 
 	/* Honour the VBLANK limits when setting exposure. */
-	exposure_max = IMX708_PIXEL_ARRAY_HEIGHT + imx708->vblank->val -
+	exposure_max = imx708_active_area.height + imx708->vblank->val -
 		IMX708_EXPOSURE_OFFSET;
 	exposure_def = min(exposure_max, imx708->exposure->val);
 	__v4l2_ctrl_modify_range(imx708->exposure, imx708->exposure->minimum,
@@ -508,7 +515,7 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_VBLANK:
 		ret = imx708_set_frame_length(imx708,
-					      IMX708_PIXEL_ARRAY_HEIGHT +
+					      imx708_active_area.height +
 					      ctrl->val);
 		fallthrough; /* update exposure with new long_exp_shift */
 	case V4L2_CID_EXPOSURE:
@@ -613,9 +620,9 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 		if (fse->index > 0)
 			return -EINVAL;
 
-		fse->min_width = IMX708_PIXEL_ARRAY_WIDTH;
+		fse->min_width = imx708_active_area.width;
 		fse->max_width = fse->min_width;
-		fse->min_height = IMX708_PIXEL_ARRAY_HEIGHT;
+		fse->min_height = imx708_active_area.height;
 		fse->max_height = fse->min_height;
 	} else {
 		if (fse->code != MEDIA_BUS_FMT_SENSOR_DATA || fse->index > 0)
@@ -642,8 +649,8 @@ static void imx708_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
 
 static void imx708_update_image_pad_format(struct v4l2_mbus_framefmt *format)
 {
-	format->width = IMX708_PIXEL_ARRAY_WIDTH;
-	format->height = IMX708_PIXEL_ARRAY_HEIGHT;
+	format->width = imx708_active_area.width;
+	format->height = imx708_active_area.height;
 	format->field = V4L2_FIELD_NONE;
 	imx708_reset_colorspace(format);
 }
@@ -674,10 +681,7 @@ static int imx708_init_state(struct v4l2_subdev *sd,
 
 	/* Initialize the image pad crop. */
 	crop = v4l2_subdev_state_get_crop(state, IMAGE_PAD);
-	crop->left = IMX708_PIXEL_ARRAY_LEFT;
-	crop->top = IMX708_PIXEL_ARRAY_TOP;
-	crop->width = IMX708_PIXEL_ARRAY_WIDTH;
-	crop->height = IMX708_PIXEL_ARRAY_HEIGHT;
+	*crop = imx708_active_area;
 
 	return 0;
 }
@@ -725,19 +729,13 @@ static int imx708_get_selection(struct v4l2_subdev *sd,
 	}
 
 	case V4L2_SEL_TGT_NATIVE_SIZE:
-		sel->r.left = 0;
-		sel->r.top = 0;
-		sel->r.width = IMX708_NATIVE_WIDTH;
-		sel->r.height = IMX708_NATIVE_HEIGHT;
+		sel->r = imx708_native_area;
 
 		return 0;
 
 	case V4L2_SEL_TGT_CROP_DEFAULT:
 	case V4L2_SEL_TGT_CROP_BOUNDS:
-		sel->r.left = IMX708_PIXEL_ARRAY_LEFT;
-		sel->r.top = IMX708_PIXEL_ARRAY_TOP;
-		sel->r.width = IMX708_PIXEL_ARRAY_WIDTH;
-		sel->r.height = IMX708_PIXEL_ARRAY_HEIGHT;
+		sel->r = imx708_active_area;
 
 		return 0;
 	}
@@ -761,8 +759,8 @@ static int imx708_program_window(struct imx708 *imx708,
 		  &ret);
 
 	/* Imaging area */
-	x_start = crop->left - IMX708_PIXEL_ARRAY_LEFT;
-	y_start = crop->top - IMX708_PIXEL_ARRAY_TOP;
+	x_start = crop->left - imx708_active_area.left;
+	y_start = crop->top - imx708_active_area.top;
 	cci_write(imx708->cci, IMX708_REG_X_ADD_STA, x_start, &ret);
 	cci_write(imx708->cci, IMX708_REG_Y_ADD_STA, y_start, &ret);
 	cci_write(imx708->cci, IMX708_REG_X_ADD_END, x_start + crop->width - 1,
@@ -1081,12 +1079,12 @@ static int imx708_init_controls(struct imx708 *imx708)
 
 	/* Frame Time = 2^LONG_EXP_SHIFT * REG_FRAME_LENGTH */
 	vblank_max = ((1 << IMX708_LONG_EXP_SHIFT_MAX) *
-		      IMX708_FRAME_LENGTH_MAX) - IMX708_PIXEL_ARRAY_HEIGHT;
+		      IMX708_FRAME_LENGTH_MAX) - imx708_active_area.height;
 	imx708->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
 					   V4L2_CID_VBLANK, IMX708_VBLANK_MIN,
 					   vblank_max, 1, IMX708_VBLANK_MIN);
 
-	hblank = IMX708_LINE_LENGTH - IMX708_PIXEL_ARRAY_WIDTH;
+	hblank = IMX708_LINE_LENGTH - imx708_active_area.width;
 	imx708->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
 					   V4L2_CID_HBLANK, hblank, hblank, 1,
 					   hblank);
