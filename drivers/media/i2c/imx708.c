@@ -1136,11 +1136,9 @@ static int imx708_probe(struct i2c_client *client)
 		return dev_err_probe(dev, PTR_ERR(imx708->cci),
 				     "failed to init CCI\n");
 
-	/* Check the hardware configuration in device tree */
 	if (imx708_check_hwcfg(dev, imx708))
 		return -EINVAL;
 
-	/* Get system clock (inclk) */
 	imx708->inclk = devm_clk_get(dev, NULL);
 	if (IS_ERR(imx708->inclk))
 		return dev_err_probe(dev, PTR_ERR(imx708->inclk),
@@ -1161,17 +1159,12 @@ static int imx708_probe(struct i2c_client *client)
 	if (ret)
 		return dev_err_probe(dev, ret, "failed to get regulators\n");
 
-	/* Request optional enable pin */
 	imx708->reset_gpio = devm_gpiod_get_optional(dev, "reset",
 						     GPIOD_OUT_HIGH);
 	if (IS_ERR(imx708->reset_gpio))
 		return dev_err_probe(dev, PTR_ERR(imx708->reset_gpio),
 				     "failed to get reset GPIO\n");
 
-	/*
-	 * The sensor must be powered for imx708_identify_module()
-	 * to be able to read the CHIP_ID register
-	 */
 	ret = imx708_power_on(dev);
 	if (ret)
 		return ret;
@@ -1183,17 +1176,14 @@ static int imx708_probe(struct i2c_client *client)
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
 
-	/* This needs the pm runtime to be registered. */
 	ret = imx708_init_controls(imx708);
 	if (ret)
 		goto error_pm_runtime;
 
-	/* Initialize subdev */
 	imx708->sd.internal_ops = &imx708_internal_ops;
 	imx708->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 	imx708->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
-	/* Initialize source pads */
 	imx708->pad[IMX708_SOURCE_PAD].flags = MEDIA_PAD_FL_SOURCE;
 
 	ret = media_entity_pads_init(&imx708->sd.entity, IMX708_NUM_PADS,
