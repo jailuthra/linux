@@ -609,24 +609,6 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static void imx708_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
-{
-	fmt->colorspace = V4L2_COLORSPACE_RAW;
-	fmt->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(fmt->colorspace);
-	fmt->quantization = V4L2_MAP_QUANTIZATION_DEFAULT(true,
-							  fmt->colorspace,
-							  fmt->ycbcr_enc);
-	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
-}
-
-static void imx708_update_image_pad_format(struct v4l2_mbus_framefmt *format)
-{
-	format->width = imx708_active_area.width;
-	format->height = imx708_active_area.height;
-	format->field = V4L2_FIELD_NONE;
-	imx708_reset_colorspace(format);
-}
-
 static int imx708_init_state(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_state *state)
 {
@@ -636,34 +618,18 @@ static int imx708_init_state(struct v4l2_subdev *sd,
 
 	/* Initialize the image pad format. */
 	format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD);
-	imx708_update_image_pad_format(format);
 	format->code = imx708_get_format_code(imx708);
+	format->width = imx708_active_area.width;
+	format->height = imx708_active_area.height;
+	format->field = V4L2_FIELD_NONE;
+	format->colorspace = V4L2_COLORSPACE_RAW;
+	format->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+	format->quantization = V4L2_QUANTIZATION_FULL_RANGE;
+	format->xfer_func = V4L2_XFER_FUNC_NONE;
 
 	/* Initialize the image pad crop. */
 	crop = v4l2_subdev_state_get_crop(state, IMX708_SOURCE_PAD);
 	*crop = imx708_active_area;
-
-	return 0;
-}
-
-static int imx708_set_pad_format(struct v4l2_subdev *sd,
-				 const struct v4l2_subdev_client_info *ci,
-				 struct v4l2_subdev_state *sd_state,
-				 struct v4l2_subdev_format *fmt)
-{
-	struct v4l2_mbus_framefmt *format;
-	struct imx708 *imx708 = to_imx708(sd);
-
-	if (fmt->pad >= IMX708_NUM_PADS)
-		return -EINVAL;
-
-	format = v4l2_subdev_state_get_format(sd_state, fmt->pad);
-
-	/* Bayer order varies with flips */
-	format->code = imx708_get_format_code(imx708);
-
-	imx708_update_image_pad_format(format);
-	fmt->format = *format;
 
 	return 0;
 }
@@ -971,7 +937,6 @@ static const struct v4l2_subdev_video_ops imx708_video_ops = {
 static const struct v4l2_subdev_pad_ops imx708_pad_ops = {
 	.enum_mbus_code = imx708_enum_mbus_code,
 	.get_fmt = v4l2_subdev_get_fmt,
-	.set_fmt = imx708_set_pad_format,
 	.get_selection = imx708_get_selection,
 	.enum_frame_size = imx708_enum_frame_size,
 	.enable_streams = imx708_enable_streams,
