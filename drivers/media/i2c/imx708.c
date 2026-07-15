@@ -1248,13 +1248,19 @@ static int imx708_get_selection(struct v4l2_subdev *sd,
 	return -EINVAL;
 }
 
-/* Start streaming */
-static int imx708_start_streaming(struct imx708 *imx708)
+static int imx708_enable_streams(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_state *state, u32 pad,
+				 u64 mask)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&imx708->sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct imx708 *imx708 = to_imx708(sd);
 	const struct imx708_reg_list *reg_list, *freq_regs;
 	int i, ret = 0;
 	u64 val;
+
+	ret = pm_runtime_resume_and_get(&client->dev);
+	if (ret < 0)
+		return ret;
 
 	if (!imx708->common_regs_written) {
 		cci_multi_reg_write(imx708->cci, mode_common_regs,
@@ -1262,7 +1268,7 @@ static int imx708_start_streaming(struct imx708 *imx708)
 		if (ret) {
 			dev_err(&client->dev, "%s failed to set common settings\n",
 				__func__);
-			return ret;
+			goto err_rpm_put;
 		}
 
 		cci_write(imx708->cci, IMX708_REG_CLKLANE_BLANK,
@@ -1271,7 +1277,7 @@ static int imx708_start_streaming(struct imx708 *imx708)
 		if (ret) {
 			dev_err(&client->dev, "%s failed to set clock lane mode\n",
 				__func__);
-			return ret;
+			goto err_rpm_put;
 		}
 
 		cci_read(imx708->cci, IMX708_REG_BASE_SPC_GAINS_L, &val, &ret);
@@ -1290,7 +1296,7 @@ static int imx708_start_streaming(struct imx708 *imx708)
 		if (ret) {
 			dev_err(&client->dev, "%s failed to set PDAF gains\n",
 				__func__);
-			return ret;
+			goto err_rpm_put;
 		}
 
 		imx708->common_regs_written = true;
@@ -1302,7 +1308,7 @@ static int imx708_start_streaming(struct imx708 *imx708)
 			    reg_list->num_of_regs, &ret);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
-		return ret;
+		goto err_rpm_put;
 	}
 
 	/* Update the link frequency registers */
@@ -1312,7 +1318,7 @@ static int imx708_start_streaming(struct imx708 *imx708)
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set link frequency registers\n",
 			__func__);
-		return ret;
+		goto err_rpm_put;
 	}
 
 	/* Quad Bayer re-mosaic adjustments (for full-resolution mode only) */
@@ -1328,19 +1334,36 @@ static int imx708_start_streaming(struct imx708 *imx708)
 	/* Apply customized values from user */
 	ret =  __v4l2_ctrl_handler_setup(imx708->sd.ctrl_handler);
 	if (ret)
-		return ret;
+		goto err_rpm_put;
 
 	/* set stream on register */
 	cci_write(imx708->cci, IMX708_REG_MODE_SELECT,
 		  IMX708_MODE_STREAMING, &ret);
+	if (ret) {
+		dev_err(&client->dev, "%s failed to start streaming\n",
+			__func__);
+		goto err_rpm_put;
+	}
+
+	/* vflip/hflip and hdr mode cannot change during streaming */
+	__v4l2_ctrl_grab(imx708->vflip, true);
+	__v4l2_ctrl_grab(imx708->hflip, true);
+	__v4l2_ctrl_grab(imx708->hdr_mode, true);
+
+	return 0;
+
+err_rpm_put:
+	pm_runtime_put_sync(&client->dev);
 
 	return ret;
 }
 
-/* Stop streaming */
-static void imx708_stop_streaming(struct imx708 *imx708)
+static int imx708_disable_streams(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_state *state,
+				  u32 pad, u64 mask)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&imx708->sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct imx708 *imx708 = to_imx708(sd);
 	int ret = 0;
 
 	/* set stream off register */
@@ -1348,48 +1371,13 @@ static void imx708_stop_streaming(struct imx708 *imx708)
 		  IMX708_MODE_STANDBY, &ret);
 	if (ret)
 		dev_err(&client->dev, "%s failed to set stream\n", __func__);
-}
 
-static int imx708_set_stream(struct v4l2_subdev *sd, int enable)
-{
-	struct imx708 *imx708 = to_imx708(sd);
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct v4l2_subdev_state *state;
-	int ret = 0;
+	__v4l2_ctrl_grab(imx708->vflip, false);
+	__v4l2_ctrl_grab(imx708->hflip, false);
+	__v4l2_ctrl_grab(imx708->hdr_mode, false);
 
-	state = v4l2_subdev_lock_and_get_active_state(sd);
-
-	if (enable) {
-		ret = pm_runtime_resume_and_get(&client->dev);
-		if (ret < 0)
-			goto err_unlock;
-
-		/*
-		 * Apply default & customized values
-		 * and then start streaming.
-		 */
-		ret = imx708_start_streaming(imx708);
-		if (ret) {
-			pm_runtime_put_sync(&client->dev);
-			goto err_unlock;
-		}
-	} else {
-		imx708_stop_streaming(imx708);
-		pm_runtime_mark_last_busy(&client->dev);
-		pm_runtime_put_autosuspend(&client->dev);
-	}
-
-	/* vflip/hflip and hdr mode cannot change during streaming */
-	__v4l2_ctrl_grab(imx708->vflip, enable);
-	__v4l2_ctrl_grab(imx708->hflip, enable);
-	__v4l2_ctrl_grab(imx708->hdr_mode, enable);
-
-	v4l2_subdev_unlock_state(state);
-
-	return ret;
-
-err_unlock:
-	v4l2_subdev_unlock_state(state);
+	pm_runtime_mark_last_busy(&client->dev);
+	pm_runtime_put_autosuspend(&client->dev);
 
 	return ret;
 }
@@ -1483,7 +1471,7 @@ static const struct v4l2_subdev_core_ops imx708_core_ops = {
 };
 
 static const struct v4l2_subdev_video_ops imx708_video_ops = {
-	.s_stream = imx708_set_stream,
+	.s_stream = v4l2_subdev_s_stream_helper,
 };
 
 static const struct v4l2_subdev_pad_ops imx708_pad_ops = {
@@ -1492,6 +1480,8 @@ static const struct v4l2_subdev_pad_ops imx708_pad_ops = {
 	.set_fmt = imx708_set_pad_format,
 	.get_selection = imx708_get_selection,
 	.enum_frame_size = imx708_enum_frame_size,
+	.enable_streams = imx708_enable_streams,
+	.disable_streams = imx708_disable_streams,
 };
 
 static const struct v4l2_subdev_ops imx708_subdev_ops = {
