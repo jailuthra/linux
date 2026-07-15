@@ -1252,4 +1252,4 @@ module_i2c_driver(imx708_i2c_driver);
 MODULE_AUTHOR("David Plowman <david.plowman@raspberrypi.com>");
 MODULE_AUTHOR("Jai Luthra <jai.luthra@ideasonboard.com>");
 MODULE_DESCRIPTION("Sony IMX708 sensor driver");
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
