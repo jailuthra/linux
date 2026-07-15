@@ -411,7 +411,7 @@ struct imx708 {
 
 static inline struct imx708 *to_imx708(struct v4l2_subdev *_sd)
 {
-	return container_of(_sd, struct imx708, sd);
+	return container_of_const(_sd, struct imx708, sd);
 }
 
 /* Get bayer order based on flip setting. */
@@ -459,7 +459,7 @@ static int imx708_set_frame_length(struct imx708 *imx708, unsigned int val)
 static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx708 *imx708 =
-		container_of(ctrl->handler, struct imx708, ctrl_handler);
+		container_of_const(ctrl->handler, struct imx708, ctrl_handler);
 	struct i2c_client *client = v4l2_get_subdevdata(&imx708->sd);
 	int ret = 0;
 
