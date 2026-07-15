@@ -493,9 +493,6 @@ struct imx708 {
 	/* Current mode */
 	const struct imx708_mode *mode;
 
-	/* Rewrite common registers on stream on? */
-	bool common_regs_written;
-
 	/* Current long exposure factor in use. Set through V4L2_CID_VBLANK */
 	unsigned int long_exp_shift;
 
@@ -935,52 +932,11 @@ static int imx708_enable_streams(struct v4l2_subdev *sd,
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct imx708 *imx708 = to_imx708(sd);
 	const struct imx708_reg_list *reg_list, *freq_regs;
-	int i, ret = 0;
-	u64 val;
+	int ret = 0;
 
 	ret = pm_runtime_resume_and_get(&client->dev);
 	if (ret < 0)
 		return ret;
-
-	if (!imx708->common_regs_written) {
-		cci_multi_reg_write(imx708->cci, mode_common_regs,
-				    ARRAY_SIZE(mode_common_regs), &ret);
-		if (ret) {
-			dev_err(&client->dev, "%s failed to set common settings\n",
-				__func__);
-			goto err_rpm_put;
-		}
-
-		cci_write(imx708->cci, IMX708_REG_CLKLANE_BLANK,
-			  imx708->csi_flags & V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK ?
-			  IMX708_CLKLANE_BLANK_NONCONT : 0, &ret);
-		if (ret) {
-			dev_err(&client->dev, "%s failed to set clock lane mode\n",
-				__func__);
-			goto err_rpm_put;
-		}
-
-		cci_read(imx708->cci, IMX708_REG_BASE_SPC_GAINS_L, &val, &ret);
-		if (ret == 0 && val == 0x40) {
-			for (i = 0; i < 54 && ret == 0; i++) {
-				cci_write(imx708->cci,
-					  CCI_REG8(CCI_REG_ADDR(IMX708_REG_BASE_SPC_GAINS_L) + i),
-					  pdaf_gains[0][i % 9], &ret);
-			}
-			for (i = 0; i < 54 && ret == 0; i++) {
-				cci_write(imx708->cci,
-					  CCI_REG8(CCI_REG_ADDR(IMX708_REG_BASE_SPC_GAINS_R) + i),
-					  pdaf_gains[1][i % 9], &ret);
-			}
-		}
-		if (ret) {
-			dev_err(&client->dev, "%s failed to set PDAF gains\n",
-				__func__);
-			goto err_rpm_put;
-		}
-
-		imx708->common_regs_written = true;
-	}
 
 	/* Apply default values of current mode */
 	reg_list = &imx708->mode->reg_list;
@@ -1060,6 +1016,51 @@ static int imx708_disable_streams(struct v4l2_subdev *sd,
 	return ret;
 }
 
+static int imx708_write_common(struct imx708 *imx708)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&imx708->sd);
+	int i, ret = 0;
+	u64 val;
+
+	cci_multi_reg_write(imx708->cci, mode_common_regs,
+			    ARRAY_SIZE(mode_common_regs), &ret);
+	if (ret) {
+		dev_err(&client->dev, "%s failed to set common settings\n",
+			__func__);
+		return ret;
+	}
+
+	cci_write(imx708->cci, IMX708_REG_CLKLANE_BLANK,
+		  imx708->csi_flags & V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK ?
+		  IMX708_CLKLANE_BLANK_NONCONT : 0, &ret);
+	if (ret) {
+		dev_err(&client->dev, "%s failed to set clock lane mode\n",
+			__func__);
+		return ret;
+	}
+
+	cci_read(imx708->cci, IMX708_REG_BASE_SPC_GAINS_L, &val, &ret);
+	if (ret == 0 && val == 0x40) {
+		for (i = 0; i < 54 && ret == 0; i++) {
+			cci_write(imx708->cci,
+				  CCI_REG8(CCI_REG_ADDR(IMX708_REG_BASE_SPC_GAINS_L) + i),
+				  pdaf_gains[0][i % 9], &ret);
+		}
+		for (i = 0; i < 54 && ret == 0; i++) {
+			cci_write(imx708->cci,
+				  CCI_REG8(CCI_REG_ADDR(IMX708_REG_BASE_SPC_GAINS_R) + i),
+				  pdaf_gains[1][i % 9], &ret);
+		}
+	}
+	if (ret) {
+		dev_err(&client->dev, "%s failed to set PDAF gains\n",
+			__func__);
+		return ret;
+	}
+
+	return 0;
+}
+
 /* Power/clock management functions */
 static int imx708_power_on(struct device *dev)
 {
@@ -1087,7 +1088,18 @@ static int imx708_power_on(struct device *dev)
 	usleep_range(IMX708_XCLR_MIN_DELAY_US,
 		     IMX708_XCLR_MIN_DELAY_US + IMX708_XCLR_DELAY_RANGE_US);
 
+	ret = imx708_write_common(imx708);
+	if (ret) {
+		dev_err(&client->dev, "%s failed to write registers\n",
+			__func__);
+		goto clk_off;
+	}
+
 	return 0;
+
+clk_off:
+	gpiod_set_value_cansleep(imx708->reset_gpio, 0);
+	clk_disable_unprepare(imx708->inclk);
 
 reg_off:
 	regulator_bulk_disable(ARRAY_SIZE(imx708_supply_name),
@@ -1105,9 +1117,6 @@ static int imx708_power_off(struct device *dev)
 	regulator_bulk_disable(ARRAY_SIZE(imx708_supply_name),
 			       imx708->supplies);
 	clk_disable_unprepare(imx708->inclk);
-
-	/* Force reprogramming of the common registers when powered up again. */
-	imx708->common_regs_written = false;
 
 	return 0;
 }
