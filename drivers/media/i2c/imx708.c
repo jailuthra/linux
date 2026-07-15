@@ -82,8 +82,6 @@
 #define IMX708_EXPOSURE_DEFAULT		0x640
 #define IMX708_EXPOSURE_STEP		1
 #define IMX708_EXPOSURE_MIN		8
-#define IMX708_EXPOSURE_MAX		(IMX708_FRAME_LENGTH_MAX - \
-					 IMX708_EXPOSURE_OFFSET)
 
 /* Analog gain control */
 #define IMX708_REG_ANALOG_GAIN		CCI_REG16(0x0204)
@@ -395,7 +393,6 @@ struct imx708 {
 
 	struct v4l2_ctrl_handler ctrl_handler;
 	/* V4L2 Controls */
-	struct v4l2_ctrl *pixel_rate;
 	struct v4l2_ctrl *exposure;
 	struct v4l2_ctrl *vblank;
 	struct v4l2_ctrl *hblank;
@@ -545,7 +542,7 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 			  ctrl->p_new.p_u32[3], &ret);
 		break;
 	default:
-		dev_info(&client->dev,
+		dev_warn(&client->dev,
 			 "ctrl(id:0x%x,val:0x%x) is not handled\n",
 			 ctrl->id, ctrl->val);
 		ret = -EINVAL;
@@ -958,28 +955,28 @@ static int imx708_init_controls(struct imx708 *imx708)
 	struct v4l2_fwnode_device_properties props;
 	struct v4l2_ctrl *link_freq;
 	unsigned int i;
-	s32 hblank, vblank_max;
+	s32 hblank, vblank_max, exposure_max;
 	int ret;
 
+	ret = v4l2_fwnode_device_parse(&client->dev, &props);
+	if (ret < 0)
+		return ret;
+
 	ctrl_hdlr = &imx708->ctrl_handler;
-	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 16);
+	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 17);
 	if (ret)
 		return ret;
 
 	/* By default, PIXEL_RATE is read only */
-	imx708->pixel_rate = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
-					       V4L2_CID_PIXEL_RATE,
-					       IMX708_PIXEL_RATE,
-					       IMX708_PIXEL_RATE, 1,
-					       IMX708_PIXEL_RATE);
+	v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops, V4L2_CID_PIXEL_RATE,
+			  IMX708_PIXEL_RATE, IMX708_PIXEL_RATE, 1,
+			  IMX708_PIXEL_RATE);
 
 	link_freq = v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx708_ctrl_ops,
 					   V4L2_CID_LINK_FREQ,
 					   ARRAY_SIZE(link_freqs) - 1,
 					   __ffs(imx708->link_freq_bitmap),
 					   link_freqs);
-	if (link_freq)
-		link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	/* Frame Time = 2^LONG_EXP_SHIFT * REG_FRAME_LENGTH */
 	vblank_max = ((1 << IMX708_LONG_EXP_SHIFT_MAX) *
@@ -993,10 +990,13 @@ static int imx708_init_controls(struct imx708 *imx708)
 					   V4L2_CID_HBLANK, hblank, hblank, 1,
 					   hblank);
 
+	/* Max Exposure = FRAME_LENGTH - OFFSET */
+	exposure_max = (imx708_active_area.height + IMX708_VBLANK_MIN) -
+		IMX708_EXPOSURE_OFFSET;
 	imx708->exposure = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
 					     V4L2_CID_EXPOSURE,
 					     IMX708_EXPOSURE_MIN,
-					     IMX708_EXPOSURE_MAX,
+					     exposure_max,
 					     IMX708_EXPOSURE_STEP,
 					     IMX708_EXPOSURE_DEFAULT);
 
@@ -1037,19 +1037,18 @@ static int imx708_init_controls(struct imx708 *imx708)
 
 	v4l2_ctrl_new_custom(ctrl_hdlr, &imx708_notify_gains_ctrl, NULL);
 
-	ret = v4l2_fwnode_device_parse(&client->dev, &props);
-	if (ret)
-		goto error;
-
 	v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &imx708_ctrl_ops, &props);
 
 	if (ctrl_hdlr->error) {
 		ret = ctrl_hdlr->error;
 		dev_err(&client->dev, "%s control init failed (%d)\n",
 			__func__, ret);
-		goto error;
+		v4l2_ctrl_handler_free(ctrl_hdlr);
+
+		return ret;
 	}
 
+	link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 	imx708->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 	imx708->hflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
 	imx708->vflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
@@ -1057,11 +1056,6 @@ static int imx708_init_controls(struct imx708 *imx708)
 	imx708->sd.ctrl_handler = ctrl_hdlr;
 
 	return 0;
-
-error:
-	v4l2_ctrl_handler_free(ctrl_hdlr);
-
-	return ret;
 }
 
 static int imx708_check_hwcfg(struct device *dev, struct imx708 *imx708)
