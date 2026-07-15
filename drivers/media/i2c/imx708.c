@@ -21,14 +21,6 @@
 #include <media/v4l2-mediabus.h>
 #include <media/v4l2-subdev.h>
 
-/*
- * Parameter to adjust Quad Bayer re-mosaic broken line correction
- * strength, used in full-resolution mode only. Set zero to disable.
- */
-static int qbc_adjust = 2;
-module_param(qbc_adjust, int, 0644);
-MODULE_PARM_DESC(qbc_adjust, "Quad Bayer broken line correction strength [0,2-5]");
-
 /* Chip ID */
 #define IMX708_REG_CHIP_ID		CCI_REG16(0x0016)
 #define IMX708_CHIP_ID			0x0708
@@ -148,10 +140,11 @@ MODULE_PARM_DESC(qbc_adjust, "Quad Bayer broken line correction strength [0,2-5]
 
 /* QBC Re-mosaic broken line correction registers */
 #define IMX708_REG_QBC_RMSC_EN		CCI_REG8(0x32d5)
-#define IMX708_LPF_INTENSITY_EN		CCI_REG8(0xc428)
+#define IMX708_REG_LPF_INTENSITY_EN	CCI_REG8(0xc428)
 #define IMX708_LPF_INTENSITY_ENABLED	0x00
 #define IMX708_LPF_INTENSITY_DISABLED	0x01
-#define IMX708_LPF_INTENSITY		CCI_REG8(0xc429)
+#define IMX708_REG_LPF_INTENSITY	CCI_REG8(0xc429)
+#define IMX708_LPF_INTENSITY_DEFAULT	2
 
 /* AE HIST */
 #define IMX708_REG_AEHIST_AUTO_THRESH	CCI_REG16(0x3360)
@@ -303,6 +296,8 @@ static const struct cci_reg_sequence imx708_common_regs[] = {
 	{ IMX708_REG_AEHIST1_AREA_HEIGHT, 0x0000 },
 	/* Quad-Bayer Compensation */
 	{ IMX708_REG_QBC_RMSC_EN, 0x01 },
+	{ IMX708_REG_LPF_INTENSITY, IMX708_LPF_INTENSITY_DEFAULT },
+	{ IMX708_REG_LPF_INTENSITY_EN, IMX708_LPF_INTENSITY_ENABLED },
 	{ CCI_REG8(0x32d6), 0x00 },
 	{ CCI_REG8(0x32db), 0x01 },
 	/* Analogue crop disabled */
@@ -737,16 +732,6 @@ static int imx708_enable_streams(struct v4l2_subdev *sd,
 		dev_err(&client->dev, "%s failed to set link frequency registers\n",
 			__func__);
 		goto err_rpm_put;
-	}
-
-	/* Quad Bayer re-mosaic adjustments (for full-resolution mode only) */
-	if (qbc_adjust > 0) {
-		cci_write(imx708->cci, IMX708_LPF_INTENSITY, qbc_adjust, &ret);
-		cci_write(imx708->cci, IMX708_LPF_INTENSITY_EN,
-			  IMX708_LPF_INTENSITY_ENABLED, &ret);
-	} else {
-		cci_write(imx708->cci, IMX708_LPF_INTENSITY_EN,
-			  IMX708_LPF_INTENSITY_DISABLED, &ret);
 	}
 
 	/* Apply customized values from user */
