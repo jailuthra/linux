@@ -1141,14 +1141,6 @@ static int imx708_identify_module(struct imx708 *imx708)
 		return -EIO;
 	}
 
-	cci_read(imx708->cci, CCI_REG16(0x0000), &val, &ret);
-	if (!ret) {
-		dev_info(&client->dev, "camera module ID 0x%04llx\n", val);
-		snprintf(imx708->sd.name, sizeof(imx708->sd.name), "imx708%s%s",
-			 val & 0x02 ? "_wide" : "",
-			 val & 0x80 ? "_noir" : "");
-	}
-
 	return 0;
 }
 
