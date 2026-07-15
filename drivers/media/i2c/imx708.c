@@ -41,8 +41,8 @@ MODULE_PARM_DESC(qbc_adjust, "Quad Bayer broken line correction strength [0,2-5]
 
 #define IMX708_INCLK_FREQ		24000000
 
-/* Default initial pixel rate, will get updated for each mode. */
-#define IMX708_INITIAL_PIXEL_RATE	590000000
+/* Pixel rate  */
+#define IMX708_PIXEL_RATE		595200000
 
 /* PLL */
 #define IMX708_REG_IVT_PXCK_DIV		CCI_REG8(0x0301)
@@ -58,6 +58,8 @@ MODULE_PARM_DESC(qbc_adjust, "Quad Bayer broken line correction strength [0,2-5]
 #define IMX708_REG_FRAME_LENGTH		CCI_REG16(0x0340)
 #define IMX708_FRAME_LENGTH_MAX		0xffff
 #define IMX708_REG_LINE_LENGTH		CCI_REG16(0x0342)
+#define IMX708_LINE_LENGTH		15648
+#define IMX708_VBLANK_MIN		58
 
 /* Imaging area */
 #define IMX708_REG_X_ADD_STA		CCI_REG16(0x0344)
@@ -87,7 +89,7 @@ MODULE_PARM_DESC(qbc_adjust, "Quad Bayer broken line correction strength [0,2-5]
 #define IMX708_EXPOSURE_OFFSET		48
 #define IMX708_EXPOSURE_DEFAULT		0x640
 #define IMX708_EXPOSURE_STEP		1
-#define IMX708_EXPOSURE_MIN		1
+#define IMX708_EXPOSURE_MIN		8
 #define IMX708_EXPOSURE_MAX		(IMX708_FRAME_LENGTH_MAX - \
 					 IMX708_EXPOSURE_OFFSET)
 
@@ -184,42 +186,6 @@ struct imx708_reg_list {
 	const struct cci_reg_sequence *regs;
 };
 
-/* Mode : resolution and related config&values */
-struct imx708_mode {
-	/* Frame width */
-	unsigned int width;
-
-	/* Frame height */
-	unsigned int height;
-
-	/* H-timing in pixels */
-	unsigned int line_length_pix;
-
-	/* Analog crop rectangle. */
-	struct v4l2_rect crop;
-
-	/* Highest possible framerate. */
-	unsigned int vblank_min;
-
-	/* Default framerate. */
-	unsigned int vblank_default;
-
-	/* Default register values */
-	struct imx708_reg_list reg_list;
-
-	/* Not all modes have the same pixel rate. */
-	u64 pixel_rate;
-
-	/* Not all modes have the same minimum exposure. */
-	u32 exposure_lines_min;
-
-	/* Not all modes have the same exposure lines step. */
-	u32 exposure_lines_step;
-
-	/* Quad Bayer Re-mosaic flag */
-	bool remosaic;
-};
-
 /* Default PDAF pixel correction gains */
 static const u8 pdaf_gains[2][9] = {
 	{ 0x4c, 0x4c, 0x4c, 0x46, 0x3e, 0x39, 0x36, 0x36, 0x36 },
@@ -267,7 +233,8 @@ static const struct imx708_reg_list link_freq_regs[] = {
 	},
 };
 
-static const struct cci_reg_sequence mode_common_regs[] = {
+static const struct cci_reg_sequence imx708_common_regs[] = {
+	/* Common */
 	{ CCI_REG8(0x0100), 0x00 },
 	{ CCI_REG8(0x0136), 0x18 },
 	{ CCI_REG8(0x0137), 0x00 },
@@ -316,35 +283,7 @@ static const struct cci_reg_sequence mode_common_regs[] = {
 	{ CCI_REG8(0x3364), 0x00 },
 	{ CCI_REG8(0x3365), 0x00 },
 	{ CCI_REG8(0x0138), 0x01 },
-};
-
-/* 10-bit. */
-static const struct cci_reg_sequence mode_4608x2592_regs[] = {
-	{ IMX708_REG_LINE_LENGTH, 0x3d20 },
-	{ IMX708_REG_FRAME_LENGTH, 0x0a59 },
-	{ IMX708_REG_X_ADD_STA, 0x0000 },
-	{ IMX708_REG_Y_ADD_STA, 0x0000 },
-	{ IMX708_REG_X_ADD_END, 0x11ff },
-	{ IMX708_REG_Y_ADD_END, 0x0a1f },
-	{ CCI_REG8(0x0220), 0x62 },
-	{ CCI_REG8(0x0222), 0x01 },
-	{ IMX708_REG_BINNING_MODE, 0x00 },
-	{ IMX708_REG_BINNING_TYPE, 0x11 },
-	{ IMX708_REG_BINNING_WEIGHT, 0x0a },
-	{ IMX708_REG_BINNING_PRIORITY_H, 0x01 },
-	{ IMX708_REG_BINNING_PRIORITY_V, 0x01 },
-	{ IMX708_REG_QBC_RMSC_EN, 0x01 },
-	{ CCI_REG8(0x32d6), 0x00 },
-	{ CCI_REG8(0x32db), 0x01 },
-	{ IMX708_REG_ACROPLP_EN, 0x00 },
-	{ CCI_REG8(0x350c), 0x00 },
-	{ CCI_REG8(0x350d), 0x00 },
-	{ IMX708_REG_DIG_CROP_X_OFFSET, 0x0000 },
-	{ IMX708_REG_DIG_CROP_Y_OFFSET, 0x0000 },
-	{ IMX708_REG_DIG_CROP_WIDTH, 0x1200 },
-	{ IMX708_REG_DIG_CROP_HEIGHT, 0x0a20 },
-	{ IMX708_REG_X_OUTPUT_SIZE, 0x1200 },
-	{ IMX708_REG_Y_OUTPUT_SIZE, 0x0a20 },
+	/* PLL config */
 	{ IMX708_REG_IVT_PXCK_DIV, 0x05 },
 	{ IMX708_REG_IVT_SYCK_DIV, 0x02 },
 	{ IMX708_REG_IVT_PREPLLCK_DIV, 0x02 },
@@ -352,6 +291,26 @@ static const struct cci_reg_sequence mode_4608x2592_regs[] = {
 	{ IMX708_REG_IOP_SYCK_DIV, 0x02 },
 	{ IMX708_REG_IOP_PREPLLCK_DIV, 0x04 },
 	{ IMX708_REG_PLL_MULT_DRIV, 0x01 },
+	/* non-HDR defaults */
+	{ CCI_REG8(0x0220), 0x62 },
+	{ CCI_REG8(0x0222), 0x01 },
+	{ CCI_REG8(0x350c), 0x00 },
+	{ CCI_REG8(0x350d), 0x00 },
+	{ IMX708_REG_SHT_EXPOSURE, 0x01f4 },
+	{ IMX708_REG_MID_EXPOSURE, 0x01f4 },
+	{ IMX708_REG_SHT_ANALOG_GAIN, 0x0000 },
+	{ IMX708_REG_SHT_DIGITAL_GAIN, 0x0100 },
+	{ IMX708_REG_MID_ANALOG_GAIN, 0x0000 },
+	{ IMX708_REG_MID_DIGITAL_GAIN, 0x0100 },
+	{ IMX708_REG_AEHIST1_AREA_WIDTH, 0x0000 },
+	{ IMX708_REG_AEHIST1_AREA_HEIGHT, 0x0000 },
+	/* Quad-Bayer Compensation */
+	{ IMX708_REG_QBC_RMSC_EN, 0x01 },
+	{ CCI_REG8(0x32d6), 0x00 },
+	{ CCI_REG8(0x32db), 0x01 },
+	/* Analogue crop disabled */
+	{ IMX708_REG_ACROPLP_EN, 0x00 },
+	/* Unknown registers */
 	{ CCI_REG8(0x3ca0), 0x00 },
 	{ CCI_REG8(0x3ca1), 0x64 },
 	{ CCI_REG8(0x3ca4), 0x00 },
@@ -368,15 +327,6 @@ static const struct cci_reg_sequence mode_4608x2592_regs[] = {
 	{ CCI_REG8(0x3cbd), 0x3c },
 	{ CCI_REG8(0x3cbe), 0x00 },
 	{ CCI_REG8(0x3cbf), 0x00 },
-	{ IMX708_REG_EXPOSURE, 0x0a29 },
-	{ IMX708_REG_SHT_EXPOSURE, 0x01f4 },
-	{ IMX708_REG_MID_EXPOSURE, 0x01f4 },
-	{ IMX708_REG_ANALOG_GAIN, 0x0000 },
-	{ IMX708_REG_SHT_ANALOG_GAIN, 0x0000 },
-	{ IMX708_REG_SHT_DIGITAL_GAIN, 0x0100 },
-	{ IMX708_REG_DIGITAL_GAIN, 0x0100 },
-	{ IMX708_REG_MID_ANALOG_GAIN, 0x0000 },
-	{ IMX708_REG_MID_DIGITAL_GAIN, 0x0100 },
 	{ CCI_REG8(0x341a), 0x00 },
 	{ CCI_REG8(0x341b), 0x00 },
 	{ CCI_REG8(0x341c), 0x00 },
@@ -385,34 +335,6 @@ static const struct cci_reg_sequence mode_4608x2592_regs[] = {
 	{ CCI_REG8(0x341f), 0x20 },
 	{ CCI_REG8(0x3420), 0x00 },
 	{ CCI_REG8(0x3421), 0xd8 },
-	{ IMX708_REG_AEHIST1_AREA_WIDTH, 0x0000 },
-	{ IMX708_REG_AEHIST1_AREA_HEIGHT, 0x0000 },
-};
-
-/* Mode configs. Keep separate lists for when HDR is enabled or not. */
-static const struct imx708_mode supported_modes_10bit[] = {
-	{
-		/* Full resolution. */
-		.width = 4608,
-		.height = 2592,
-		.line_length_pix = 0x3d20,
-		.crop = {
-			.left = IMX708_PIXEL_ARRAY_LEFT,
-			.top = IMX708_PIXEL_ARRAY_TOP,
-			.width = 4608,
-			.height = 2592,
-		},
-		.vblank_min = 58,
-		.vblank_default = 58,
-		.reg_list = {
-			.num_of_regs = ARRAY_SIZE(mode_4608x2592_regs),
-			.regs = mode_4608x2592_regs,
-		},
-		.pixel_rate = 595200000,
-		.exposure_lines_min = 8,
-		.exposure_lines_step = 1,
-		.remosaic = true
-	},
 };
 
 /*
@@ -490,9 +412,6 @@ struct imx708 {
 		struct v4l2_ctrl *vflip;
 	};
 
-	/* Current mode */
-	const struct imx708_mode *mode;
-
 	/* Current long exposure factor in use. Set through V4L2_CID_VBLANK */
 	unsigned int long_exp_shift;
 
@@ -506,25 +425,6 @@ static inline struct imx708 *to_imx708(struct v4l2_subdev *_sd)
 	return container_of(_sd, struct imx708, sd);
 }
 
-static inline void get_mode_table(unsigned int code,
-				  const struct imx708_mode **mode_list,
-				  unsigned int *num_modes)
-{
-	switch (code) {
-	/* 10-bit */
-	case MEDIA_BUS_FMT_SRGGB10_1X10:
-	case MEDIA_BUS_FMT_SGRBG10_1X10:
-	case MEDIA_BUS_FMT_SGBRG10_1X10:
-	case MEDIA_BUS_FMT_SBGGR10_1X10:
-		*mode_list = supported_modes_10bit;
-		*num_modes = ARRAY_SIZE(supported_modes_10bit);
-		break;
-	default:
-		*mode_list = NULL;
-		*num_modes = 0;
-	}
-}
-
 /* Get bayer order based on flip setting. */
 static u32 imx708_get_format_code(struct imx708 *imx708)
 {
@@ -536,48 +436,17 @@ static u32 imx708_get_format_code(struct imx708 *imx708)
 	return codes[i];
 }
 
-static int imx708_set_exposure(struct imx708 *imx708, unsigned int val)
-{
-	int ret = 0;
-
-	val = max(val, imx708->mode->exposure_lines_min);
-	val -= val % imx708->mode->exposure_lines_step;
-
-	/*
-	 * In HDR mode this will set the longest exposure. The sensor
-	 * will automatically divide the medium and short ones by 4,16.
-	 */
-	cci_write(imx708->cci, IMX708_REG_EXPOSURE,
-		  val >> imx708->long_exp_shift, &ret);
-
-	return ret;
-}
-
-static void imx708_adjust_exposure_range(struct imx708 *imx708,
-					 struct v4l2_ctrl *ctrl)
+static void imx708_adjust_exposure_range(struct imx708 *imx708)
 {
 	int exposure_max, exposure_def;
 
 	/* Honour the VBLANK limits when setting exposure. */
-	exposure_max = imx708->mode->height + imx708->vblank->val -
+	exposure_max = IMX708_PIXEL_ARRAY_HEIGHT + imx708->vblank->val -
 		IMX708_EXPOSURE_OFFSET;
 	exposure_def = min(exposure_max, imx708->exposure->val);
 	__v4l2_ctrl_modify_range(imx708->exposure, imx708->exposure->minimum,
 				 exposure_max, imx708->exposure->step,
 				 exposure_def);
-}
-
-static int imx708_set_analogue_gain(struct imx708 *imx708, unsigned int val)
-{
-	int ret = 0;
-
-	/*
-	 * In HDR mode this will set the gain for the longest exposure,
-	 * and by default the sensor uses the same gain for all of them.
-	 */
-	cci_write(imx708->cci, IMX708_REG_ANALOG_GAIN, val, &ret);
-
-	return ret;
 }
 
 static int imx708_set_frame_length(struct imx708 *imx708, unsigned int val)
@@ -598,30 +467,6 @@ static int imx708_set_frame_length(struct imx708 *imx708, unsigned int val)
 	return ret;
 }
 
-static void imx708_set_framing_limits(struct imx708 *imx708)
-{
-	const struct imx708_mode *mode = imx708->mode;
-	unsigned int hblank;
-
-	__v4l2_ctrl_modify_range(imx708->pixel_rate,
-				 mode->pixel_rate, mode->pixel_rate,
-				 1, mode->pixel_rate);
-
-	/* Update limits and set FPS to default */
-	__v4l2_ctrl_modify_range(imx708->vblank, mode->vblank_min,
-				 ((1 << IMX708_LONG_EXP_SHIFT_MAX) *
-					IMX708_FRAME_LENGTH_MAX) - mode->height,
-				 1, mode->vblank_default);
-
-	/*
-	 * Currently PPL is fixed to the mode specified value, so hblank
-	 * depends on mode->width only, and is not changeable in any
-	 * way other than changing the mode.
-	 */
-	hblank = mode->line_length_pix - mode->width;
-	__v4l2_ctrl_modify_range(imx708->hblank, hblank, hblank, 1, hblank);
-}
-
 static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx708 *imx708 =
@@ -635,7 +480,7 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 		 * The VBLANK control may change the limits of usable exposure,
 		 * so check and adjust if necessary.
 		 */
-		imx708_adjust_exposure_range(imx708, ctrl);
+		imx708_adjust_exposure_range(imx708);
 		break;
 
 	case V4L2_CID_HFLIP:
@@ -659,10 +504,17 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_ANALOGUE_GAIN:
-		imx708_set_analogue_gain(imx708, ctrl->val);
+		cci_write(imx708->cci, IMX708_REG_ANALOG_GAIN, ctrl->val, &ret);
 		break;
+	case V4L2_CID_VBLANK:
+		ret = imx708_set_frame_length(imx708,
+					      IMX708_PIXEL_ARRAY_HEIGHT +
+					      ctrl->val);
+		fallthrough; /* update exposure with new long_exp_shift */
 	case V4L2_CID_EXPOSURE:
-		ret = imx708_set_exposure(imx708, ctrl->val);
+		cci_write(imx708->cci, IMX708_REG_EXPOSURE,
+			  imx708->exposure->val >> imx708->long_exp_shift,
+			  &ret);
 		break;
 	case V4L2_CID_DIGITAL_GAIN:
 		cci_write(imx708->cci, IMX708_REG_DIGITAL_GAIN, ctrl->val, &ret);
@@ -691,10 +543,6 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VFLIP:
 		cci_write(imx708->cci, IMX708_REG_ORIENTATION,
 			  imx708->hflip->val | imx708->vflip->val << 1, &ret);
-		break;
-	case V4L2_CID_VBLANK:
-		ret = imx708_set_frame_length(imx708,
-					      imx708->mode->height + ctrl->val);
 		break;
 	case V4L2_CID_NOTIFY_GAINS:
 		cci_write(imx708->cci, IMX708_REG_COLOUR_BALANCE_BLUE,
@@ -757,22 +605,17 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 		return -EINVAL;
 
 	if (fse->pad == IMAGE_PAD) {
-		const struct imx708_mode *mode_list;
-		unsigned int num_modes;
-
-		get_mode_table(fse->code, &mode_list, &num_modes);
-
-		if (fse->index >= num_modes)
-			return -EINVAL;
-
 		code = imx708_get_format_code(imx708);
 
 		if (fse->code != code)
 			return -EINVAL;
 
-		fse->min_width = mode_list[fse->index].width;
+		if (fse->index > 0)
+			return -EINVAL;
+
+		fse->min_width = IMX708_PIXEL_ARRAY_WIDTH;
 		fse->max_width = fse->min_width;
-		fse->min_height = mode_list[fse->index].height;
+		fse->min_height = IMX708_PIXEL_ARRAY_HEIGHT;
 		fse->max_height = fse->min_height;
 	} else {
 		if (fse->code != MEDIA_BUS_FMT_SENSOR_DATA || fse->index > 0)
@@ -797,11 +640,10 @@ static void imx708_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
 	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
 }
 
-static void imx708_update_image_pad_format(const struct imx708_mode *mode,
-					   struct v4l2_mbus_framefmt *format)
+static void imx708_update_image_pad_format(struct v4l2_mbus_framefmt *format)
 {
-	format->width = mode->width;
-	format->height = mode->height;
+	format->width = IMX708_PIXEL_ARRAY_WIDTH;
+	format->height = IMX708_PIXEL_ARRAY_HEIGHT;
 	format->field = V4L2_FIELD_NONE;
 	imx708_reset_colorspace(format);
 }
@@ -823,8 +665,7 @@ static int imx708_init_state(struct v4l2_subdev *sd,
 
 	/* Initialize the image pad format. */
 	format = v4l2_subdev_state_get_format(state, IMAGE_PAD);
-	imx708_update_image_pad_format(&supported_modes_10bit[0],
-				       format);
+	imx708_update_image_pad_format(format);
 	format->code = imx708_get_format_code(imx708);
 
 	/* Initialize the metadata pad format. */
@@ -855,27 +696,11 @@ static int imx708_set_pad_format(struct v4l2_subdev *sd,
 	format = v4l2_subdev_state_get_format(sd_state, fmt->pad);
 
 	if (fmt->pad == IMAGE_PAD) {
-		const struct imx708_mode *mode_list;
-		const struct imx708_mode *mode;
-		unsigned int num_modes;
-
 		/* Bayer order varies with flips */
 		format->code = imx708_get_format_code(imx708);
 
-		get_mode_table(format->code, &mode_list, &num_modes);
-
-		mode = v4l2_find_nearest_size(mode_list,
-					      num_modes,
-					      width, height,
-					      fmt->format.width,
-					      fmt->format.height);
-		imx708_update_image_pad_format(mode, format);
+		imx708_update_image_pad_format(format);
 		fmt->format = *format;
-
-		if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE) {
-			imx708->mode = mode;
-			imx708_set_framing_limits(imx708);
-		}
 	} else {
 		imx708_update_metadata_pad_format(format);
 		fmt->format = *format;
@@ -891,14 +716,9 @@ static int imx708_get_selection(struct v4l2_subdev *sd,
 {
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP: {
-		struct imx708 *imx708 = to_imx708(sd);
-		const struct v4l2_rect *crop;
+		struct v4l2_rect *crop;
 
-		if (sd_state)
-			crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
-		else
-			crop = &imx708->mode->crop;
-
+		crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
 		sel->r = *crop;
 
 		return 0;
@@ -925,23 +745,66 @@ static int imx708_get_selection(struct v4l2_subdev *sd,
 	return -EINVAL;
 }
 
+static int imx708_program_window(struct imx708 *imx708,
+				 struct v4l2_subdev_state *state)
+{
+	const struct v4l2_rect *crop;
+	const struct v4l2_mbus_framefmt *format;
+	int ret = 0;
+	s32 x_start, y_start;
+
+	crop = v4l2_subdev_state_get_crop(state, IMAGE_PAD);
+	format = v4l2_subdev_state_get_format(state, IMAGE_PAD);
+
+	/* Line length */
+	cci_write(imx708->cci, IMX708_REG_LINE_LENGTH, IMX708_LINE_LENGTH,
+		  &ret);
+
+	/* Imaging area */
+	x_start = crop->left - IMX708_PIXEL_ARRAY_LEFT;
+	y_start = crop->top - IMX708_PIXEL_ARRAY_TOP;
+	cci_write(imx708->cci, IMX708_REG_X_ADD_STA, x_start, &ret);
+	cci_write(imx708->cci, IMX708_REG_Y_ADD_STA, y_start, &ret);
+	cci_write(imx708->cci, IMX708_REG_X_ADD_END, x_start + crop->width - 1,
+		  &ret);
+	cci_write(imx708->cci, IMX708_REG_Y_ADD_END, y_start + crop->height - 1,
+		  &ret);
+
+	/* Binning (fixed: no binning) */
+	cci_write(imx708->cci, IMX708_REG_BINNING_MODE, 0x00, &ret);
+	cci_write(imx708->cci, IMX708_REG_BINNING_TYPE, 0x11, &ret);
+	cci_write(imx708->cci, IMX708_REG_BINNING_WEIGHT, 0x0a, &ret);
+	cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_H, 0x01, &ret);
+	cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_V, 0x01, &ret);
+
+	/* Digital crop (fixed: no crop) */
+	cci_write(imx708->cci, IMX708_REG_DIG_CROP_X_OFFSET, 0, &ret);
+	cci_write(imx708->cci, IMX708_REG_DIG_CROP_Y_OFFSET, 0, &ret);
+	cci_write(imx708->cci, IMX708_REG_DIG_CROP_WIDTH, format->width, &ret);
+	cci_write(imx708->cci, IMX708_REG_DIG_CROP_HEIGHT, format->height, &ret);
+
+	/* Output size */
+	cci_write(imx708->cci, IMX708_REG_X_OUTPUT_SIZE, format->width, &ret);
+	cci_write(imx708->cci, IMX708_REG_Y_OUTPUT_SIZE, format->height, &ret);
+
+	return ret;
+}
+
 static int imx708_enable_streams(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_state *state, u32 pad,
 				 u64 mask)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct imx708 *imx708 = to_imx708(sd);
-	const struct imx708_reg_list *reg_list, *freq_regs;
+	const struct imx708_reg_list *freq_regs;
 	int ret = 0;
 
 	ret = pm_runtime_resume_and_get(&client->dev);
 	if (ret < 0)
 		return ret;
 
-	/* Apply default values of current mode */
-	reg_list = &imx708->mode->reg_list;
-	cci_multi_reg_write(imx708->cci, reg_list->regs,
-			    reg_list->num_of_regs, &ret);
+	/* Program windowing registers from V4L2 state */
+	ret = imx708_program_window(imx708, state);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set mode\n", __func__);
 		goto err_rpm_put;
@@ -958,7 +821,7 @@ static int imx708_enable_streams(struct v4l2_subdev *sd,
 	}
 
 	/* Quad Bayer re-mosaic adjustments (for full-resolution mode only) */
-	if (imx708->mode->remosaic && qbc_adjust > 0) {
+	if (qbc_adjust > 0) {
 		cci_write(imx708->cci, IMX708_LPF_INTENSITY, qbc_adjust, &ret);
 		cci_write(imx708->cci, IMX708_LPF_INTENSITY_EN,
 			  IMX708_LPF_INTENSITY_ENABLED, &ret);
@@ -1022,8 +885,8 @@ static int imx708_write_common(struct imx708 *imx708)
 	int i, ret = 0;
 	u64 val;
 
-	cci_multi_reg_write(imx708->cci, mode_common_regs,
-			    ARRAY_SIZE(mode_common_regs), &ret);
+	cci_multi_reg_write(imx708->cci, imx708_common_regs,
+			    ARRAY_SIZE(imx708_common_regs), &ret);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to set common settings\n",
 			__func__);
@@ -1193,6 +1056,7 @@ static int imx708_init_controls(struct imx708 *imx708)
 	struct v4l2_fwnode_device_properties props;
 	struct v4l2_ctrl *link_freq;
 	unsigned int i;
+	s32 hblank, vblank_max;
 	int ret;
 
 	ctrl_hdlr = &imx708->ctrl_handler;
@@ -1203,9 +1067,9 @@ static int imx708_init_controls(struct imx708 *imx708)
 	/* By default, PIXEL_RATE is read only */
 	imx708->pixel_rate = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
 					       V4L2_CID_PIXEL_RATE,
-					       IMX708_INITIAL_PIXEL_RATE,
-					       IMX708_INITIAL_PIXEL_RATE, 1,
-					       IMX708_INITIAL_PIXEL_RATE);
+					       IMX708_PIXEL_RATE,
+					       IMX708_PIXEL_RATE, 1,
+					       IMX708_PIXEL_RATE);
 
 	link_freq = v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx708_ctrl_ops,
 					   V4L2_CID_LINK_FREQ,
@@ -1215,14 +1079,17 @@ static int imx708_init_controls(struct imx708 *imx708)
 	if (link_freq)
 		link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
-	/*
-	 * Create the controls here, but mode specific limits are setup
-	 * in the imx708_set_framing_limits() call below.
-	 */
+	/* Frame Time = 2^LONG_EXP_SHIFT * REG_FRAME_LENGTH */
+	vblank_max = ((1 << IMX708_LONG_EXP_SHIFT_MAX) *
+		      IMX708_FRAME_LENGTH_MAX) - IMX708_PIXEL_ARRAY_HEIGHT;
 	imx708->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
-					   V4L2_CID_VBLANK, 0, 0xffff, 1, 0);
+					   V4L2_CID_VBLANK, IMX708_VBLANK_MIN,
+					   vblank_max, 1, IMX708_VBLANK_MIN);
+
+	hblank = IMX708_LINE_LENGTH - IMX708_PIXEL_ARRAY_WIDTH;
 	imx708->hblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
-					   V4L2_CID_HBLANK, 0, 0xffff, 1, 0);
+					   V4L2_CID_HBLANK, hblank, hblank, 1,
+					   hblank);
 
 	imx708->exposure = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
 					     V4L2_CID_EXPOSURE,
@@ -1286,9 +1153,6 @@ static int imx708_init_controls(struct imx708 *imx708)
 	imx708->vflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
 
 	imx708->sd.ctrl_handler = ctrl_hdlr;
-
-	/* Setup exposure and frame/line length limits. */
-	imx708_set_framing_limits(imx708);
 
 	return 0;
 
@@ -1398,9 +1262,6 @@ static int imx708_probe(struct i2c_client *client)
 	ret = imx708_identify_module(imx708);
 	if (ret)
 		goto error_power_off;
-
-	/* Set default mode to max resolution. */
-	imx708->mode = &supported_modes_10bit[0];
 
 	/*
 	 * Enable runtime PM with autosuspend. As the device has been powered
