@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * A V4L2 driver for Sony IMX708 cameras.
- * Copyright (C) 2022, Raspberry Pi Ltd
+ * A V4L2 driver for Sony IMX708
  *
- * Based on Sony imx477 camera driver
- * Copyright (C) 2020 Raspberry Pi Ltd
+ * Copyright (C) 2026 Ideas on Board Oy
+ * Copyright (C) 2022 Raspberry Pi Ltd
  */
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -1251,5 +1250,6 @@ static struct i2c_driver imx708_i2c_driver = {
 module_i2c_driver(imx708_i2c_driver);
 
 MODULE_AUTHOR("David Plowman <david.plowman@raspberrypi.com>");
+MODULE_AUTHOR("Jai Luthra <jai.luthra@ideasonboard.com>");
 MODULE_DESCRIPTION("Sony IMX708 sensor driver");
 MODULE_LICENSE("GPL v2");
