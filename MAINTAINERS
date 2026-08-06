@@ -24103,7 +24103,9 @@ F:	Documentation/devicetree/bindings/media/i2c/sony,imx678.yaml
 F:	drivers/media/i2c/imx678.c
 
 SONY IMX708 SENSOR DRIVER
-M:	Raspberry Pi Kernel Maintenance <kernel-list@raspberrypi.com>
+M:	Dave Stevenson <dave.stevenson@raspberrypi.com>
+M:	Jai Luthra <jai.luthra@ideasonboard.com>
+R:	Raspberry Pi Kernel Maintenance <kernel-list@raspberrypi.com>
 L:	linux-media@vger.kernel.org
 S:	Maintained
 T:	git git://linuxtv.org/media_tree.git
