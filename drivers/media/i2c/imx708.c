@@ -22,17 +22,10 @@
 #include <media/v4l2-mediabus.h>
 #include <media/v4l2-subdev.h>
 
+#include "ccs/ccs-regs.h"
 #include "ccs-pll.h"
 
-/* Chip ID */
-#define IMX708_REG_CHIP_ID		CCI_REG16(0x0016)
 #define IMX708_CHIP_ID			0x0708
-
-#define IMX708_REG_MODE_SELECT		CCI_REG8(0x0100)
-#define IMX708_MODE_STANDBY		0x00
-#define IMX708_MODE_STREAMING		0x01
-
-#define IMX708_REG_ORIENTATION		CCI_REG8(0x0101)
 
 #define IMX708_INCLK_FREQ		24000000
 
@@ -43,37 +36,17 @@
 #define IMX708_REG_IVT_PXCK_DIV		CCI_REG8(0x0301)
 #define IMX708_REG_IVT_SYCK_DIV		CCI_REG8(0x0303)
 #define IMX708_REG_IVT_PREPLLCK_DIV	CCI_REG8(0x0305)
-#define IMX708_REG_IVT_PLL_MPY		CCI_REG16(0x0306)
 #define IMX708_REG_IOP_PXCK_DIV		CCI_REG8(0x0309)
 #define IMX708_REG_IOP_SYCK_DIV		CCI_REG8(0x030b)
 #define IMX708_REG_IOP_PREPLLCK_DIV	CCI_REG8(0x030d)
-#define IMX708_REG_IOP_PLL_MPY		CCI_REG16(0x030e)
-#define IMX708_REG_PLL_MULT_DRIV	CCI_REG8(0x0310)
-#define IMX708_PLL_MODE_DUAL		1
 
 /* V_TIMING internal */
-#define IMX708_REG_FRAME_LENGTH		CCI_REG16(0x0340)
 #define IMX708_FRAME_LENGTH_MAX		0xffff
-#define IMX708_REG_LINE_LENGTH		CCI_REG16(0x0342)
 #define IMX708_LINE_LENGTH		15648
 #define IMX708_VBLANK_MIN		58
 
 /* Imaging area */
-#define IMX708_REG_X_ADD_STA		CCI_REG16(0x0344)
-#define IMX708_REG_X_ADD_END		CCI_REG16(0x0348)
-#define IMX708_REG_Y_ADD_STA		CCI_REG16(0x0346)
-#define IMX708_REG_Y_ADD_END		CCI_REG16(0x034a)
-#define IMX708_REG_DIG_CROP_X_OFFSET	CCI_REG16(0x0408)
-#define IMX708_REG_DIG_CROP_Y_OFFSET	CCI_REG16(0x040a)
-#define IMX708_REG_DIG_CROP_WIDTH	CCI_REG16(0x040c)
-#define IMX708_REG_DIG_CROP_HEIGHT	CCI_REG16(0x040e)
-#define IMX708_REG_X_OUTPUT_SIZE	CCI_REG16(0x034c)
-#define IMX708_REG_Y_OUTPUT_SIZE	CCI_REG16(0x034e)
-
 #define IMX708_REG_ACROPLP_EN		CCI_REG8(0x32df)
-#define IMX708_REG_BINNING_MODE		CCI_REG8(0x0900)
-#define IMX708_REG_BINNING_TYPE		CCI_REG8(0x0901)
-#define IMX708_REG_BINNING_WEIGHT	CCI_REG8(0x0902)
 #define IMX708_REG_BINNING_PRIORITY_H	CCI_REG8(0x3200)
 #define IMX708_REG_BINNING_PRIORITY_V	CCI_REG8(0x3201)
 
@@ -82,47 +55,30 @@
 #define IMX708_LONG_EXP_SHIFT_REG	CCI_REG8(0x3100)
 
 /* Exposure control */
-#define IMX708_REG_EXPOSURE		CCI_REG16(0x0202)
 #define IMX708_EXPOSURE_OFFSET		48
 #define IMX708_EXPOSURE_DEFAULT		0x640
 #define IMX708_EXPOSURE_STEP		1
 #define IMX708_EXPOSURE_MIN		8
 
 /* Analog gain control */
-#define IMX708_REG_ANALOG_GAIN		CCI_REG16(0x0204)
 #define IMX708_ANA_GAIN_MIN		0
 #define IMX708_ANA_GAIN_MAX		960
 #define IMX708_ANA_GAIN_STEP		1
 #define IMX708_ANA_GAIN_DEFAULT	   IMX708_ANA_GAIN_MIN
 
 /* Digital gain control */
-#define IMX708_REG_DIGITAL_GAIN		CCI_REG16(0x020e)
 #define IMX708_DGTL_GAIN_MIN		0x0100
 #define IMX708_DGTL_GAIN_MAX		0xffff
 #define IMX708_DGTL_GAIN_DEFAULT	0x0100
 #define IMX708_DGTL_GAIN_STEP		1
 
 /* Colour balance controls */
-#define IMX708_REG_COLOUR_BALANCE_RED	CCI_REG16(0x0b90)
-#define IMX708_REG_COLOUR_BALANCE_BLUE	CCI_REG16(0x0b92)
 #define IMX708_COLOUR_BALANCE_MIN	0x01
 #define IMX708_COLOUR_BALANCE_MAX	0xffff
 #define IMX708_COLOUR_BALANCE_STEP	0x01
 #define IMX708_COLOUR_BALANCE_DEFAULT	0x100
 
-/* Test Pattern Control */
-#define IMX708_REG_TEST_PATTERN		CCI_REG16(0x0600)
-#define IMX708_TEST_PATTERN_DISABLE	0
-#define IMX708_TEST_PATTERN_SOLID_COLOR	1
-#define IMX708_TEST_PATTERN_COLOR_BARS	2
-#define IMX708_TEST_PATTERN_GREY_COLOR	3
-#define IMX708_TEST_PATTERN_PN9		4
-
 /* Test pattern colour components */
-#define IMX708_REG_TEST_PATTERN_R	CCI_REG16(0x0602)
-#define IMX708_REG_TEST_PATTERN_GR	CCI_REG16(0x0604)
-#define IMX708_REG_TEST_PATTERN_B	CCI_REG16(0x0606)
-#define IMX708_REG_TEST_PATTERN_GB	CCI_REG16(0x0608)
 #define IMX708_TEST_PATTERN_COLOUR_MIN	0
 #define IMX708_TEST_PATTERN_COLOUR_MAX	0x0fff
 #define IMX708_TEST_PATTERN_COLOUR_STEP	1
@@ -130,13 +86,10 @@
 #define IMX708_REG_BASE_SPC_GAINS_L	CCI_REG8(0x7b10)
 #define IMX708_REG_BASE_SPC_GAINS_R	CCI_REG8(0x7c00)
 
-/* Middle and short exposure */
+/* Middle exposure */
 #define IMX708_REG_MID_EXPOSURE		CCI_REG16(0x3116)
-#define IMX708_REG_SHT_EXPOSURE		CCI_REG16(0x0224)
 #define IMX708_REG_MID_ANALOG_GAIN	CCI_REG16(0x3118)
 #define IMX708_REG_MID_DIGITAL_GAIN	CCI_REG16(0x311a)
-#define IMX708_REG_SHT_ANALOG_GAIN	CCI_REG16(0x0216)
-#define IMX708_REG_SHT_DIGITAL_GAIN	CCI_REG16(0x0218)
 
 #define IMX708_REG_CLKLANE_BLANK	CCI_REG8(0x3220)
 #define IMX708_CLKLANE_BLANK_NONCONT	BIT(0)
@@ -195,9 +148,8 @@ static const s64 link_freqs[] = {
 
 static const struct cci_reg_sequence imx708_common_regs[] = {
 	/* Common */
-	{ CCI_REG8(0x0100), 0x00 },
-	{ CCI_REG8(0x0136), 0x18 },
-	{ CCI_REG8(0x0137), 0x00 },
+	{ CCS_R_MODE_SELECT, 0x00 },
+	{ CCS_R_EXTCLK_FREQUENCY_MHZ, 0x1800},
 	{ CCI_REG8(0x33f0), 0x02 },
 	{ CCI_REG8(0x33f1), 0x05 },
 	{ CCI_REG8(0x3062), 0x00 },
@@ -222,13 +174,10 @@ static const struct cci_reg_sequence imx708_common_regs[] = {
 	{ CCI_REG8(0xf033), 0x08 },
 	{ CCI_REG8(0xf03d), 0x10 },
 	{ CCI_REG8(0xf03f), 0x10 },
-	{ CCI_REG8(0x0112), 0x0a },
-	{ CCI_REG8(0x0113), 0x0a },
-	{ CCI_REG8(0x0114), 0x01 },
-	{ CCI_REG8(0x0b8e), 0x01 },
-	{ CCI_REG8(0x0b8f), 0x00 },
-	{ CCI_REG8(0x0b94), 0x01 },
-	{ CCI_REG8(0x0b95), 0x00 },
+	{ CCS_R_CSI_DATA_FORMAT, 0x0a0a},
+	{ CCS_R_CSI_LANE_MODE, 0x01 },
+	{ CCS_R_ABSOLUTE_GAIN_GREENR, 0x0100},
+	{ CCS_R_ABSOLUTE_GAIN_GREENB, 0x0100},
 	{ CCI_REG8(0x3400), 0x01 },
 	{ CCI_REG8(0x3478), 0x01 },
 	{ CCI_REG8(0x3479), 0x1c },
@@ -242,16 +191,16 @@ static const struct cci_reg_sequence imx708_common_regs[] = {
 	{ CCI_REG8(0x3363), 0x00 },
 	{ CCI_REG8(0x3364), 0x00 },
 	{ CCI_REG8(0x3365), 0x00 },
-	{ CCI_REG8(0x0138), 0x01 },
+	{ CCS_R_TEMP_SENSOR_CTRL, 0x01 },
 	/* non-HDR defaults */
-	{ CCI_REG8(0x0220), 0x62 },
-	{ CCI_REG8(0x0222), 0x01 },
+	{ CCS_R_HDR_MODE, 0x62 },
+	{ CCS_R_EXPOSURE_RATIO, 0x01 },
 	{ CCI_REG8(0x350c), 0x00 },
 	{ CCI_REG8(0x350d), 0x00 },
-	{ IMX708_REG_SHT_EXPOSURE, 0x01f4 },
+	{ CCS_R_DIRECT_SHORT_INTEGRATION_TIME, 0x01f4 },
 	{ IMX708_REG_MID_EXPOSURE, 0x01f4 },
-	{ IMX708_REG_SHT_ANALOG_GAIN, 0x0000 },
-	{ IMX708_REG_SHT_DIGITAL_GAIN, 0x0100 },
+	{ CCS_R_SHORT_ANALOG_GAIN_GLOBAL, 0x0000 },
+	{ CCS_R_SHORT_DIGITAL_GAIN_GLOBAL, 0x0100 },
 	{ IMX708_REG_MID_ANALOG_GAIN, 0x0000 },
 	{ IMX708_REG_MID_DIGITAL_GAIN, 0x0100 },
 	{ IMX708_REG_AEHIST1_AREA_WIDTH, 0x0000 },
@@ -317,11 +266,11 @@ static const char * const imx708_test_pattern_menu[] = {
 };
 
 static const int imx708_test_pattern_val[] = {
-	IMX708_TEST_PATTERN_DISABLE,
-	IMX708_TEST_PATTERN_COLOR_BARS,
-	IMX708_TEST_PATTERN_SOLID_COLOR,
-	IMX708_TEST_PATTERN_GREY_COLOR,
-	IMX708_TEST_PATTERN_PN9,
+	CCS_TEST_PATTERN_MODE_NONE,
+	CCS_TEST_PATTERN_MODE_COLOR_BARS,
+	CCS_TEST_PATTERN_MODE_SOLID_COLOR,
+	CCS_TEST_PATTERN_MODE_FADE_TO_GREY,
+	CCS_TEST_PATTERN_MODE_PN9,
 };
 
 /* regulator supplies */
@@ -416,7 +365,7 @@ static int imx708_set_frame_length(struct imx708 *imx708, unsigned int val)
 		val >>= 1;
 	}
 
-	cci_write(imx708->cci, IMX708_REG_FRAME_LENGTH, val, &ret);
+	cci_write(imx708->cci, CCS_R_FRAME_LENGTH_LINES, val, &ret);
 	cci_write(imx708->cci, IMX708_LONG_EXP_SHIFT_REG,
 		  imx708->long_exp_shift, &ret);
 
@@ -460,7 +409,8 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 
 	switch (ctrl->id) {
 	case V4L2_CID_ANALOGUE_GAIN:
-		cci_write(imx708->cci, IMX708_REG_ANALOG_GAIN, ctrl->val, &ret);
+		cci_write(imx708->cci, CCS_R_ANALOG_GAIN_CODE_GLOBAL,
+			  ctrl->val, &ret);
 		break;
 	case V4L2_CID_VBLANK:
 		ret = imx708_set_frame_length(imx708,
@@ -468,44 +418,45 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 					      ctrl->val);
 		fallthrough; /* update exposure with new long_exp_shift */
 	case V4L2_CID_EXPOSURE:
-		cci_write(imx708->cci, IMX708_REG_EXPOSURE,
+		cci_write(imx708->cci, CCS_R_COARSE_INTEGRATION_TIME,
 			  imx708->exposure->val >> imx708->long_exp_shift,
 			  &ret);
 		break;
 	case V4L2_CID_DIGITAL_GAIN:
-		cci_write(imx708->cci, IMX708_REG_DIGITAL_GAIN, ctrl->val, &ret);
+		cci_write(imx708->cci, CCS_R_DIGITAL_GAIN_GLOBAL, ctrl->val,
+			  &ret);
 		break;
 	case V4L2_CID_TEST_PATTERN:
-		cci_write(imx708->cci, IMX708_REG_TEST_PATTERN,
+		cci_write(imx708->cci, CCS_R_TEST_PATTERN_MODE,
 			  imx708_test_pattern_val[ctrl->val], &ret);
 		break;
 	case V4L2_CID_TEST_PATTERN_RED:
-		cci_write(imx708->cci, IMX708_REG_TEST_PATTERN_R,
+		cci_write(imx708->cci, CCS_R_TEST_DATA_RED,
 			  ctrl->val, &ret);
 		break;
 	case V4L2_CID_TEST_PATTERN_GREENR:
-		cci_write(imx708->cci, IMX708_REG_TEST_PATTERN_GR,
+		cci_write(imx708->cci, CCS_R_TEST_DATA_GREENR,
 			  ctrl->val, &ret);
 		break;
 	case V4L2_CID_TEST_PATTERN_BLUE:
-		cci_write(imx708->cci, IMX708_REG_TEST_PATTERN_B,
+		cci_write(imx708->cci, CCS_R_TEST_DATA_BLUE,
 			  ctrl->val, &ret);
 		break;
 	case V4L2_CID_TEST_PATTERN_GREENB:
-		cci_write(imx708->cci, IMX708_REG_TEST_PATTERN_GB,
+		cci_write(imx708->cci, CCS_R_TEST_DATA_GREENB,
 			  ctrl->val, &ret);
 		break;
 	case V4L2_CID_HFLIP:
 	case V4L2_CID_VFLIP:
-		cci_write(imx708->cci, IMX708_REG_ORIENTATION,
+		cci_write(imx708->cci, CCS_R_IMAGE_ORIENTATION,
 			  imx708->hflip->val | imx708->vflip->val << 1, &ret);
 		break;
 	case V4L2_CID_NOTIFY_GAINS:
-		cci_write(imx708->cci, IMX708_REG_COLOUR_BALANCE_BLUE,
+		cci_write(imx708->cci, CCS_R_ABSOLUTE_GAIN_BLUE,
 			  ctrl->p_new.p_u32[0], &ret);
 		if (ret)
 			break;
-		cci_write(imx708->cci, IMX708_REG_COLOUR_BALANCE_RED,
+		cci_write(imx708->cci, CCS_R_ABSOLUTE_GAIN_RED,
 			  ctrl->p_new.p_u32[3], &ret);
 		break;
 	default:
@@ -635,35 +586,37 @@ static int imx708_program_window(struct imx708 *imx708,
 	format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD);
 
 	/* Line length */
-	cci_write(imx708->cci, IMX708_REG_LINE_LENGTH, IMX708_LINE_LENGTH,
+	cci_write(imx708->cci, CCS_R_LINE_LENGTH_PCK, IMX708_LINE_LENGTH,
 		  &ret);
 
 	/* Imaging area */
 	x_start = crop->left - imx708_active_area.left;
 	y_start = crop->top - imx708_active_area.top;
-	cci_write(imx708->cci, IMX708_REG_X_ADD_STA, x_start, &ret);
-	cci_write(imx708->cci, IMX708_REG_Y_ADD_STA, y_start, &ret);
-	cci_write(imx708->cci, IMX708_REG_X_ADD_END, x_start + crop->width - 1,
+	cci_write(imx708->cci, CCS_R_X_ADDR_START, x_start, &ret);
+	cci_write(imx708->cci, CCS_R_Y_ADDR_START, y_start, &ret);
+	cci_write(imx708->cci, CCS_R_X_ADDR_END, x_start + crop->width - 1,
 		  &ret);
-	cci_write(imx708->cci, IMX708_REG_Y_ADD_END, y_start + crop->height - 1,
+	cci_write(imx708->cci, CCS_R_Y_ADDR_END, y_start + crop->height - 1,
 		  &ret);
 
 	/* Binning (fixed: no binning) */
-	cci_write(imx708->cci, IMX708_REG_BINNING_MODE, 0x00, &ret);
-	cci_write(imx708->cci, IMX708_REG_BINNING_TYPE, 0x11, &ret);
-	cci_write(imx708->cci, IMX708_REG_BINNING_WEIGHT, 0x0a, &ret);
+	cci_write(imx708->cci, CCS_R_BINNING_MODE, 0x00, &ret);
+	cci_write(imx708->cci, CCS_R_BINNING_TYPE, 0x11, &ret);
+	cci_write(imx708->cci, CCS_R_BINNING_WEIGHTING, 0x0a, &ret);
 	cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_H, 0x01, &ret);
 	cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_V, 0x01, &ret);
 
 	/* Digital crop (fixed: no crop) */
-	cci_write(imx708->cci, IMX708_REG_DIG_CROP_X_OFFSET, 0, &ret);
-	cci_write(imx708->cci, IMX708_REG_DIG_CROP_Y_OFFSET, 0, &ret);
-	cci_write(imx708->cci, IMX708_REG_DIG_CROP_WIDTH, format->width, &ret);
-	cci_write(imx708->cci, IMX708_REG_DIG_CROP_HEIGHT, format->height, &ret);
+	cci_write(imx708->cci, CCS_R_DIGITAL_CROP_X_OFFSET, 0, &ret);
+	cci_write(imx708->cci, CCS_R_DIGITAL_CROP_Y_OFFSET, 0, &ret);
+	cci_write(imx708->cci, CCS_R_DIGITAL_CROP_IMAGE_WIDTH, format->width,
+		  &ret);
+	cci_write(imx708->cci, CCS_R_DIGITAL_CROP_IMAGE_HEIGHT, format->height,
+		  &ret);
 
 	/* Output size */
-	cci_write(imx708->cci, IMX708_REG_X_OUTPUT_SIZE, format->width, &ret);
-	cci_write(imx708->cci, IMX708_REG_Y_OUTPUT_SIZE, format->height, &ret);
+	cci_write(imx708->cci, CCS_R_X_OUTPUT_SIZE, format->width, &ret);
+	cci_write(imx708->cci, CCS_R_Y_OUTPUT_SIZE, format->height, &ret);
 
 	return ret;
 }
@@ -778,23 +731,23 @@ static int imx708_program_pll(struct imx708 *imx708)
 {
 	int ret = 0;
 
-	cci_write(imx708->cci, IMX708_REG_IVT_PXCK_DIV,
+	cci_write(imx708->cci, CCS_R_VT_PIX_CLK_DIV,
 		  imx708->pll.vt_bk.pix_clk_div, &ret);
-	cci_write(imx708->cci, IMX708_REG_IVT_SYCK_DIV,
+	cci_write(imx708->cci, CCS_R_VT_SYS_CLK_DIV,
 		  imx708->pll.vt_bk.sys_clk_div, &ret);
-	cci_write(imx708->cci, IMX708_REG_IVT_PREPLLCK_DIV,
+	cci_write(imx708->cci, CCS_R_PRE_PLL_CLK_DIV,
 		  imx708->pll.vt_fr.pre_pll_clk_div, &ret);
-	cci_write(imx708->cci, IMX708_REG_IVT_PLL_MPY,
+	cci_write(imx708->cci, CCS_R_PLL_MULTIPLIER,
 		  imx708->pll.vt_fr.pll_multiplier, &ret);
-	cci_write(imx708->cci, IMX708_REG_IOP_PXCK_DIV,
+	cci_write(imx708->cci, CCS_R_OP_PIX_CLK_DIV,
 		  imx708->pll.op_bk.pix_clk_div, &ret);
-	cci_write(imx708->cci, IMX708_REG_IOP_SYCK_DIV,
+	cci_write(imx708->cci, CCS_R_OP_SYS_CLK_DIV,
 		  imx708->pll.op_bk.sys_clk_div, &ret);
-	cci_write(imx708->cci, IMX708_REG_IOP_PREPLLCK_DIV,
+	cci_write(imx708->cci, CCS_R_OP_PRE_PLL_CLK_DIV,
 		  imx708->pll.op_fr.pre_pll_clk_div, &ret);
-	cci_write(imx708->cci, IMX708_REG_IOP_PLL_MPY,
+	cci_write(imx708->cci, CCS_R_OP_PLL_MULTIPLIER,
 		  imx708->pll.op_fr.pll_multiplier, &ret);
-	cci_write(imx708->cci, IMX708_REG_PLL_MULT_DRIV, IMX708_PLL_MODE_DUAL,
+	cci_write(imx708->cci, CCS_R_PLL_MODE, CCS_PLL_MODE_DUAL,
 		  &ret);
 
 	return ret;
@@ -832,8 +785,8 @@ static int imx708_enable_streams(struct v4l2_subdev *sd,
 		goto err_rpm_put;
 
 	/* set stream on register */
-	cci_write(imx708->cci, IMX708_REG_MODE_SELECT,
-		  IMX708_MODE_STREAMING, &ret);
+	cci_write(imx708->cci, CCS_R_MODE_SELECT,
+		  CCS_MODE_SELECT_STREAMING, &ret);
 	if (ret) {
 		dev_err(&client->dev, "%s failed to start streaming\n",
 			__func__);
@@ -861,8 +814,8 @@ static int imx708_disable_streams(struct v4l2_subdev *sd,
 	int ret = 0;
 
 	/* set stream off register */
-	cci_write(imx708->cci, IMX708_REG_MODE_SELECT,
-		  IMX708_MODE_STANDBY, &ret);
+	cci_write(imx708->cci, CCS_R_MODE_SELECT,
+		  CCS_MODE_SELECT_SOFTWARE_STANDBY, &ret);
 	if (ret)
 		dev_err(&client->dev, "%s failed to set stream\n", __func__);
 
@@ -986,7 +939,7 @@ static int imx708_identify_module(struct imx708 *imx708)
 	int ret = 0;
 	u64 val;
 
-	cci_read(imx708->cci, IMX708_REG_CHIP_ID, &val, &ret);
+	cci_read(imx708->cci, CCS_R_SENSOR_MODEL_ID, &val, &ret);
 	if (ret) {
 		dev_err(&client->dev, "failed to read chip id %x, with error %d\n",
 			IMX708_CHIP_ID, ret);
