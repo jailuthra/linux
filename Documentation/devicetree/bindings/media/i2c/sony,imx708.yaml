@@ -42,7 +42,7 @@ properties:
     description:
       Analog2 voltage supply, 1.8 volts
 
-  vddl-supply:
+  vif-supply:
     description:
       Digital core voltage supply, 1.8 volts
 
@@ -85,7 +85,7 @@ required:
   - vdig-supply
   - vana1-supply
   - vana2-supply
-  - vddl-supply
+  - vif-supply
   - port
 
 unevaluatedProperties: false
@@ -107,7 +107,7 @@ examples:
             vdig-supply = <&camera_vdig>;
             vana1-supply = <&camera_vana1>;
             vana2-supply = <&camera_vana2>;
-            vddl-supply = <&camera_vddl>;
+            vif-supply = <&camera_vif>;
 
             reset-gpios = <&gpio 35 GPIO_ACTIVE_LOW>;
 
