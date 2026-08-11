@@ -279,7 +279,7 @@ static const char * const imx708_supply_name[] = {
 	"vana1",  /* Analog1 (2.8V) supply */
 	"vana2",  /* Analog2 (1.8V) supply */
 	"vdig",  /* Digital Core (1.1V) supply */
-	"vddl",  /* IF (1.8V) supply */
+	"vif",  /* IF (1.8V) supply */
 };
 
 /*
