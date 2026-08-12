@@ -109,7 +109,12 @@
 
 enum pad_types {
 	IMX708_SOURCE_PAD,
+	IMX708_IMAGE_PAD,
 	IMX708_NUM_PADS
+};
+
+enum stream_ids {
+	IMX708_STREAM_IMAGE,
 };
 
 /* IMX708 native and active pixel array size. */
@@ -394,7 +399,8 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 			v4l2_subdev_get_locked_active_state(&imx708->sd);
 		struct v4l2_mbus_framefmt *format;
 
-		format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD);
+		format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD,
+						      IMX708_STREAM_IMAGE);
 		format->code = imx708_get_format_code(imx708);
 		break;
 	}
@@ -511,9 +517,15 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 	if (fse->index > 0)
 		return -EINVAL;
 
-	fse->min_width = imx708_active_area.width;
+	if (fse->pad == IMX708_IMAGE_PAD) {
+		fse->min_width = imx708_native_area.width;
+		fse->min_height = imx708_native_area.height;
+	} else {
+		fse->min_width = imx708_active_area.width;
+		fse->min_height = imx708_active_area.height;
+	}
+
 	fse->max_width = fse->min_width;
-	fse->min_height = imx708_active_area.height;
 	fse->max_height = fse->min_height;
 
 	return 0;
@@ -523,23 +535,51 @@ static int imx708_init_state(struct v4l2_subdev *sd,
 			     struct v4l2_subdev_state *state)
 {
 	struct imx708 *imx708 = to_imx708(sd);
-	struct v4l2_mbus_framefmt *format;
-	struct v4l2_rect *crop;
+	struct v4l2_subdev_route routes[] = {
+		{
+			.sink_pad = IMX708_IMAGE_PAD,
+			.sink_stream = 0,
+			.source_pad = IMX708_SOURCE_PAD,
+			.source_stream = IMX708_STREAM_IMAGE,
+			.flags = V4L2_SUBDEV_ROUTE_FL_ACTIVE |
+				 V4L2_SUBDEV_ROUTE_FL_IMMUTABLE |
+				 V4L2_SUBDEV_ROUTE_FL_STATIC,
+		},
+	};
+	struct v4l2_subdev_krouting routing = {
+		.len_routes = ARRAY_SIZE(routes),
+		.num_routes = ARRAY_SIZE(routes),
+		.routes = routes,
+	};
+	struct v4l2_mbus_framefmt *format, *source_format;
+	struct v4l2_rect *analogue_crop;
+	int ret;
+
+	ret = v4l2_subdev_set_routing(sd, state, &routing);
+	if (ret)
+		return ret;
+
+	/* Initialize the image pad crop. */
+	analogue_crop = v4l2_subdev_state_get_crop(state, IMX708_IMAGE_PAD);
+	*analogue_crop = imx708_active_area;
 
 	/* Initialize the image pad format. */
-	format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD);
+	format = v4l2_subdev_state_get_format(state, IMX708_IMAGE_PAD);
 	format->code = imx708_get_format_code(imx708);
-	format->width = imx708_active_area.width;
-	format->height = imx708_active_area.height;
+	format->width = imx708_native_area.width;
+	format->height = imx708_native_area.height;
 	format->field = V4L2_FIELD_NONE;
 	format->colorspace = V4L2_COLORSPACE_RAW;
 	format->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
 	format->quantization = V4L2_QUANTIZATION_FULL_RANGE;
 	format->xfer_func = V4L2_XFER_FUNC_NONE;
 
-	/* Initialize the image pad crop. */
-	crop = v4l2_subdev_state_get_crop(state, IMX708_SOURCE_PAD);
-	*crop = imx708_active_area;
+	/* Initialize the source pad format. */
+	source_format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD,
+						     IMX708_STREAM_IMAGE);
+	*source_format = *format;
+	source_format->width = analogue_crop->width;
+	source_format->height = analogue_crop->height;
 
 	return 0;
 }
@@ -549,11 +589,45 @@ static int imx708_get_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_state *sd_state,
 				struct v4l2_subdev_selection *sel)
 {
+	if (sel->stream != IMX708_STREAM_IMAGE)
+		return -EINVAL;
+
+	/* Crop is on the source pad for legacy clients */
+	if (!(ci &&
+	      ci->client_caps & V4L2_SUBDEV_CLIENT_CAP_COMMON_RAW_SENSOR)) {
+		if (sel->pad != IMX708_SOURCE_PAD)
+			return -EINVAL;
+
+		switch (sel->target) {
+		case V4L2_SEL_TGT_CROP:
+			sel->r = *v4l2_subdev_state_get_crop(sd_state,
+							     IMX708_IMAGE_PAD,
+							     sel->stream);
+			return 0;
+
+		case V4L2_SEL_TGT_NATIVE_SIZE:
+			sel->r = imx708_native_area;
+			return 0;
+
+		case V4L2_SEL_TGT_CROP_DEFAULT:
+		case V4L2_SEL_TGT_CROP_BOUNDS:
+			sel->r = imx708_active_area;
+			return 0;
+		}
+
+		return -EINVAL;
+	}
+
+	/* Analog crop on internal pad with the common raw sensor model */
+	if (sel->pad != IMX708_IMAGE_PAD)
+		return -EINVAL;
+
 	switch (sel->target) {
 	case V4L2_SEL_TGT_CROP: {
 		struct v4l2_rect *crop;
 
-		crop = v4l2_subdev_state_get_crop(sd_state, sel->pad);
+		crop = v4l2_subdev_state_get_crop(sd_state, sel->pad,
+						  sel->stream);
 		sel->r = *crop;
 
 		return 0;
@@ -582,8 +656,9 @@ static int imx708_program_window(struct imx708 *imx708,
 	int ret = 0;
 	s32 x_start, y_start;
 
-	crop = v4l2_subdev_state_get_crop(state, IMX708_SOURCE_PAD);
-	format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD);
+	crop = v4l2_subdev_state_get_crop(state, IMX708_IMAGE_PAD);
+	format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD,
+					      IMX708_STREAM_IMAGE);
 
 	/* Line length */
 	cci_write(imx708->cci, CCS_R_LINE_LENGTH_PCK, IMX708_LINE_LENGTH,
@@ -1217,9 +1292,11 @@ static int imx708_probe(struct i2c_client *client)
 		goto error_pm_runtime;
 
 	imx708->sd.internal_ops = &imx708_internal_ops;
-	imx708->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	imx708->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_STREAMS;
 	imx708->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
+	imx708->pad[IMX708_IMAGE_PAD].flags = MEDIA_PAD_FL_SINK |
+					      MEDIA_PAD_FL_INTERNAL;
 	imx708->pad[IMX708_SOURCE_PAD].flags = MEDIA_PAD_FL_SOURCE;
 
 	ret = media_entity_pads_init(&imx708->sd.entity, IMX708_NUM_PADS,
