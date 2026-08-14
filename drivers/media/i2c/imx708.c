@@ -28,6 +28,8 @@
 
 #define IMX708_CHIP_ID			0x0708
 
+#define IMX708_CFA_PATTERN		V4L2_CFA_PATTERN_RGGB
+
 #define IMX708_INCLK_FREQ		24000000
 
 /* Pixel rate  */
@@ -263,6 +265,10 @@ static const u32 codes[] = {
 	MEDIA_BUS_FMT_SBGGR10_1X10,
 };
 
+static const u32 codes_generic[] = {
+	MEDIA_BUS_FMT_RAW_10,
+};
+
 static const char * const imx708_test_pattern_menu[] = {
 	"Disabled",
 	"Color Bars",
@@ -336,15 +342,36 @@ static inline struct imx708 *to_imx708(struct v4l2_subdev *_sd)
 	return container_of_const(_sd, struct imx708, sd);
 }
 
-/* Get bayer order based on flip setting. */
-static u32 imx708_get_format_code(struct imx708 *imx708)
+static u32 imx708_default_mbus_code(struct imx708 *imx708, unsigned int pad)
 {
 	unsigned int i;
+
+	if (pad == IMX708_IMAGE_PAD)
+		return codes_generic[0];
 
 	i = (imx708->vflip->val ? 2 : 0) |
 	    (imx708->hflip->val ? 1 : 0);
 
 	return codes[i];
+}
+
+static bool imx708_update_mbus_code(struct imx708 *imx708, unsigned int pad,
+				    u32 *code)
+{
+	u32 default_code = imx708_default_mbus_code(imx708, pad);
+	unsigned int i;
+
+	if (*code == default_code)
+		return true;
+
+	for (i = 0; i < ARRAY_SIZE(codes_generic); i++) {
+		if (codes_generic[i] == *code)
+			return true;
+	}
+
+	*code = default_code;
+
+	return false;
 }
 
 static void imx708_adjust_exposure_range(struct imx708 *imx708)
@@ -402,7 +429,8 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 
 		format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD,
 						      IMX708_STREAM_IMAGE);
-		format->code = imx708_get_format_code(imx708);
+		imx708_update_mbus_code(imx708, IMX708_SOURCE_PAD,
+					&format->code);
 		break;
 	}
 	}
@@ -511,14 +539,27 @@ static int imx708_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	struct imx708 *imx708 = to_imx708(sd);
+	unsigned int num_bayer = ARRAY_SIZE(codes) / 4;
 
-	if (code->pad >= IMX708_NUM_PADS)
+	switch (code->pad) {
+	case IMX708_IMAGE_PAD:
+		if (code->index >= ARRAY_SIZE(codes_generic))
+			return -EINVAL;
+
+		code->code = codes_generic[code->index];
+		break;
+	case IMX708_SOURCE_PAD:
+		if (code->index >= num_bayer + ARRAY_SIZE(codes_generic))
+			return -EINVAL;
+
+		if (code->index < num_bayer)
+			code->code = imx708_default_mbus_code(imx708, code->pad);
+		else
+			code->code = codes_generic[code->index - num_bayer];
+		break;
+	default:
 		return -EINVAL;
-
-	if (code->index >= (ARRAY_SIZE(codes) / 4))
-		return -EINVAL;
-
-	code->code = imx708_get_format_code(imx708);
+	}
 
 	return 0;
 }
@@ -528,14 +569,11 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct imx708 *imx708 = to_imx708(sd);
-	u32 code;
 
 	if (fse->pad >= IMX708_NUM_PADS)
 		return -EINVAL;
 
-	code = imx708_get_format_code(imx708);
-
-	if (fse->code != code)
+	if (!imx708_update_mbus_code(imx708, fse->pad, &fse->code))
 		return -EINVAL;
 
 	if (fse->index > 0)
@@ -589,7 +627,7 @@ static int imx708_init_state(struct v4l2_subdev *sd,
 
 	/* Initialize the image pad format. */
 	format = v4l2_subdev_state_get_format(state, IMX708_IMAGE_PAD);
-	format->code = imx708_get_format_code(imx708);
+	format->code = imx708_default_mbus_code(imx708, IMX708_IMAGE_PAD);
 	format->width = imx708_native_area.width;
 	format->height = imx708_native_area.height;
 	format->field = V4L2_FIELD_NONE;
@@ -602,8 +640,31 @@ static int imx708_init_state(struct v4l2_subdev *sd,
 	source_format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD,
 						     IMX708_STREAM_IMAGE);
 	*source_format = *format;
+	source_format->code = imx708_default_mbus_code(imx708, IMX708_SOURCE_PAD);
 	source_format->width = analogue_crop->width;
 	source_format->height = analogue_crop->height;
+
+	return 0;
+}
+
+static int imx708_set_pad_format(struct v4l2_subdev *sd,
+				 const struct v4l2_subdev_client_info *ci,
+				 struct v4l2_subdev_state *sd_state,
+				 struct v4l2_subdev_format *fmt)
+{
+	struct imx708 *imx708 = to_imx708(sd);
+	struct v4l2_mbus_framefmt *format;
+
+	if (fmt->pad != IMX708_SOURCE_PAD && fmt->stream != IMX708_STREAM_IMAGE)
+		return v4l2_subdev_get_fmt(sd, sd_state, fmt);
+
+	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
+	    v4l2_subdev_is_streaming(sd))
+		return -EBUSY;
+
+	format = v4l2_subdev_state_get_format(sd_state, fmt->pad, fmt->stream);
+	imx708_update_mbus_code(imx708, fmt->pad, &fmt->format.code);
+	format->code = fmt->format.code;
 
 	return 0;
 }
@@ -1066,6 +1127,7 @@ static const struct v4l2_subdev_video_ops imx708_video_ops = {
 static const struct v4l2_subdev_pad_ops imx708_pad_ops = {
 	.enum_mbus_code = imx708_enum_mbus_code,
 	.get_fmt = v4l2_subdev_get_fmt,
+	.set_fmt = imx708_set_pad_format,
 	.get_selection = imx708_get_selection,
 	.enum_frame_size = imx708_enum_frame_size,
 	.get_frame_desc = imx708_get_frame_desc,
@@ -1101,7 +1163,7 @@ static int imx708_init_controls(struct imx708 *imx708)
 	struct v4l2_ctrl_handler *ctrl_hdlr;
 	struct i2c_client *client = v4l2_get_subdevdata(&imx708->sd);
 	struct v4l2_fwnode_device_properties props;
-	struct v4l2_ctrl *link_freq;
+	struct v4l2_ctrl *link_freq, *cfa_pattern;
 	unsigned int i;
 	s32 hblank, vblank_max, exposure_max;
 	int ret;
@@ -1193,6 +1255,18 @@ static int imx708_init_controls(struct imx708 *imx708)
 
 	v4l2_ctrl_new_custom(ctrl_hdlr, &imx708_notify_gains_ctrl, NULL);
 
+	v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_CONFIG_MODEL, 0,
+			  V4L2_CONFIG_MODEL_COMMON_RAW_SENSOR, 0,
+			  V4L2_CONFIG_MODEL_COMMON_RAW_SENSOR);
+
+	cfa_pattern = v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_CFA_PATTERN,
+					IMX708_CFA_PATTERN, IMX708_CFA_PATTERN,
+					1, IMX708_CFA_PATTERN);
+
+	v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_CFA_PATTERN_FLIP, 0,
+			  V4L2_CFA_PATTERN_FLIP_BOTH, 0,
+			  V4L2_CFA_PATTERN_FLIP_BOTH);
+
 	v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &imx708_ctrl_ops, &props);
 
 	if (ctrl_hdlr->error) {
@@ -1204,6 +1278,7 @@ static int imx708_init_controls(struct imx708 *imx708)
 		return ret;
 	}
 
+	cfa_pattern->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 	link_freq->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 	imx708->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 	imx708->hflip->flags |= V4L2_CTRL_FLAG_MODIFY_LAYOUT;
