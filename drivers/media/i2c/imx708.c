@@ -562,7 +562,7 @@ static int imx708_get_frame_desc(struct v4l2_subdev *sd, unsigned int pad,
 		return -EINVAL;
 
 	fd->type = V4L2_MBUS_FRAME_DESC_TYPE_CSI2;
-	fd->num_entries = 2;
+	fd->num_entries = 1;
 	fd->entry[0].stream = IMX708_STREAM_IMAGE;
 	fd->entry[0].bus.csi2.vc = 0;
 	fd->entry[0].bus.csi2.dt = MIPI_CSI2_DT_RAW10;
