@@ -52,10 +52,18 @@
 #define IMX708_REG_ACROPLP_EN		CCI_REG8(0x32df)
 #define IMX708_REG_BINNING_PRIORITY_H	CCI_REG8(0x3200)
 #define IMX708_REG_BINNING_PRIORITY_V	CCI_REG8(0x3201)
+#define IMX708_CROP_X_STA_ALIGN		4
+#define IMX708_CROP_WIDTH_ALIGN		4
+#define IMX708_CROP_Y_STA_ALIGN		8
+#define IMX708_CROP_HEIGHT_ALIGN	8
+#define IMX708_MIN_WIDTH		256
+#define IMX708_MIN_HEIGHT		144
 
 /* Long exposure multiplier */
 #define IMX708_LONG_EXP_SHIFT_MAX	7
 #define IMX708_LONG_EXP_SHIFT_REG	CCI_REG8(0x3100)
+#define IMX708_V_TIMING_MAX		((1 << IMX708_LONG_EXP_SHIFT_MAX) * \
+					 IMX708_FRAME_LENGTH_MAX)
 
 /* Exposure control */
 #define IMX708_EXPOSURE_OFFSET		48
@@ -415,17 +423,20 @@ done:
 	return false;
 }
 
-static void imx708_adjust_exposure_range(struct imx708 *imx708)
+static void imx708_adjust_exposure_range(struct imx708 *imx708,
+					const struct v4l2_mbus_framefmt *fmt)
 {
 	int exposure_max, exposure_def;
 
 	/* Honour the VBLANK limits when setting exposure. */
-	exposure_max = imx708_active_area.height + imx708->vblank->val -
-		IMX708_EXPOSURE_OFFSET;
+	exposure_max = fmt->height + imx708->vblank->val
+		       - IMX708_EXPOSURE_OFFSET;
 	exposure_def = min(exposure_max, imx708->exposure->val);
-	__v4l2_ctrl_modify_range(imx708->exposure, imx708->exposure->minimum,
-				 exposure_max, imx708->exposure->step,
-				 exposure_def);
+
+	__v4l2_ctrl_modify_range(imx708->exposure,
+					imx708->exposure->minimum,
+					exposure_max, imx708->exposure->step,
+					exposure_def);
 }
 
 static int imx708_set_frame_length(struct imx708 *imx708, unsigned int val)
@@ -446,12 +457,35 @@ static int imx708_set_frame_length(struct imx708 *imx708, unsigned int val)
 	return ret;
 }
 
+static void imx708_set_framing_limits(struct imx708 *imx708,
+				     const struct v4l2_mbus_framefmt *format)
+{
+	s32 hblank, vblank_max;
+
+	hblank = IMX708_LINE_LENGTH - format->width;
+	__v4l2_ctrl_modify_range(imx708->hblank, hblank, hblank, 1,
+				       hblank);
+	__v4l2_ctrl_s_ctrl(imx708->hblank, hblank);
+
+	vblank_max = IMX708_V_TIMING_MAX - format->height;
+	__v4l2_ctrl_modify_range(imx708->vblank, imx708->vblank->minimum,
+				       vblank_max, 1, imx708->vblank->minimum);
+	// vlbank S_CTRL will take care of exposure ranges too
+	__v4l2_ctrl_s_ctrl(imx708->vblank, imx708->vblank->minimum);
+}
+
 static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx708 *imx708 =
 		container_of_const(ctrl->handler, struct imx708, ctrl_handler);
 	struct i2c_client *client = v4l2_get_subdevdata(&imx708->sd);
+	struct v4l2_mbus_framefmt *format;
+	struct v4l2_subdev_state *state;
 	int ret = 0;
+
+	state = v4l2_subdev_get_locked_active_state(&imx708->sd);
+	format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD,
+					      IMX708_STREAM_IMAGE);
 
 	switch (ctrl->id) {
 	case V4L2_CID_VBLANK:
@@ -459,17 +493,11 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 		 * The VBLANK control may change the limits of usable exposure,
 		 * so check and adjust if necessary.
 		 */
-		imx708_adjust_exposure_range(imx708);
+		imx708_adjust_exposure_range(imx708, format);
 		break;
 
 	case V4L2_CID_HFLIP:
 	case V4L2_CID_VFLIP: {
-		struct v4l2_subdev_state *state =
-			v4l2_subdev_get_locked_active_state(&imx708->sd);
-		struct v4l2_mbus_framefmt *format;
-
-		format = v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD,
-						      IMX708_STREAM_IMAGE);
 		imx708_update_mbus_code(imx708, IMX708_SOURCE_PAD,
 					IMX708_STREAM_IMAGE, &format->code);
 		break;
@@ -490,8 +518,7 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_VBLANK:
 		ret = imx708_set_frame_length(imx708,
-					      imx708_active_area.height +
-					      ctrl->val);
+					      format->height + ctrl->val);
 		fallthrough; /* update exposure with new long_exp_shift */
 	case V4L2_CID_EXPOSURE:
 		cci_write(imx708->cci, CCS_R_COARSE_INTEGRATION_TIME,
@@ -639,6 +666,8 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct imx708 *imx708 = to_imx708(sd);
+	struct v4l2_rect *crop = v4l2_subdev_state_get_crop(sd_state,
+							    IMX708_IMAGE_PAD);
 
 	if (fse->pad >= IMX708_NUM_PADS)
 		return -EINVAL;
@@ -655,11 +684,11 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 	} else if (fse->pad == IMX708_METADATA_PAD ||
 		   (fse->pad == IMX708_SOURCE_PAD &&
 		    fse->stream == IMX708_STREAM_METADATA)) {
-		fse->min_width = imx708_active_area.width;
+		fse->min_width = crop->width;
 		fse->min_height = IMX708_METADATA_HEIGHT;
 	} else {
-		fse->min_width = imx708_active_area.width;
-		fse->min_height = imx708_active_area.height;
+		fse->min_width = crop->width;
+		fse->min_height = crop->height;
 	}
 
 	fse->max_width = fse->min_width;
@@ -769,6 +798,82 @@ static int imx708_set_pad_format(struct v4l2_subdev *sd,
 	format = v4l2_subdev_state_get_format(sd_state, fmt->pad, fmt->stream);
 	imx708_update_mbus_code(imx708, fmt->pad, fmt->stream, &fmt->format.code);
 	format->code = fmt->format.code;
+
+	return 0;
+}
+
+static int imx708_set_selection(struct v4l2_subdev *sd,
+				const struct v4l2_subdev_client_info *ci,
+				struct v4l2_subdev_state *sd_state,
+				struct v4l2_subdev_selection *sel)
+{
+	struct imx708 *imx708 = to_imx708(sd);
+	struct v4l2_mbus_framefmt *source_format, *meta_format;
+	struct v4l2_mbus_framefmt *meta_source_format;
+	struct v4l2_rect *crop, rect;
+
+	if (!(ci && ci->client_caps & V4L2_SUBDEV_CLIENT_CAP_COMMON_RAW_SENSOR))
+		return -EINVAL;
+
+	if (sel->target != V4L2_SEL_TGT_CROP ||
+	    sel->pad != IMX708_IMAGE_PAD ||
+	    sel->stream != IMX708_STREAM_IMAGE)
+		return -EINVAL;
+
+	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
+	    v4l2_subdev_is_streaming(sd))
+		return -EBUSY;
+
+	/* Align left, top */
+	rect.left = clamp_t(s32, ALIGN(sel->r.left, IMX708_CROP_X_STA_ALIGN),
+			    imx708_active_area.left,
+			    imx708_active_area.left + imx708_active_area.width -
+			    IMX708_MIN_WIDTH);
+	rect.top = clamp_t(s32, ALIGN(sel->r.top, IMX708_CROP_Y_STA_ALIGN),
+			   imx708_active_area.top,
+			   imx708_active_area.top + imx708_active_area.height -
+			   IMX708_MIN_HEIGHT);
+
+	/* Align width and height */
+	rect.width = clamp_t(u32, ALIGN(sel->r.width, IMX708_CROP_WIDTH_ALIGN),
+			     IMX708_MIN_WIDTH, imx708_active_area.width);
+	rect.height = clamp_t(u32,
+			      ALIGN(sel->r.height, IMX708_CROP_HEIGHT_ALIGN),
+			      IMX708_MIN_HEIGHT, imx708_active_area.height);
+
+	/* If left/top are big, reduce width/height to fit active area */
+	rect.width = min_t(u32, rect.width,
+			   ALIGN_DOWN(imx708_active_area.left +
+				      imx708_active_area.width - rect.left,
+				      IMX708_CROP_WIDTH_ALIGN));
+	rect.height = min_t(u32, rect.height,
+			    ALIGN_DOWN(imx708_active_area.top +
+				       imx708_active_area.height - rect.top,
+				       IMX708_CROP_HEIGHT_ALIGN));
+
+	crop = v4l2_subdev_state_get_crop(sd_state, IMX708_IMAGE_PAD,
+					  IMX708_STREAM_IMAGE);
+	source_format = v4l2_subdev_state_get_format(sd_state,
+						     IMX708_SOURCE_PAD,
+						     IMX708_STREAM_IMAGE);
+	meta_format = v4l2_subdev_state_get_format(sd_state,
+						   IMX708_METADATA_PAD);
+	meta_source_format =
+		v4l2_subdev_state_get_format(sd_state, IMX708_SOURCE_PAD,
+					     IMX708_STREAM_METADATA);
+
+	if (rect.width != crop->width || rect.height != crop->height) {
+		source_format->width = rect.width;
+		source_format->height = rect.height;
+		meta_format->width = rect.width;
+		meta_source_format->width = rect.width;
+
+		if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+			imx708_set_framing_limits(imx708, source_format);
+	}
+
+	*crop = rect;
+	sel->r = *crop;
 
 	return 0;
 }
@@ -1239,6 +1344,7 @@ static const struct v4l2_subdev_pad_ops imx708_pad_ops = {
 	.get_fmt = v4l2_subdev_get_fmt,
 	.set_fmt = imx708_set_pad_format,
 	.get_selection = imx708_get_selection,
+	.set_selection = imx708_set_selection,
 	.enum_frame_size = imx708_enum_frame_size,
 	.get_frame_desc = imx708_get_frame_desc,
 	.enable_streams = imx708_enable_streams,
@@ -1307,8 +1413,7 @@ static int imx708_init_controls(struct imx708 *imx708)
 					   link_freqs);
 
 	/* Frame Time = 2^LONG_EXP_SHIFT * REG_FRAME_LENGTH */
-	vblank_max = ((1 << IMX708_LONG_EXP_SHIFT_MAX) *
-		      IMX708_FRAME_LENGTH_MAX) - imx708_active_area.height;
+	vblank_max = IMX708_V_TIMING_MAX - imx708_active_area.height;
 	imx708->vblank = v4l2_ctrl_new_std(ctrl_hdlr, &imx708_ctrl_ops,
 					   V4L2_CID_VBLANK, IMX708_VBLANK_MIN,
 					   vblank_max, 1, IMX708_VBLANK_MIN);
