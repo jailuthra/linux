@@ -231,10 +231,6 @@ static const struct cci_reg_sequence imx708_common_regs[] = {
 	{ IMX708_REG_MID_DIGITAL_GAIN, 0x0100 },
 	{ IMX708_REG_AEHIST1_AREA_WIDTH, 0x0000 },
 	{ IMX708_REG_AEHIST1_AREA_HEIGHT, 0x0000 },
-	/* Quad-Bayer Compensation */
-	{ IMX708_REG_QBC_RMSC_EN, 0x01 },
-	{ IMX708_REG_LPF_INTENSITY, IMX708_LPF_INTENSITY_DEFAULT },
-	{ IMX708_REG_LPF_INTENSITY_EN, IMX708_LPF_INTENSITY_ENABLED },
 	{ CCI_REG8(0x32d6), 0x00 },
 	{ CCI_REG8(0x32db), 0x01 },
 	/* Analogue crop disabled */
@@ -307,6 +303,17 @@ static const int imx708_test_pattern_val[] = {
 	CCS_TEST_PATTERN_MODE_PN9,
 };
 
+enum imx708_binning_factor_indices {
+	IMX708_BINNING_11,
+	IMX708_BINNING_22,
+};
+
+static const s64 imx708_binning_factors[] = {
+	[IMX708_BINNING_11] = V4L2_BINNING_FACTORS_MAKE(1, 1, 1, 1),
+	[IMX708_BINNING_22] = V4L2_BINNING_FACTORS_MAKE(2, 1, 2, 1),
+};
+
+
 /* regulator supplies */
 static const char * const imx708_supply_name[] = {
 	/* Supplies can be enabled in any order */
@@ -344,6 +351,7 @@ struct imx708 {
 	struct v4l2_ctrl *exposure;
 	struct v4l2_ctrl *vblank;
 	struct v4l2_ctrl *hblank;
+	struct v4l2_ctrl *binning;
 	struct {
 		struct v4l2_ctrl *hflip;
 		struct v4l2_ctrl *vflip;
@@ -474,6 +482,46 @@ static void imx708_set_framing_limits(struct imx708 *imx708,
 	__v4l2_ctrl_s_ctrl(imx708->vblank, imx708->vblank->minimum);
 }
 
+static int imx708_set_binning(struct imx708 *imx708,
+			      struct v4l2_subdev_state *state, u32 which)
+{
+	struct v4l2_rect *crop =
+		v4l2_subdev_state_get_crop(state, IMX708_IMAGE_PAD,
+					   IMX708_STREAM_IMAGE);
+	struct v4l2_rect *compose =
+		v4l2_subdev_state_get_compose(state, IMX708_IMAGE_PAD,
+					      IMX708_STREAM_IMAGE);
+	struct v4l2_mbus_framefmt *source_format =
+		v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD,
+					     IMX708_STREAM_IMAGE);
+	struct v4l2_mbus_framefmt *meta_format =
+		v4l2_subdev_state_get_format(state, IMX708_METADATA_PAD);
+	struct v4l2_mbus_framefmt *meta_source_format =
+		v4l2_subdev_state_get_format(state, IMX708_SOURCE_PAD,
+					     IMX708_STREAM_METADATA);
+	const s64 binning = imx708_binning_factors[imx708->binning->val];
+	const u32 bin_h = V4L2_BINNING_FACTORS_HNUM(binning);
+	const u32 bin_v = V4L2_BINNING_FACTORS_VNUM(binning);
+
+	compose->width = crop->width / bin_h;
+	compose->height = crop->height / bin_v;
+
+	source_format->width = compose->width;
+	source_format->height = compose->height;
+
+	meta_format->width = source_format->width;
+	meta_source_format->width = source_format->width;
+
+	/*
+	 * Framing limits are backed by real controls, so only refresh them
+	 * for the active state.
+	 */
+	if (which == V4L2_SUBDEV_FORMAT_ACTIVE)
+		imx708_set_framing_limits(imx708, source_format);
+
+	return 0;
+}
+
 static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct imx708 *imx708 =
@@ -500,6 +548,9 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VFLIP: {
 		imx708_update_mbus_code(imx708, IMX708_SOURCE_PAD,
 					IMX708_STREAM_IMAGE, &format->code);
+		break;
+	case V4L2_CID_BINNING_FACTORS:
+		imx708_set_binning(imx708, state, V4L2_SUBDEV_FORMAT_ACTIVE);
 		break;
 	}
 	}
@@ -561,6 +612,8 @@ static int imx708_set_ctrl(struct v4l2_ctrl *ctrl)
 			break;
 		cci_write(imx708->cci, CCS_R_ABSOLUTE_GAIN_RED,
 			  ctrl->p_new.p_u32[3], &ret);
+		break;
+	case V4L2_CID_BINNING_FACTORS:
 		break;
 	default:
 		dev_warn(&client->dev,
@@ -668,6 +721,9 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 	struct imx708 *imx708 = to_imx708(sd);
 	struct v4l2_rect *crop = v4l2_subdev_state_get_crop(sd_state,
 							    IMX708_IMAGE_PAD);
+	const struct v4l2_mbus_framefmt *source_format =
+		v4l2_subdev_state_get_format(sd_state, IMX708_SOURCE_PAD,
+					     IMX708_STREAM_IMAGE);
 
 	if (fse->pad >= IMX708_NUM_PADS)
 		return -EINVAL;
@@ -684,11 +740,11 @@ static int imx708_enum_frame_size(struct v4l2_subdev *sd,
 	} else if (fse->pad == IMX708_METADATA_PAD ||
 		   (fse->pad == IMX708_SOURCE_PAD &&
 		    fse->stream == IMX708_STREAM_METADATA)) {
-		fse->min_width = crop->width;
+		fse->min_width = source_format->width;
 		fse->min_height = IMX708_METADATA_HEIGHT;
 	} else {
-		fse->min_width = crop->width;
-		fse->min_height = crop->height;
+		fse->min_width = source_format->width;
+		fse->min_height = source_format->height;
 	}
 
 	fse->max_width = fse->min_width;
@@ -728,7 +784,7 @@ static int imx708_init_state(struct v4l2_subdev *sd,
 	};
 	struct v4l2_mbus_framefmt *format, *source_format;
 	struct v4l2_mbus_framefmt *meta_format, *meta_source_format;
-	struct v4l2_rect *analogue_crop;
+	struct v4l2_rect *analogue_crop, *compose;
 	int ret;
 
 	ret = v4l2_subdev_set_routing(sd, state, &routing);
@@ -738,6 +794,9 @@ static int imx708_init_state(struct v4l2_subdev *sd,
 	/* Initialize the image pad crop. */
 	analogue_crop = v4l2_subdev_state_get_crop(state, IMX708_IMAGE_PAD);
 	*analogue_crop = imx708_active_area;
+
+	compose = v4l2_subdev_state_get_compose(state, IMX708_IMAGE_PAD);
+	*compose = imx708_active_area;
 
 	/* Initialize the image pad format. */
 	format = v4l2_subdev_state_get_format(state, IMX708_IMAGE_PAD);
@@ -808,17 +867,27 @@ static int imx708_set_selection(struct v4l2_subdev *sd,
 				struct v4l2_subdev_selection *sel)
 {
 	struct imx708 *imx708 = to_imx708(sd);
-	struct v4l2_mbus_framefmt *source_format, *meta_format;
-	struct v4l2_mbus_framefmt *meta_source_format;
 	struct v4l2_rect *crop, rect;
+	int ret;
 
 	if (!(ci && ci->client_caps & V4L2_SUBDEV_CLIENT_CAP_COMMON_RAW_SENSOR))
 		return -EINVAL;
 
-	if (sel->target != V4L2_SEL_TGT_CROP ||
-	    sel->pad != IMX708_IMAGE_PAD ||
+	if (sel->pad != IMX708_IMAGE_PAD ||
 	    sel->stream != IMX708_STREAM_IMAGE)
 		return -EINVAL;
+
+	switch (sel->target) {
+	case V4L2_SEL_TGT_COMPOSE:
+		/* Compose follows the binning factors, read-only. */
+		sel->r = *v4l2_subdev_state_get_compose(sd_state, sel->pad);
+		return 0;
+	case V4L2_SEL_TGT_CROP:
+		/* Handled below */
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE &&
 	    v4l2_subdev_is_streaming(sd))
@@ -853,26 +922,12 @@ static int imx708_set_selection(struct v4l2_subdev *sd,
 
 	crop = v4l2_subdev_state_get_crop(sd_state, IMX708_IMAGE_PAD,
 					  IMX708_STREAM_IMAGE);
-	source_format = v4l2_subdev_state_get_format(sd_state,
-						     IMX708_SOURCE_PAD,
-						     IMX708_STREAM_IMAGE);
-	meta_format = v4l2_subdev_state_get_format(sd_state,
-						   IMX708_METADATA_PAD);
-	meta_source_format =
-		v4l2_subdev_state_get_format(sd_state, IMX708_SOURCE_PAD,
-					     IMX708_STREAM_METADATA);
-
-	if (rect.width != crop->width || rect.height != crop->height) {
-		source_format->width = rect.width;
-		source_format->height = rect.height;
-		meta_format->width = rect.width;
-		meta_source_format->width = rect.width;
-
-		if (sel->which == V4L2_SUBDEV_FORMAT_ACTIVE)
-			imx708_set_framing_limits(imx708, source_format);
-	}
-
 	*crop = rect;
+
+	ret = imx708_set_binning(imx708, sd_state, sel->which);
+	if (ret)
+		return ret;
+
 	sel->r = *crop;
 
 	return 0;
@@ -937,6 +992,12 @@ static int imx708_get_selection(struct v4l2_subdev *sd,
 		sel->r = imx708_active_area;
 
 		return 0;
+
+	case V4L2_SEL_TGT_COMPOSE:
+		sel->r = *v4l2_subdev_state_get_compose(sd_state, sel->pad,
+							sel->stream);
+
+		return 0;
 	}
 
 	return -EINVAL;
@@ -968,12 +1029,37 @@ static int imx708_program_window(struct imx708 *imx708,
 	cci_write(imx708->cci, CCS_R_Y_ADDR_END, y_start + crop->height - 1,
 		  &ret);
 
-	/* Binning (fixed: no binning) */
-	cci_write(imx708->cci, CCS_R_BINNING_MODE, 0x00, &ret);
-	cci_write(imx708->cci, CCS_R_BINNING_TYPE, 0x11, &ret);
-	cci_write(imx708->cci, CCS_R_BINNING_WEIGHTING, 0x0a, &ret);
-	cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_H, 0x01, &ret);
-	cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_V, 0x01, &ret);
+	/* Binning + quad-bayer remosaic, selected by V4L2_CID_BINNING_FACTORS */
+	switch (imx708->binning->val) {
+	case IMX708_BINNING_11:
+		cci_write(imx708->cci, CCS_R_BINNING_MODE, 0x00, &ret);
+		cci_write(imx708->cci, CCS_R_BINNING_TYPE, 0x11, &ret);
+		cci_write(imx708->cci, CCS_R_BINNING_WEIGHTING, 0x0a, &ret);
+		cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_H,
+			  0x01, &ret);
+		cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_V,
+			  0x01, &ret);
+		/* Remosaic the quad-bayer output */
+		cci_write(imx708->cci, IMX708_REG_QBC_RMSC_EN, 0x01, &ret);
+		cci_write(imx708->cci, IMX708_REG_LPF_INTENSITY,
+			  IMX708_LPF_INTENSITY_DEFAULT, &ret);
+		cci_write(imx708->cci, IMX708_REG_LPF_INTENSITY_EN,
+			  IMX708_LPF_INTENSITY_ENABLED, &ret);
+		break;
+	case IMX708_BINNING_22:
+		cci_write(imx708->cci, CCS_R_BINNING_MODE, 0x01, &ret);
+		cci_write(imx708->cci, CCS_R_BINNING_TYPE, 0x22, &ret);
+		cci_write(imx708->cci, CCS_R_BINNING_WEIGHTING, 0x08, &ret);
+		cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_H,
+			  0x41, &ret);
+		cci_write(imx708->cci, IMX708_REG_BINNING_PRIORITY_V,
+			  0x41, &ret);
+		/* No remosaic when binned */
+		cci_write(imx708->cci, IMX708_REG_QBC_RMSC_EN, 0x00, &ret);
+		cci_write(imx708->cci, IMX708_REG_LPF_INTENSITY_EN,
+			  IMX708_LPF_INTENSITY_DISABLED, &ret);
+		break;
+	}
 
 	/* Digital crop (fixed: no crop) */
 	cci_write(imx708->cci, CCS_R_DIGITAL_CROP_X_OFFSET, 0, &ret);
@@ -1168,6 +1254,7 @@ static int imx708_enable_streams(struct v4l2_subdev *sd,
 	/* vflip/hflip cannot change during streaming */
 	__v4l2_ctrl_grab(imx708->vflip, true);
 	__v4l2_ctrl_grab(imx708->hflip, true);
+	__v4l2_ctrl_grab(imx708->binning, true);
 
 	return 0;
 
@@ -1196,6 +1283,7 @@ static int imx708_disable_streams(struct v4l2_subdev *sd,
 
 	__v4l2_ctrl_grab(imx708->vflip, false);
 	__v4l2_ctrl_grab(imx708->hflip, false);
+	__v4l2_ctrl_grab(imx708->binning, false);
 
 	pm_runtime_put_autosuspend(&client->dev);
 
@@ -1485,6 +1573,13 @@ static int imx708_init_controls(struct imx708 *imx708)
 	v4l2_ctrl_new_std(ctrl_hdlr, NULL, V4L2_CID_METADATA_LAYOUT, 0,
 			  V4L2_METADATA_LAYOUT_CCS, 1,
 			  V4L2_METADATA_LAYOUT_CCS);
+
+	imx708->binning =
+		v4l2_ctrl_new_int_menu(ctrl_hdlr, &imx708_ctrl_ops,
+				       V4L2_CID_BINNING_FACTORS,
+				       ARRAY_SIZE(imx708_binning_factors) - 1,
+				       IMX708_BINNING_11,
+				       imx708_binning_factors);
 
 	v4l2_ctrl_new_fwnode_properties(ctrl_hdlr, &imx708_ctrl_ops, &props);
 
