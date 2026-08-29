@@ -14,6 +14,7 @@
 	chosen {
 		/* 8250 auxiliary UART instead of pl011 */
 		stdout-path = "serial1:115200n8";
+		bootargs = "8250.nr_uarts=1";
 	};
 
 	cam1_reg: regulator-cam1 {
