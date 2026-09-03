@@ -233,8 +233,6 @@ static const struct cci_reg_sequence imx708_common_regs[] = {
 	{ IMX708_REG_AEHIST1_AREA_HEIGHT, 0x0000 },
 	{ CCI_REG8(0x32d6), 0x00 },
 	{ CCI_REG8(0x32db), 0x01 },
-	/* Analogue crop disabled */
-	{ IMX708_REG_ACROPLP_EN, 0x00 },
 	/* Unknown registers */
 	{ CCI_REG8(0x3ca0), 0x00 },
 	{ CCI_REG8(0x3ca1), 0x64 },
@@ -1028,6 +1026,17 @@ static int imx708_program_window(struct imx708 *imx708,
 		  &ret);
 	cci_write(imx708->cci, CCS_R_Y_ADDR_END, y_start + crop->height - 1,
 		  &ret);
+
+	/*
+	 * The datasheet recommends using ACROPLP_EN if following constraints
+	 * are matched for the horizontal windowing. Not clear what the register
+	 * does but unconditionally enabling it leads to empty frames with only
+	 * a single line of pixel data.
+	 */
+	if (x_start > 767 && x_start + crop->width <= 3840)
+		cci_write(imx708->cci, IMX708_REG_ACROPLP_EN, 0x1, &ret);
+	else
+		cci_write(imx708->cci, IMX708_REG_ACROPLP_EN, 0x0, &ret);
 
 	/* Binning + quad-bayer remosaic, selected by V4L2_CID_BINNING_FACTORS */
 	switch (imx708->binning->val) {
