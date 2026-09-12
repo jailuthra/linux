@@ -3,7 +3,7 @@
  * VideoCore Shared Memory driver using CMA.
  *
  * Copyright: 2018, Raspberry Pi (Trading) Ltd
- * Dave Stevenson <dave.stevenson@raspberrypi.org>
+ * Dave Stevenson <dave.stevenson@raspberrypi.com>
  *
  * Based on vmcs_sm driver from Broadcom Corporation for some API,
  * and taking some code for buffer allocation and dmabuf handling from
@@ -216,7 +216,7 @@ static void vc_sm_clean_up_dmabuf(struct vc_sm_buffer *buffer)
 		buffer->sgt = NULL;
 	}
 	if (buffer->attach) {
-		dma_buf_detach(buffer->dma_buf, buffer->attach);
+		dma_buf_detach(buffer->imported_dma_buf, buffer->attach);
 		buffer->attach = NULL;
 	}
 }
