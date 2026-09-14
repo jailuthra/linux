@@ -23,10 +23,10 @@
 #include "bcm2835-isp-common.h"
 
 /*
- * We want to instantiate 2 independent instances allowing 2 simultaneous users
- * of the ISP hardware.
+ * There is no standard API today for multiplexing ISP instances, so we hardcode
+ * the number of instances to 1 here. The firmware backend can work with more.
  */
-#define BCM2835_ISP_NUM_INSTANCES 2
+#define BCM2835_ISP_NUM_INSTANCES 1
 
 MODULE_IMPORT_NS("DMA_BUF");
 
@@ -34,7 +34,7 @@ static unsigned int debug;
 module_param(debug, uint, 0644);
 MODULE_PARM_DESC(debug, "activates debug info");
 
-static unsigned int video_nr[BCM2835_ISP_NUM_INSTANCES] = { 13, 20 };
+static unsigned int video_nr[BCM2835_ISP_NUM_INSTANCES] = { 13 };
 module_param_array(video_nr, uint, NULL, 0644);
 MODULE_PARM_DESC(video_nr, "base video device numbers");
 
@@ -735,6 +735,7 @@ static int populate_qdata_fmt(struct v4l2_format *f,
 			 __func__,
 			 q_data->sizeimage,
 			 node->port->minimum_buffer.size);
+		ret = -EINVAL;
 	}
 
 	v4l2_dbg(1, debug, &dev->v4l2_dev,
@@ -786,7 +787,7 @@ static int bcm2835_isp_node_g_fmt(struct file *file, void *priv,
 	return 0;
 }
 
-static int bcm2835_isp_node_enum_fmt(struct file *file, void  *priv,
+static int bcm2835_isp_node_enum_fmt(struct file *file, void *priv,
 				     struct v4l2_fmtdesc *f)
 {
 	struct bcm2835_isp_node *node = video_drvdata(file);
@@ -849,11 +850,10 @@ static int bcm2835_isp_node_try_fmt(struct file *file, void *priv,
 	if (!node_is_stats(node)) {
 		bool is_rgb;
 
-		f->fmt.pix.width = max(min(f->fmt.pix.width, MAX_DIM),
-				       MIN_DIM);
-		f->fmt.pix.height = max(min(f->fmt.pix.height, MAX_DIM),
-					MIN_DIM);
-
+		f->fmt.pix.width = clamp_t(u32, f->fmt.pix.width, MIN_DIM,
+					   MAX_DIM);
+		f->fmt.pix.height = clamp_t(u32, f->fmt.pix.height, MIN_DIM,
+					    MAX_DIM);
 		f->fmt.pix.pixelformat = fmt->fourcc;
 
 		/*

@@ -74,8 +74,8 @@ struct bcm2835_isp_params_buffer {
 #define to_bcm2835_isp_params_buf(vbuf) \
 	container_of(vbuf, struct bcm2835_isp_params_buffer, vb)
 
-static int isp_set_param(struct bcm2835_isp_params *params, u32 parameter, void
-			 *value, u32 value_size)
+static int isp_set_param(struct bcm2835_isp_params *params, u32 parameter,
+			 void *value, u32 value_size)
 {
 	return vchiq_mmal_port_parameter_set(params->mmal_instance, params->port,
 					     parameter, value, value_size);
@@ -99,10 +99,8 @@ static int map_ls_table(struct bcm2835_isp_params *params,
 	 */
 	memcpy(&params->ls, v4l2_ls, sizeof(params->ls));
 	ret = vc_sm_cma_import_dmabuf(dmabuf, &vcsm_handle);
-	if (ret) {
-		dma_buf_put(dmabuf);
+	if (ret)
 		return ret;
-	}
 
 	params->ls.mem_handle_table = vc_sm_cma_int_handle(vcsm_handle);
 	params->last_ls_dmabuf = dmabuf;
@@ -137,12 +135,8 @@ BCM2835_ISP_PARAMS_HANDLER(digital_gain, MMAL_PARAMETER_DIGITAL_GAIN, digital_ga
 static void bcm2835_isp_params_lens_shading(struct bcm2835_isp_params *params,
 					    union bcm2835_isp_params_block block)
 {
-	struct dma_buf *dmabuf;
+	struct dma_buf *dmabuf = dma_buf_get(block.ls->ls.dmabuf);
 	int ret = 0;
-
-	dmabuf = dma_buf_get(block.ls->ls.dmabuf);
-	if (IS_ERR(dmabuf))
-		return;
 
 	if (dmabuf != params->last_ls_dmabuf)
 		ret = map_ls_table(params, dmabuf, &block.ls->ls);
@@ -403,6 +397,7 @@ bcm2835_isp_params_register(struct v4l2_device *v4l2_dev, struct device *dev,
 	ret = vb2_queue_init(q);
 	if (ret) {
 		dev_err(dev, "Failed to init params vb2 queue\n");
+		mutex_destroy(&params->lock);
 		return ERR_PTR(ret);
 	}
 
@@ -423,6 +418,7 @@ bcm2835_isp_params_register(struct v4l2_device *v4l2_dev, struct device *dev,
 	ret = media_entity_pads_init(&vdev->entity, 1, &params->pad);
 	if (ret) {
 		vb2_queue_release(q);
+		mutex_destroy(&params->lock);
 		return ERR_PTR(ret);
 	}
 
@@ -433,6 +429,7 @@ bcm2835_isp_params_register(struct v4l2_device *v4l2_dev, struct device *dev,
 		dev_err(dev, "Failed to register params device node\n");
 		media_entity_cleanup(&vdev->entity);
 		vb2_queue_release(q);
+		mutex_destroy(&params->lock);
 		return ERR_PTR(ret);
 	}
 

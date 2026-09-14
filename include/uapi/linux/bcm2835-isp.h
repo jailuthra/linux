@@ -16,8 +16,8 @@
 #include <linux/media/v4l2-isp.h>
 
 /*
- * All structs below are directly mapped onto the equivalent structs in
- * drivers/staging/vc04_services/vchiq-mmal/mmal-parameters.h
+ * All structs below are directly mapped from struct
+ * mmal_parameter_isp_parameters in include/linux/raspberrypi/mmal-parameters.h
  * for convenience.
  */
 
