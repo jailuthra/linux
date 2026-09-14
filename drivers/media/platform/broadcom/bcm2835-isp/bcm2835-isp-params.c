@@ -83,8 +83,7 @@ static int isp_set_param(struct bcm2835_isp_params *params, u32 parameter,
 }
 
 static int map_ls_table(struct bcm2835_isp_params *params,
-			struct dma_buf *dmabuf,
-			const struct bcm2835_isp_lens_shading *v4l2_ls)
+			struct dma_buf *dmabuf, u32 *mem_handle_table)
 {
 	void *vcsm_handle;
 	int ret;
@@ -92,21 +91,15 @@ static int map_ls_table(struct bcm2835_isp_params *params,
 	if (IS_ERR_OR_NULL(dmabuf))
 		return -EINVAL;
 
-	/*
-	 * struct bcm2835_isp_lens_shading and struct
-	 * mmal_parameter_lens_shading_v2 match so that we can do a
-	 * simple memcpy here.
-	 * Only the dmabuf to the actual table needs any manipulation.
-	 */
-	memcpy(&params->ls, v4l2_ls, sizeof(params->ls));
 	ret = vc_sm_cma_import_dmabuf(dmabuf, &vcsm_handle);
 	if (ret)
 		return ret;
 
-	params->ls.mem_handle_table = vc_sm_cma_int_handle(vcsm_handle);
-	params->last_ls_dmabuf = dmabuf;
+	*mem_handle_table = vc_sm_cma_int_handle(vcsm_handle);
 
 	vc_sm_cma_free(vcsm_handle);
+
+	params->last_ls_dmabuf = dmabuf;
 
 	return 0;
 }
@@ -142,16 +135,31 @@ static void bcm2835_isp_params_lens_shading(struct mmal_parameter_isp_parameters
 					    union bcm2835_isp_params_block block)
 {
 	struct dma_buf *dmabuf = dma_buf_get(block.ls->ls.dmabuf);
+	u32 prev_handle;
 	int ret = 0;
 
-	if (dmabuf != params->last_ls_dmabuf)
-		ret = map_ls_table(params, dmabuf, &block.ls->ls);
+	/*
+	 * struct bcm2835_isp_lens_shading layout matches with what MMAL
+	 * expects, so we can do a simple memcpy here. The descriptor for
+	 * the table needs special handling though.
+	 */
+	prev_handle = mmal_param->lens_shading.mem_handle_table;
+	memcpy(&mmal_param->lens_shading.enabled, &block.ls->ls,
+	       sizeof(block.ls->ls));
 
-	if (!ret && mmal_param->lens_shading.mem_handle_table) {
-		memcpy(&mmal_param->lens_shading.enabled, &params->ls,
-		       sizeof(params->ls));
+	/*
+	 * Map the DMABUF from userspace to a VCSM CMA handle that the firmware
+	 * can import, reusing the old handle if DMABUF was unchanged.
+	 */
+	if (dmabuf != params->last_ls_dmabuf)
+		ret = map_ls_table(params, dmabuf,
+				   &mmal_param->lens_shading.mem_handle_table);
+	else
+		mmal_param->lens_shading.mem_handle_table = prev_handle;
+
+	if (!ret && mmal_param->lens_shading.mem_handle_table)
 		mmal_param->lens_shading.update = 1;
-	}
+
 	dma_buf_put(dmabuf);
 }
 
@@ -470,10 +478,13 @@ void bcm2835_isp_params_unregister(struct bcm2835_isp_params *params)
  */
 void bcm2835_isp_params_drop_ls_ref(struct bcm2835_isp_params *params)
 {
-	memset(&params->ls, 0, sizeof(params->ls));
-	/* Must set a valid grid size for the FW */
-	params->ls.grid_cell_size = 16;
-	isp_set_param(params, MMAL_PARAMETER_LENS_SHADING_OVERRIDE,
-		      &params->ls, sizeof(params->ls));
+	struct bcm2835_isp_lens_shading ls = {
+		/* Must set a valid grid size for the FW */
+		.grid_cell_size = 16,
+	};
+
+	isp_set_param(params, MMAL_PARAMETER_LENS_SHADING_OVERRIDE, &ls,
+		      sizeof(ls));
+
 	params->last_ls_dmabuf = NULL;
 }

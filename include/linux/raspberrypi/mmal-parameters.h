@@ -819,18 +819,6 @@ enum mmal_parameter_ls_gain_format_type {
 	MMAL_PARAMETER_LS_GAIN_FORMAT_TYPE_DUMMY  = 0x7FFFFFFF
 };
 
-struct mmal_parameter_lens_shading_v2 {
-	u32 enabled;
-	u32 grid_cell_size;
-	u32 grid_width;
-	u32 grid_stride;
-	u32 grid_height;
-	u32 mem_handle_table;
-	u32 ref_transform;
-	u32 corner_sampled;
-	enum mmal_parameter_ls_gain_format_type gain_format;
-};
-
 struct mmal_parameter_crop {
 	struct vchiq_mmal_rect rect;
 };

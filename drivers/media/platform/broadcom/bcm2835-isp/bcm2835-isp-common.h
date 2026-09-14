@@ -33,7 +33,6 @@ struct bcm2835_isp_params {
 
 	/* Lens shading state */
 	struct dma_buf *last_ls_dmabuf;
-	struct mmal_parameter_lens_shading_v2 ls;
 };
 
 struct bcm2835_isp_params *
