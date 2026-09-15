@@ -27,7 +27,7 @@ MODULE_IMPORT_NS("DMA_BUF");
 #define BCM2835_ISP_PARAMS_NAME "bcm2835-isp-params"
 
 #define BCM2835_ISP_PARAMS_BUF_SIZE \
-	v4l2_isp_params_buffer_size(BCM2835_ISP_PARAMS_MAX_SIZE)
+	v4l2_isp_buffer_size(BCM2835_ISP_PARAMS_MAX_SIZE)
 
 /**
  * union bcm2835_isp_params_block - Generalisation of a parameter block
@@ -386,6 +386,7 @@ bcm2835_isp_params_register(struct v4l2_device *v4l2_dev, struct device *dev,
 			    struct vchiq_mmal_instance *mmal_instance,
 			    struct vchiq_mmal_port *port, int video_nr)
 {
+	struct mmal_parameter_isp_parameters mmal_param = { 0 };
 	struct bcm2835_isp_params *params;
 	struct video_device *vdev;
 	struct vb2_queue *q;
@@ -399,6 +400,18 @@ bcm2835_isp_params_register(struct v4l2_device *v4l2_dev, struct device *dev,
 	params->v4l2_dev = v4l2_dev;
 	params->mmal_instance = mmal_instance;
 	params->port = port;
+
+	/* Test if the firmware supports a combined parameter buffer */
+	ret = vchiq_mmal_port_parameter_set(params->mmal_instance,
+					    params->port,
+					    MMAL_PARAMETER_ISP_SETTINGS,
+					    &mmal_param, sizeof(mmal_param));
+	if (ret) {
+		dev_err(dev, "Please update to the latest firmware\n"
+			"\tMMAL_PARAMETER_ISP_SETTINGS failed with err %d\n",
+			ret);
+		return ERR_PTR(-EINVAL);
+	}
 
 	mutex_init(&params->lock);
 

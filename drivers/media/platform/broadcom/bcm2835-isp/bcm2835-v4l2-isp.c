@@ -9,6 +9,7 @@
  *
  */
 
+#include <linux/err.h>
 #include <linux/module.h>
 #include <linux/raspberrypi/mmal-msg.h>
 #include <linux/raspberrypi/mmal-parameters.h>
@@ -1336,7 +1337,8 @@ static void bcm2835_isp_remove_instance(struct bcm2835_isp_dev *dev)
 {
 	unsigned int i;
 
-	bcm2835_isp_params_unregister(dev->params);
+	if (!IS_ERR_OR_NULL(dev->params))
+		bcm2835_isp_params_unregister(dev->params);
 
 	for (i = 0; i < BCM2835_ISP_NUM_NODES; i++)
 		bcm2835_unregister_node(&dev->node[i]);
