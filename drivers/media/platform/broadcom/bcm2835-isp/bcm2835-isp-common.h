@@ -42,7 +42,7 @@ bcm2835_isp_params_register(struct v4l2_device *v4l2_dev, struct device *dev,
 
 void bcm2835_isp_params_unregister(struct bcm2835_isp_params *params);
 
-void bcm2835_isp_params_drop_ls_ref(struct bcm2835_isp_params *params);
+int bcm2835_isp_params_drop_ls_ref(struct bcm2835_isp_params *params);
 
 int bcm2835_isp_node_querycap(struct file *file, void *priv,
 			      struct v4l2_capability *cap);

@@ -616,7 +616,13 @@ static void bcm2835_isp_node_stop_streaming(struct vb2_queue *q)
 	atomic_dec(&dev->num_streaming);
 	/* If all ports disabled, then disable the component */
 	if (atomic_read(&dev->num_streaming) == 0) {
-		bcm2835_isp_params_drop_ls_ref(dev->params);
+		ret = bcm2835_isp_params_drop_ls_ref(dev->params);
+		if (ret) {
+			v4l2_err(&dev->v4l2_dev,
+				 "%s: Failed dropping LS buffer, ret %d\n",
+				 __func__, ret);
+		}
+
 		ret = vchiq_mmal_component_disable(dev->mmal_instance,
 						   dev->component);
 		if (ret) {

@@ -224,6 +224,7 @@ static void bcm2835_isp_params_apply(struct bcm2835_isp_params *params,
 	size_t block_offset = 0;
 	size_t max_offset = config->data_size;
 	struct mmal_parameter_isp_parameters mmal_param = { 0 };
+	int ret;
 
 	while (block_offset < max_offset) {
 		union bcm2835_isp_params_block block;
@@ -236,8 +237,16 @@ static void bcm2835_isp_params_apply(struct bcm2835_isp_params *params,
 		block_offset += block.header->size;
 	}
 
-	isp_set_param(params, MMAL_PARAMETER_ISP_SETTINGS, &mmal_param,
-		      sizeof(mmal_param));
+	ret = isp_set_param(params, MMAL_PARAMETER_ISP_SETTINGS, &mmal_param,
+			    sizeof(mmal_param));
+
+	if (ret) {
+		dev_err(params->dev,
+			"%s: MMAL_PARAMETER_ISP_SETTINGS failed with err %d\n",
+			__func__, ret);
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
+		return;
+	}
 
 	vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_DONE);
 }
@@ -489,15 +498,15 @@ void bcm2835_isp_params_unregister(struct bcm2835_isp_params *params)
  * the lens shading table.
  * Pass a null handle to remove that reference.
  */
-void bcm2835_isp_params_drop_ls_ref(struct bcm2835_isp_params *params)
+int bcm2835_isp_params_drop_ls_ref(struct bcm2835_isp_params *params)
 {
 	struct bcm2835_isp_lens_shading ls = {
 		/* Must set a valid grid size for the FW */
 		.grid_cell_size = 16,
 	};
 
-	isp_set_param(params, MMAL_PARAMETER_LENS_SHADING_OVERRIDE, &ls,
-		      sizeof(ls));
-
 	params->last_ls_dmabuf = NULL;
+
+	return isp_set_param(params, MMAL_PARAMETER_LENS_SHADING_OVERRIDE, &ls,
+			     sizeof(ls));
 }
