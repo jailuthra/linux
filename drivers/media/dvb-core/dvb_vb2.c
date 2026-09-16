@@ -357,8 +357,7 @@ int dvb_vb2_expbuf(struct dvb_vb2_ctx *ctx, struct dmx_exportbuffer *exp)
 		return -EINVAL;
 	}
 
-	ret = vb2_core_expbuf(&ctx->vb_q, &exp->fd, q->type, vb2,
-			      0, exp->flags);
+	ret = vb2_core_expbuf(&ctx->vb_q, &exp->fd, vb2, 0, exp->flags);
 	if (ret) {
 		dprintk(1, "[%s] index=%d errno=%d\n", ctx->name,
 			exp->index, ret);
