@@ -2419,8 +2419,8 @@ static int __find_plane_by_offset(struct vb2_queue *q, unsigned long offset,
 	return 0;
 }
 
-int vb2_core_expbuf(struct vb2_queue *q, int *fd, unsigned int type,
-		    struct vb2_buffer *vb, unsigned int plane, unsigned int flags)
+int vb2_core_expbuf(struct vb2_queue *q, int *fd, struct vb2_buffer *vb,
+		    unsigned int plane, unsigned int flags)
 {
 	struct vb2_plane *vb_plane;
 	int ret;
@@ -2438,11 +2438,6 @@ int vb2_core_expbuf(struct vb2_queue *q, int *fd, unsigned int type,
 
 	if (flags & ~(O_CLOEXEC | O_ACCMODE)) {
 		dprintk(q, 1, "queue does support only O_CLOEXEC and access mode flags\n");
-		return -EINVAL;
-	}
-
-	if (type != q->type) {
-		dprintk(q, 1, "invalid buffer type\n");
 		return -EINVAL;
 	}
 

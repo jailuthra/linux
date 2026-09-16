@@ -877,14 +877,18 @@ int vb2_expbuf(struct vb2_queue *q, struct v4l2_exportbuffer *eb)
 {
 	struct vb2_buffer *vb;
 
+	if (eb->type != q->type) {
+		dprintk(q, 1, "invalid buffer type\n");
+		return -EINVAL;
+	}
+
 	vb = vb2_get_buffer(q, eb->index);
 	if (!vb) {
 		dprintk(q, 1, "can't find the requested buffer %u\n", eb->index);
 		return -EINVAL;
 	}
 
-	return vb2_core_expbuf(q, &eb->fd, eb->type, vb,
-				eb->plane, eb->flags);
+	return vb2_core_expbuf(q, &eb->fd, vb, eb->plane, eb->flags);
 }
 EXPORT_SYMBOL_GPL(vb2_expbuf);
 
