@@ -40,6 +40,11 @@ properties:
           - const: sony,imx675
       - items:
           - enum:
+              - sony,imx676-aamr
+              - sony,imx676-aacr
+          - const: sony,imx676
+      - items:
+          - enum:
               - sony,imx678-aamr
               - sony,imx678-aaqr
           - const: sony,imx678
