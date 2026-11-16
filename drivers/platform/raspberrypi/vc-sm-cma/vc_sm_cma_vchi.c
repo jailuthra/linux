@@ -481,7 +481,7 @@ int vc_sm_cma_vchi_free(struct sm_instance *handle, struct vc_sm_free_t *msg,
 			u32 *cur_trans_id)
 {
 	return vc_sm_cma_vchi_send_msg(handle, VC_SM_MSG_TYPE_FREE,
-				   msg, sizeof(*msg), 0, 0, cur_trans_id, 0);
+				   msg, sizeof(*msg), NULL, 0, cur_trans_id, 0);
 }
 
 int vc_sm_cma_vchi_import(struct sm_instance *handle, struct vc_sm_import *msg,

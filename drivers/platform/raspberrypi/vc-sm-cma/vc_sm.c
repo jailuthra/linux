@@ -415,6 +415,7 @@ vc_sm_cma_import_dmabuf_internal(struct dma_buf *dma_buf,
 	struct vc_sm_import import = { };
 	struct sg_table *sgt = NULL;
 	dma_addr_t dma_addr;
+	int kernel_id = -1;
 	u32 cache_alias;
 	int ret = 0;
 	int status;
@@ -469,11 +470,12 @@ vc_sm_cma_import_dmabuf_internal(struct dma_buf *dma_buf,
 	}
 	import.size = sg_dma_len(sgt->sgl);
 	import.allocator = current->tgid;
-	import.kernel_id = get_kernel_id(buffer);
-	if (import.kernel_id < 0) {
-		ret = import.kernel_id;
+	kernel_id = get_kernel_id(buffer);
+	if (kernel_id < 0) {
+		ret = kernel_id;
 		goto error;
 	}
+	import.kernel_id = kernel_id;
 
 	memcpy(import.name, VC_SM_RESOURCE_NAME_DEFAULT,
 	       sizeof(VC_SM_RESOURCE_NAME_DEFAULT));
@@ -544,7 +546,8 @@ error:
 		vc_sm_cma_vchi_free(sm_state->sm_handle, &free,
 				    &sm_state->int_trans_id);
 	}
-	free_kernel_id(import.kernel_id);
+	if (kernel_id >= 0)
+		free_kernel_id(import.kernel_id);
 	kfree(buffer);
 	if (sgt)
 		dma_buf_unmap_attachment_unlocked(attach, sgt,
