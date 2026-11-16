@@ -1644,10 +1644,10 @@ int vchiq_mmal_submit_buffer(struct vchiq_mmal_instance *instance,
 
 		buffer->vc_handle = vc_sm_cma_get_vc_handle(buffer->vcsm_handle);
 		if (!buffer->vc_handle) {
-			pr_err("%s: vc_sm_int_handle failed %d\n",
-			       __func__, ret);
+			pr_err("%s: vc_sm_cma_get_vc_handle failed\n",
+			       __func__);
 			vc_sm_cma_free(buffer->vcsm_handle);
-			return ret;
+			return -EINVAL;
 		}
 		pr_debug("%s: import dmabuf %p - got vc handle %08X\n",
 			 __func__, buffer->dma_buf, buffer->vc_handle);
@@ -1694,7 +1694,7 @@ int mmal_vchi_buffer_cleanup(struct mmal_buffer *buf)
 		ret = vc_sm_cma_free(buf->vcsm_handle);
 		if (ret)
 			pr_err("%s: vcsm_free failed, ret %d\n", __func__, ret);
-		buf->vcsm_handle = 0;
+		buf->vcsm_handle = NULL;
 	}
 	return 0;
 }
